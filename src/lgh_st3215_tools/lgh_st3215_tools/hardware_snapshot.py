@@ -11,6 +11,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import JointState
 from std_msgs.msg import UInt32MultiArray
+from lgh_st3215_tools.diagnostic_compat import diagnostic_level_to_int
 from lgh_st3215_tools.exit_codes import ExitCode
 from lgh_st3215_tools.result import make_report_dir
 
@@ -24,7 +25,7 @@ class SnapshotNode(Node):
     def _diag(self, msg):
         for status in msg.status:
             if status.name == 'ST3215 native single bus':
-                self.diag = {'level': int(status.level), 'message': status.message, 'hardware_id': status.hardware_id, 'values': {v.key: v.value for v in status.values}}
+                self.diag = {'level': diagnostic_level_to_int(status.level), 'message': status.message, 'hardware_id': status.hardware_id, 'values': {v.key: v.value for v in status.values}}
     def _joint(self, msg):
         self.joint = {'stamp': {'sec': int(msg.header.stamp.sec), 'nanosec': int(msg.header.stamp.nanosec)}, 'frame_id': msg.header.frame_id, 'name': list(msg.name), 'position': list(msg.position), 'velocity': list(msg.velocity), 'effort': list(msg.effort)}
     def _age(self, msg): self.ages = [int(v) for v in msg.data]

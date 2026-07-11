@@ -1,15 +1,15 @@
-# LittleGreen v2.6.0 Commissioning Sequence
+# LittleGreen v2.6.4 Commissioning Sequence
 
 This is the abbreviated sequence. The authoritative fresh-install gate checklist is [`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md).
 
 ## 1. Verify the install and active overlay
 
 ```bash
-source ~/.config/littlegreen/ros2_env.sh
+# New terminals are already configured. For the current terminal only:
+source ~/.bashrc
 cd ~/littlegreen_ros2_ws
 ./scripts/verify_install.sh --software-only
 ```
-*The installer automatically adds the LittleGreen environment script to ~/.bashrc. New interactive Bash terminals will load it automatically. Manual sourcing is only needed in the current terminal before reopening it, or in scripts and services that do not load ~/.bashrc.
 
 Old package names should not be visible in `ros2 pkg list`.
 

@@ -3,7 +3,7 @@
 <package format="3">
   <name>littlegreen_description</name>
   <version>0.1.0</version>
-  <description>URDF, meshes, RViz, and Gazebo description for LittleGreen.</description>
+  <description>URDF, meshes, RViz, and optional legacy Gazebo resources for LittleGreen.</description>
   <maintainer email="scott.milich@me.com">Scott Milich</maintainer>
   <license>Apache-2.0</license>
 
@@ -17,7 +17,6 @@
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>joint_state_publisher_gui</exec_depend>
-  <!-- <exec_depend>gazebo_ros</exec_depend> -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

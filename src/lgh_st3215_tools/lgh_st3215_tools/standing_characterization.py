@@ -42,6 +42,7 @@ import rclpy
 import yaml
 from lgh_st3215_driver.msg import ServoTelemetry
 from lgh_st3215_tools.dataset_manifest import write_manifest
+from lgh_st3215_tools.diagnostic_compat import diagnostic_level_to_int
 from diagnostic_msgs.msg import DiagnosticArray
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, QoSReliabilityPolicy
@@ -535,11 +536,7 @@ class StandingLoadNode(Node):
         if not msg.status:
             return
         status = msg.status[0]
-        level = status.level
-        if isinstance(level, (bytes, bytearray)):
-            self.diag_level = level[0] if len(level) == 1 else None
-        else:
-            self.diag_level = int(level)
+        self.diag_level = diagnostic_level_to_int(status.level)
         self.diag_message = str(status.message)
         self.diag_values = {str(kv.key): str(kv.value) for kv in status.values}
         self.last_diag_monotonic = time.monotonic()

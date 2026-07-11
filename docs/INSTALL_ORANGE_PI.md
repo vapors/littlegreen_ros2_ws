@@ -174,10 +174,18 @@ id -nG
 
 Confirm `dialout` appears.
 
-## 7. Source the new environment
+## 7. Load the new environment
 
-A new shell should source it automatically. To do so explicitly:
-The installer automatically adds the LittleGreen environment script to ~/.bashrc. New interactive Bash terminals will load it automatically. Manual sourcing is only needed in the current terminal before reopening it, or in scripts and services that do not load ~/.bashrc.
+The installer adds the LittleGreen environment file to `~/.bashrc`, so every new interactive Bash terminal loads it automatically. You do not need to add another source line.
+
+For the terminal that was already open during installation, either open a new terminal or run:
+
+```bash
+source ~/.bashrc
+```
+
+Directly sourcing the generated file is equivalent but optional:
+
 ```bash
 source ~/.config/littlegreen/ros2_env.sh
 ```

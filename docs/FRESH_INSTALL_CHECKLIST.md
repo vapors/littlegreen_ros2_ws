@@ -1,4 +1,4 @@
-# Fresh Install and Hardware Commissioning Checklist — v2.6.3
+# Fresh Install and Hardware Commissioning Checklist — v2.6.4
 
 Use this checklist after completing [`INSTALL_ORANGE_PI.md`](INSTALL_ORANGE_PI.md).
 
@@ -6,12 +6,7 @@ The robot must be securely supported throughout initial bring-up. Keep the physi
 
 ## Gate 0 — no old overlay
 
-Open a new shell:
-
-```bash
-source ~/.config/littlegreen/ros2_env.sh
-```
-* The installer automatically adds the LittleGreen environment script to ~/.bashrc. New interactive Bash terminals will load it automatically. Manual sourcing is only needed in the current terminal before reopening it, or in scripts and services that do not load ~/.bashrc.
+Open a new shell. The installer-managed `~/.bashrc` entry loads the environment automatically. For the current shell only, `source ~/.bashrc` is sufficient.
 
 ```bash
 ros2 pkg list | grep -E '^(bhl_|berkeley_biped|lilgreen_)'
@@ -89,7 +84,7 @@ ros2 run lgh_st3215_maintenance backup_control_tables
 
 **Pass:** expected IDs are found without duplicates or transaction errors.
 
-The v2.6.3 maintenance package performs no EEPROM writes.
+The v2.6.4 maintenance package performs no EEPROM writes.
 
 ## Gate 5 — feedback-only runtime driver
 
@@ -205,7 +200,7 @@ Expected runtime-safe surface:
 
 ## Gate 9 — policy shadow only
 
-The Track 1 deployment bundle is not yet the v2.6.3 hardware authorization boundary. Use the packaged policy only for software/shadow validation.
+The Track 1 deployment bundle is not yet the v2.6.4 hardware authorization boundary. Use the packaged policy only for software/shadow validation.
 
 Keep servo writes disabled:
 

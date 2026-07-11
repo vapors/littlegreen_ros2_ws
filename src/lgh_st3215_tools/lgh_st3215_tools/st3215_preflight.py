@@ -19,6 +19,7 @@ from rclpy.qos import HistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from sensor_msgs.msg import JointState
 from std_msgs.msg import UInt32MultiArray
 
+from lgh_st3215_tools.diagnostic_compat import diagnostic_level_to_int
 from lgh_st3215_tools.exit_codes import ExitCode
 from lgh_st3215_tools.result import CheckResult, ToolResult, make_report_dir, utc_now, write_result
 
@@ -65,7 +66,7 @@ class PreflightNode(Node):
                 continue
             values = {item.key: item.value for item in status.values}
             self.obs.diagnostics = values
-            self.obs.diagnostic_level = int(status.level)
+            self.obs.diagnostic_level = diagnostic_level_to_int(status.level)
             self.obs.diagnostic_message = status.message
             self.obs.diagnostic_count += 1
             counters: dict[str, int] = {}

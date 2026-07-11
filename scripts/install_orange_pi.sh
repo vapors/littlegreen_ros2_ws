@@ -9,6 +9,26 @@ SKIP_BUILD=0
 NO_BASHRC=0
 WORKSPACE_VERSION="$(tr -d '\r\n' < "$WORKSPACE/VERSION")"
 
+repair_ros_apt_source_conflicts() {
+  # ros2-apt-source installs a Deb822 .sources file with an embedded key.
+  # A legacy ros2.list entry for the same URI causes APT Signed-By conflicts.
+  if [[ -f /etc/apt/sources.list.d/ros2.sources ]]; then
+    if [[ -f /etc/apt/sources.list.d/ros2.list ]] \
+        && grep -q 'packages\.ros\.org/ros2/ubuntu' /etc/apt/sources.list.d/ros2.list; then
+      echo "==> Disabling duplicate legacy ROS apt source: /etc/apt/sources.list.d/ros2.list"
+      sudo mv /etc/apt/sources.list.d/ros2.list \
+        /etc/apt/sources.list.d/ros2.list.disabled
+    fi
+    if [[ -f /etc/apt/sources.list ]] \
+        && grep -q 'packages\.ros\.org/ros2/ubuntu' /etc/apt/sources.list; then
+      echo "==> Commenting duplicate ROS apt source in /etc/apt/sources.list"
+      sudo sed -i \
+        '\|packages\.ros\.org/ros2/ubuntu|s|^[[:space:]]*deb |# disabled duplicate ROS source: deb |' \
+        /etc/apt/sources.list
+    fi
+  fi
+}
+
 usage() {
   cat <<EOF
 Usage: $0 [options]
@@ -66,6 +86,7 @@ echo "==> Validating the v${WORKSPACE_VERSION} source tree"
 
 if [[ $SKIP_ROS -eq 0 ]]; then
   echo "==> Installing ROS 2 Humble and build prerequisites"
+  repair_ros_apt_source_conflicts
   sudo apt-get update
   sudo apt-get install -y locales software-properties-common curl ca-certificates gnupg lsb-release \
     build-essential cmake ninja-build git wget unzip tar pkg-config python3-pip python3-venv
@@ -88,7 +109,7 @@ if [[ $SKIP_ROS -eq 0 ]]; then
       fi
     fi
     rm -f /tmp/ros2-apt-source.deb
-    if [[ $ROS_APT_OK -ne 1 ]]; then
+    if [[ $ROS_APT_OK -ne 1 && ! -f /etc/apt/sources.list.d/ros2.sources ]]; then
       echo "WARN: ros2-apt-source bootstrap failed; using the official keyring/repository fallback."
       sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
         -o /usr/share/keyrings/ros-archive-keyring.gpg
@@ -97,6 +118,7 @@ if [[ $SKIP_ROS -eq 0 ]]; then
     fi
   fi
 
+  repair_ros_apt_source_conflicts
   sudo apt-get update
   # ros-base is intentional on the robot. rosdep installs the additional workspace dependencies.
   sudo apt-get install -y \
@@ -133,7 +155,8 @@ LittleGreen ROS 2 v${WORKSPACE_VERSION} installation finished.
 
 Next steps:
   1. Log out and back in so the dialout group is active.
-  2. Run: source ~/.config/littlegreen/ros2_env.sh
+  2. Open a new terminal, or run: source ~/.bashrc
+     (Directly sourcing ~/.config/littlegreen/ros2_env.sh is optional.)
   3. Run: $WORKSPACE/scripts/verify_install.sh
   4. Follow: $WORKSPACE/docs/FRESH_INSTALL_CHECKLIST.md
 

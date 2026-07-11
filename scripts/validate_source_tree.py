@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ROS-independent validation for the LittleGreen v2.6.3 source workspace."""
+"""ROS-independent validation for the LittleGreen v2.6.4 source workspace."""
 from __future__ import annotations
 
 import ast
@@ -109,6 +109,7 @@ for cmake_file in SRC.rglob("CMakeLists.txt"):
 required_files = [
     SRC / "lgh_st3215_driver/launch/lgh_st3215_driver.launch.py",
     SRC / "lgh_st3215_driver/msg/ServoTelemetry.msg",
+    SRC / "lgh_st3215_tools/lgh_st3215_tools/diagnostic_compat.py",
     SRC / "littlegreen_biped_pkg/src/littlegreen_biped_node.cpp",
     SRC / "littlegreen_biped_pkg/launch/littlegreen_biped_launch.py",
     SRC / "littlegreen_description/urdf/littlegreen.xacro",

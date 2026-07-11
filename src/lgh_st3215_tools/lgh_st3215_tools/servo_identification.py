@@ -45,6 +45,7 @@ import yaml
 from diagnostic_msgs.msg import DiagnosticArray
 from lgh_st3215_driver.msg import ServoTelemetry
 from lgh_st3215_tools.dataset_manifest import write_manifest
+from lgh_st3215_tools.diagnostic_compat import diagnostic_level_to_int
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from sensor_msgs.msg import Imu, JointState
@@ -557,13 +558,7 @@ class IdentificationNode(Node):
         if not msg.status:
             return
         status = msg.status[0]
-        level = status.level
-        if isinstance(level, (bytes, bytearray)):
-            if len(level) != 1:
-                raise ValueError(f'unexpected DiagnosticStatus.level byte length: {len(level)}')
-            self.driver_diag_level = level[0]
-        else:
-            self.driver_diag_level = int(level)
+        self.driver_diag_level = diagnostic_level_to_int(status.level)
         self.driver_diag_message = str(status.message)
         self.driver_diag_values = {str(kv.key): str(kv.value) for kv in status.values}
         self.last_diag_monotonic = time.monotonic()
