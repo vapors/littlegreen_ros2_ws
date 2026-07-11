@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""ROS-independent validation for the LittleGreen v2.6.0 source workspace."""
+"""ROS-independent validation for the LittleGreen v2.6.2 source workspace."""
 from __future__ import annotations
 
 import ast
+import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -83,6 +84,27 @@ for p in SRC.rglob("*"):
             yaml.safe_load(text)
         except Exception as exc:
             errors.append(f"YAML parse error in {p.relative_to(ROOT)}: {exc}")
+
+# Catch literal CMake install(DIRECTORY ...) rules that reference missing or
+# empty source directories. Empty directories are not reliably preserved by ZIP
+# extraction and should not be installed unless they contain actual resources.
+for cmake_file in SRC.rglob("CMakeLists.txt"):
+    cmake_text = cmake_file.read_text(encoding="utf-8")
+    for match in re.finditer(r"install\s*\(\s*DIRECTORY\s+([^\s\)]+)", cmake_text, re.MULTILINE):
+        token = match.group(1).strip('"')
+        if token.startswith("$"):
+            continue
+        directory = cmake_file.parent / token.rstrip("/")
+        if not directory.is_dir():
+            errors.append(
+                f"install(DIRECTORY) source does not exist: "
+                f"{directory.relative_to(ROOT)} referenced by {cmake_file.relative_to(ROOT)}"
+            )
+        elif not any(directory.iterdir()):
+            errors.append(
+                f"install(DIRECTORY) source is empty: "
+                f"{directory.relative_to(ROOT)} referenced by {cmake_file.relative_to(ROOT)}"
+            )
 
 required_files = [
     SRC / "lgh_st3215_driver/launch/lgh_st3215_driver.launch.py",

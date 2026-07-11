@@ -1,8 +1,11 @@
-# LittleGreen ROS 2 Workspace v2.6.1
+# LittleGreen ROS 2 Workspace v2.6.2
 
 Complete ROS 2 Humble source workspace for the LittleGreen biped hardware stack on the Orange Pi 5 Max.
 
-v2.6.1 is the first workspace released under the LittleGreen naming contract:
+v2.6.2 is the complete LittleGreen workspace with two clean-build fixes on top of v2.6.0:
+
+- v2.6.1 exports the ST3215 driver core target for maintenance packages;
+- v2.6.2 removes an invalid install rule for an empty `littlegreen_biped_pkg/include` directory.
 
 ```text
 workspace                 littlegreen_ros2_ws
@@ -67,7 +70,7 @@ Hardware commissioning sequence: [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_
 ## Safety boundary
 
 - Servo writes are disabled by default.
-- Maintenance commands are read-only in v2.6.1.
+- Maintenance commands are read-only in v2.6.2.
 - Policy shadow mode does not publish on `/desired_position`.
 - Software pose holds and torque commands are not electrical emergency stops.
 - The robot must remain securely supported during initial commissioning, with physical power disconnect immediately accessible.
@@ -90,16 +93,17 @@ ros2 run lgh_st3215_tools st3215_preflight \
 
 ## Documentation map
 
-- [`docs/V2_6_1_RELEASE.md`](docs/V2_6_1_RELEASE.md) — release scope and exclusions
+- [`docs/V2_6_2_RELEASE.md`](docs/V2_6_2_RELEASE.md) — current clean-build fix
+- [`docs/V2_6_1_RELEASE.md`](docs/V2_6_1_RELEASE.md) — driver export fix
+- [`docs/V2_6_0_RELEASE.md`](docs/V2_6_0_RELEASE.md) — original rename release scope
 - [`docs/INSTALL_ORANGE_PI.md`](docs/INSTALL_ORANGE_PI.md) — complete software install
 - [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.md) — staged commissioning
-- [`docs/MIGRATION_V2_5_1_TO_V2_6_1.md`](docs/MIGRATION_V2_5_1_TO_V2_6_1.md) — rename map
-- [`docs/V2_6_1_REFERENCE.md`](docs/V2_6_1_REFERENCE.md) — package and command reference
+- [`docs/MIGRATION_V2_5_1_TO_V2_6_0.md`](docs/MIGRATION_V2_5_1_TO_V2_6_0.md) — rename map
+- [`docs/V2_6_0_REFERENCE.md`](docs/V2_6_0_REFERENCE.md) — package and command reference
 - [`docs/COMMAND_CHEATSHEET.md`](docs/COMMAND_CHEATSHEET.md) — common commands
 - [`docs/KNOWN_LEGACY_AND_CAVEATS.md`](docs/KNOWN_LEGACY_AND_CAVEATS.md) — intentional legacy references and limits
-- [`docs/V2_6_1_VALIDATION.md`](docs/V2_6_1_VALIDATION.md) — static validation record and on-device boundary
-- [`docs/V2_6_1_BUILD_MANIFEST.yaml`](docs/V2_6_1_BUILD_MANIFEST.yaml) — package and critical-artifact hashes
-- [`docs/history/pre_v2_6/`](docs/history/pre_v2_6/) — preserved historical records
+- [`docs/V2_6_2_VALIDATION.md`](docs/V2_6_2_VALIDATION.md) — current static validation record
+- [`docs/V2_6_0_BUILD_MANIFEST.yaml`](docs/V2_6_0_BUILD_MANIFEST.yaml) — base package and critical-artifact hashes
 
 ## Validation status
 
