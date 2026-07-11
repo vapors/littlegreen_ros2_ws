@@ -63,6 +63,7 @@ Log out and back in after installation so the `dialout` membership is active, th
 source ~/.config/littlegreen/ros2_env.sh
 ~/littlegreen_ros2_ws/scripts/verify_install.sh
 ```
+*The installer automatically adds the LittleGreen environment script to ~/.bashrc. New interactive Bash terminals will load it automatically. Manual sourcing is only needed in the current terminal before reopening it, or in scripts and services that do not load ~/.bashrc.
 
 Full instructions: [`docs/INSTALL_ORANGE_PI.md`](docs/INSTALL_ORANGE_PI.md)
 
