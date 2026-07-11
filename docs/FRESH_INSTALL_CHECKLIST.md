@@ -11,6 +11,7 @@ Open a new shell:
 ```bash
 source ~/.config/littlegreen/ros2_env.sh
 ```
+* The installer automatically adds the LittleGreen environment script to ~/.bashrc. New interactive Bash terminals will load it automatically. Manual sourcing is only needed in the current terminal before reopening it, or in scripts and services that do not load ~/.bashrc.
 
 ```bash
 ros2 pkg list | grep -E '^(bhl_|berkeley_biped|lilgreen_)'
