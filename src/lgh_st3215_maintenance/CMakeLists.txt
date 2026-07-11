@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.8)
+project(lgh_st3215_maintenance)
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
+find_package(lgh_st3215_driver REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(Threads REQUIRED)
+
+foreach(tool bus_scan verify_ids register_dump backup_control_tables)
+  add_executable(${tool} src/${tool}.cpp)
+  target_include_directories(${tool} PRIVATE include)
+  ament_target_dependencies(${tool} ament_index_cpp lgh_st3215_driver)
+  target_link_libraries(${tool} yaml-cpp Threads::Threads)
+  install(TARGETS ${tool} DESTINATION lib/${PROJECT_NAME})
+endforeach()
+
+install(FILES README.md DESTINATION share/${PROJECT_NAME})
+ament_package()

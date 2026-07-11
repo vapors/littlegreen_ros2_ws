@@ -1,0 +1,22 @@
+teleop_twist_joy_node:
+  ros__parameters:
+    require_enable_button: false # turn off enable button
+    axis_linear:
+      x: 1               # Left stick vertical axis (Y)
+      y: 2     # Left stick horizontal (strafe left/right)
+    scale_linear:
+      x: 0.7             # Normal linear speed
+      y: 0.7
+    scale_linear_turbo:
+      x: 1.5             # Turbo linear speed
+
+    axis_angular:
+      yaw: 0             # Left stick horizontal axis (X)
+    scale_angular:
+      yaw: 0.4           # Normal angular speed
+    scale_angular_turbo:
+      yaw: 0.8           # Turbo angular speed
+
+    enable_button: 7          # ❌ No enable button required (always active)
+    enable_turbo_button: -1     # ✅ R1 (BtnTR) for turbo mode
+

@@ -1,0 +1,112 @@
+lgh_st3215_driver:
+  ros__parameters:
+    # Hardware
+    port: /dev/ttyS3
+    baud: 1000000
+    joint_map_path: ""
+
+    # Validated operating point from direct Orange Pi benchmark
+    bus_rate_hz: 50.0
+    command_rate_hz: 50.0
+    joint_state_publish_hz: 50.0
+    diagnostics_rate_hz: 1.0
+
+    # UART transaction bounds. No tcdrain()/flush() is used in the hot path.
+    read_timeout_ms: 10
+    write_timeout_ms: 5
+
+    # Command watchdog
+    command_timeout_ms: 500
+    command_timeout_behavior: hold_last
+
+    # Bring-up safety: feedback is live by default, physical writes are not.
+    writes_enabled: false
+    require_full_feedback_before_writes: true
+    startup_hold_current_position: true
+
+    # Benchmarked mode sends one full 12-servo SyncWrite every command tick.
+    # Set skip_unchanged_writes=true later to recover the ESP32 v6.5.x
+    # change-detection + keepalive behavior if desired.
+    skip_unchanged_writes: false
+    write_keepalive_ms: 200
+
+    # Rotate the first-read joint each cycle to distribute first/last sample age
+    # and the post-SyncWrite serialization penalty across all joints.
+    rotate_read_order: true
+    read_order_stride: 1
+
+    # Preserve current micro-ROS JointState velocity semantics: derive velocity
+    # from position delta and filter it. Native telemetry also exposes raw ST3215
+    # speed plus load, voltage, temperature, moving/status flags, and current.
+    velocity_filter_alpha: 0.30
+    velocity_deadband_rad_s: 0.001
+
+    # v2.4.2 fixed maximum-envelope baseline. These are only fallbacks when a
+    # per-joint value is omitted from servo_map.yaml; the shipped map explicitly
+    # sets every joint to speed=0 and acceleration=0. No PD/policy-driven hardware
+    # profile modulation is performed in this revision.
+    default_speed: 0
+    default_acceleration: 0
+
+    # Preserve v6.5.8 compact JointState contract: name=[], effort=[];
+    # position[12] and velocity[12] are canonical hardware order.
+    compact_joint_state: true
+    frame_id: st3215_bus
+
+    # Launch-selected publication profile. The bus read/write behavior remains
+    # unchanged; profiles only bound the ROS publication/tooling surface.
+    driver_profile: commissioning
+    publish_joint_states: true
+    publish_feedback_age: true
+    publish_raw_position: true
+    publish_raw_speed: true
+    publish_telemetry: true
+    publish_diagnostics: true
+
+    # Diagnostics
+    max_feedback_warn_age_ms: 250
+    diagnostic_window_cycles: 500
+    publish_legacy_debug_string: false
+    publish_target_debug_string: true
+
+    # Optional Linux scheduling knobs. Leave disabled until baseline measurements
+    # are collected from the C++ driver.
+    worker_cpu: -1
+    realtime_priority: 0
+
+    # Preserved ROS interface
+    servo_target_topic: /servo_target_radians
+    joint_state_topic: /joint_states
+    feedback_age_topic: /joint_feedback_age_ms
+
+    # Canonical-order raw hardware state. These are published at the same rate
+    # as /joint_states and are intended for calibration/commissioning tools.
+    raw_position_topic: /st3215_driver/raw_position_steps
+    raw_speed_topic: /st3215_driver/raw_speed
+
+    # Cycle-synchronous 50 Hz identification telemetry. Each message is built
+    # from one completed native bus cycle and includes exact steady-clock timing,
+    # command/write timing, and the full 0x38..0x46 feedback window.
+    telemetry_topic: /st3215_driver/telemetry
+
+    # Low-rate health/watchdog diagnostics remain separate from identification data.
+    diagnostics_topic: /st3215_driver/diagnostics
+    legacy_debug_topic: /st3215_feedback_debug
+    target_debug_topic: /servo_target_steps_debug
+
+    # Explicit guarded move to the Isaac training default pose from env.yaml.
+    # The move service is rejected unless writes are enabled and full feedback is ready.
+    # The default behavior holds an internal pose override after the ramp, so the
+    # policy/PD stream cannot immediately overwrite the baseline pose.
+    default_pose_move_duration_sec: 4.0
+    default_pose_ramp_rate_hz: 50.0
+    default_pose_hold_after_move: true
+    move_default_pose_service: /st3215_driver/move_to_default_pose
+    abort_pose_move_service: /st3215_driver/abort_pose_move
+    hold_current_pose_service: /st3215_driver/hold_current_pose
+    release_pose_override_service: /st3215_driver/release_pose_override
+
+    # v2.4.3 manual-pose capture support. These services serialize torque writes
+    # through the native bus worker so service callbacks never race UART traffic.
+    disable_torque_all_service: /st3215_driver/disable_torque_all
+    enable_torque_hold_current_service: /st3215_driver/enable_torque_hold_current

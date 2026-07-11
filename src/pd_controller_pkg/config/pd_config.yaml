@@ -1,0 +1,83 @@
+pd_controller_node:
+  ros__parameters:
+    # Launch normally overrides this with the canonical map from littlegreen_biped_pkg.
+    joint_map_path: ""
+
+    # Modes:
+    #   safety_only - legacy sanitize/filter/rate-limit behavior (default bring-up mode)
+    #   outer_pd    - velocity-form position feedback using measured q and qdot
+    #   outer_pid   - outer_pd plus integral action and anti-windup
+    controller_mode: safety_only
+
+    control_rate_hz: 50.0
+    command_timeout_sec: 0.5
+    feedback_timeout_sec: 0.15
+    require_feedback_for_outer_loop: true
+    initialize_output_from_feedback: true
+
+    # Safer than automatically publishing the training pose at node startup.
+    # The native driver now has an explicit, guarded move-to-training-default service.
+    startup_publish_default_pose: false
+
+    # Preserved ROS interface.
+    desired_position_topic: /desired_position
+    desired_joint_position_topic: /desired_joint_position
+    canonical_joint_state_topic: /joint_states
+    legacy_position_topic: /joint_states_position
+    legacy_velocity_topic: /joint_states_velocity
+    servo_target_topic: /servo_target_radians
+    safe_target_joint_state_topic: /safe_joint_targets
+    pd_torque_debug_topic: /pd_torque_debug
+
+    # New controller observability.
+    outer_velocity_debug_topic: /outer_controller/velocity_command
+    outer_error_debug_topic: /outer_controller/position_error
+    outer_integral_debug_topic: /outer_controller/integral_error
+    controller_status_topic: /outer_controller/status
+    reset_to_feedback_service: /pd_controller/reset_to_feedback
+    publish_outer_loop_debug: true
+
+    # Layer 1/2: preserved safety envelope and reference shaping.
+    # Alpha=1.0 disables the low-pass filter.
+    command_filter_alpha: 0.7
+    enable_rate_limit: true
+    enable_accel_limit: true
+    max_joint_speed_rad_s:
+      [8.0, 8.0, 8.0, 8.0, 8.0, 8.0,
+       8.0, 8.0, 8.0, 8.0, 8.0, 8.0]
+    max_joint_accel_rad_s2:
+      [80.0, 80.0, 80.0, 80.0, 80.0, 80.0,
+       80.0, 80.0, 80.0, 80.0, 80.0, 80.0]
+
+    # Layer 3: conservative first-pass velocity-form outer-loop gains.
+    # These are NOT Isaac torque-domain stiffness/damping values.
+    # Order:
+    #   L hip roll, yaw, pitch, knee, ankle pitch, ankle roll,
+    #   R hip roll, yaw, pitch, knee, ankle pitch, ankle roll
+    kp:
+      [2.5, 2.0, 3.0, 3.5, 3.0, 2.5,
+       2.5, 2.0, 3.0, 3.5, 3.0, 2.5]
+    kd:
+      [0.10, 0.08, 0.12, 0.15, 0.12, 0.10,
+       0.10, 0.08, 0.12, 0.15, 0.12, 0.10]
+    ki:
+      [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+       0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    # Hard caps applied to the outer-loop velocity command before integrating
+    # the next ST3215 position target.
+    max_controller_velocity_rad_s:
+      [1.5, 1.2, 2.0, 2.0, 1.8, 1.5,
+       1.5, 1.2, 2.0, 2.0, 1.8, 1.5]
+    max_controller_accel_rad_s2:
+      [12.0, 10.0, 15.0, 15.0, 12.0, 10.0,
+       12.0, 10.0, 15.0, 15.0, 12.0, 10.0]
+
+    # Integral state clamp in rad*s. Integral is inactive in safety_only/outer_pd.
+    integral_error_limit_rad_sec:
+      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25,
+       0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+
+    # Legacy debug mirror only; never used as ST3215 command output.
+    publish_pd_torque_debug: false
+    torque_limit: 1.5

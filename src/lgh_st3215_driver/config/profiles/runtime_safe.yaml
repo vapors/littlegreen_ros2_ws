@@ -1,0 +1,11 @@
+lgh_st3215_driver:
+  ros__parameters:
+    driver_profile: runtime_safe
+    publish_joint_states: true
+    publish_feedback_age: true
+    publish_raw_position: false
+    publish_raw_speed: false
+    publish_telemetry: false
+    publish_diagnostics: true
+    publish_target_debug_string: false
+    publish_legacy_debug_string: false

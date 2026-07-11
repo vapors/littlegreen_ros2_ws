@@ -1,0 +1,21 @@
+imu_contract:
+  schema_version: 1
+  topic: /imu/data
+  expected_frame_id: imu_link
+  minimum_rate_hz: 80.0
+  maximum_transport_age_ms: 50.0
+  require_orientation: true
+  require_angular_velocity: true
+  require_linear_acceleration: true
+  quaternion_norm_tolerance: 0.02
+  # Row-major IMU-frame vector -> robot base-frame vector.
+  imu_to_base_matrix:
+    - 0.0
+    - 1.0
+    - 0.0
+    - -1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0

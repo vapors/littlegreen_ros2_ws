@@ -1,0 +1,45 @@
+# Compatibility/documentation mirror of the v2.5 measured hardware limits.
+# Runtime littlegreen_biped_node and pd_controller_pkg load limits from joint_map.yaml.
+# Native ST3215 conversion and final clamping use lgh_st3215_driver/config/servo_map.yaml.
+
+joint_limits_config:
+  num_joints: 12
+  joints:
+  - leg_left_hip_roll_joint
+  - leg_left_hip_yaw_joint
+  - leg_left_hip_pitch_joint
+  - leg_left_knee_pitch_joint
+  - leg_left_ankle_pitch_joint
+  - leg_left_ankle_roll_joint
+  - leg_right_hip_roll_joint
+  - leg_right_hip_yaw_joint
+  - leg_right_hip_pitch_joint
+  - leg_right_knee_pitch_joint
+  - leg_right_ankle_pitch_joint
+  - leg_right_ankle_roll_joint
+  joint_lower_limits:
+  - -0.6948932969121955
+  - -0.08897088569736719
+  - -1.9220779272207085
+  - 0.1349903093339364
+  - -0.8099418560036186
+  - -0.5138835639416898
+  - -0.8743690490948155
+  - -0.056757289151768725
+  - -1.9911070626755623
+  - 0.1718058482431918
+  - -0.8452234141249882
+  - -0.4433204476989503
+  joint_upper_limits:
+  - 0.7807962210337913
+  - 0.6442719309119693
+  - 0.6810874698212247
+  - 2.2350100079493793
+  - 0.7102331047910518
+  - 0.9127185687919565
+  - 0.6427379501240836
+  - 0.701029220063738
+  - 0.5460971604872883
+  - 2.2411459311009216
+  - 0.8191457407309324
+  - 1.0615147052168636

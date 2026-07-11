@@ -1,0 +1,13 @@
+"""Process exit-code contract shared by the ST3215 laboratory tools."""
+from enum import IntEnum
+
+class ExitCode(IntEnum):
+    PASS = 0
+    TEST_FAIL = 2
+    REFUSED_PRECONDITION = 3
+    TIMEOUT_OR_UNAVAILABLE = 4
+    CONFIG_ERROR = 5
+    HARDWARE_OR_IO_ERROR = 6
+    OPERATOR_ABORT = 7
+    INTERNAL_SOFTWARE_ERROR = 70
+    INTERRUPTED_BY_SIGINT = 130

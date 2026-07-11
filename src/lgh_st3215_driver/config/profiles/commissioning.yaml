@@ -1,0 +1,11 @@
+lgh_st3215_driver:
+  ros__parameters:
+    driver_profile: commissioning
+    publish_joint_states: true
+    publish_feedback_age: true
+    publish_raw_position: true
+    publish_raw_speed: true
+    publish_telemetry: true
+    publish_diagnostics: true
+    publish_target_debug_string: true
+    publish_legacy_debug_string: false

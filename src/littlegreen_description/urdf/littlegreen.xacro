@@ -1,0 +1,461 @@
+<?xml version="1.0" ?>
+<robot name="littlegreen" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find littlegreen_description)/urdf/materials.xacro" />
+<xacro:include filename="$(find littlegreen_description)/urdf/littlegreen.trans" />
+<xacro:include filename="$(find littlegreen_description)/urdf/littlegreen.gazebo" />
+<link name="base">
+  <inertial>
+    <origin xyz="-0.003714474088953576 0.002205119356060571 0.49083334273214324" rpy="0 0 0"/>
+    <mass value="2.8792991041177807"/>
+    <inertia ixx="0.009337" iyy="0.009498" izz="0.004288" ixy="3.8e-05" iyz="0.000365" ixz="0.000667"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/base.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/base.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_hip_roll">
+  <inertial>
+    <origin xyz="-0.0008565047717585539 0.01947554907766704 0.001308042220981409" rpy="0 0 0"/>
+    <mass value="0.3807019177780353"/>
+    <inertia ixx="0.000354" iyy="0.000311" izz="0.000213" ixy="-5.2e-05" iyz="-9.1e-05" ixz="-6.6e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.01843 -0.036325 -0.448589" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_hip_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.01843 -0.036325 -0.448589" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_hip_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_hip_yaw">
+  <inertial>
+    <origin xyz="0.020651724587970294 0.0012709803879697862 -0.03057951504496309" rpy="0 0 0"/>
+    <mass value="0.33291418473679235"/>
+    <inertia ixx="0.00012" iyy="0.00018" izz="0.000125" ixy="3e-06" iyz="-1.3e-05" ixz="2e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.024318 -0.085006 -0.466037" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_hip_yaw.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.024318 -0.085006 -0.466037" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_hip_yaw.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_knee_pitch">
+  <inertial>
+    <origin xyz="-0.0009283179310484065 0.022504729896044684 -0.09715110652203546" rpy="0 0 0"/>
+    <mass value="0.2823179687491023"/>
+    <inertia ixx="0.001138" iyy="0.001153" izz="8.6e-05" ixy="1e-06" iyz="4.2e-05" ixz="-4.8e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.027822 -0.067391 -0.27367" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_knee_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.027822 -0.067391 -0.27367" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_knee_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_ankle_pitch">
+  <inertial>
+    <origin xyz="0.007288253154976988 0.02119506254148687 -0.036244676182540965" rpy="0 0 0"/>
+    <mass value="0.11561362509497823"/>
+    <inertia ixx="5e-05" iyy="4.5e-05" izz="3.5e-05" ixy="0.0" iyz="-3e-06" ixz="1e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.022386 -0.072814 -0.083766" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_ankle_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.022386 -0.072814 -0.083766" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_ankle_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_ankle_roll">
+  <inertial>
+    <origin xyz="0.004578966093286868 0.009871115815025922 -0.019532760482456144" rpy="0 0 0"/>
+    <mass value="0.15237392056454174"/>
+    <inertia ixx="5.7e-05" iyy="0.000234" izz="0.000263" ixy="-1.6e-05" iyz="5e-06" ixz="3e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.050895 -0.086697 -0.035056" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_ankle_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.050895 -0.086697 -0.035056" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_ankle_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_hip_roll">
+  <inertial>
+    <origin xyz="-0.0008565022767755212 -0.01947554931595681 0.0013080418608593658" rpy="0 0 0"/>
+    <mass value="0.3807019080396239"/>
+    <inertia ixx="0.000354" iyy="0.000311" izz="0.000213" ixy="5.2e-05" iyz="9.1e-05" ixz="-6.6e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.01843 0.036325 -0.448589" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_hip_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.01843 0.036325 -0.448589" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_hip_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_hip_yaw">
+  <inertial>
+    <origin xyz="0.02065172421544139 -0.0012709802296268086 -0.030579514911982353" rpy="0 0 0"/>
+    <mass value="0.3329141813849623"/>
+    <inertia ixx="0.00012" iyy="0.00018" izz="0.000125" ixy="-3e-06" iyz="1.3e-05" ixz="2e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.024318 0.085006 -0.466037" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_hip_yaw.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.024318 0.085006 -0.466037" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_hip_yaw.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_hip_pitch">
+  <inertial>
+    <origin xyz="0.005319272517317675 -0.013691893135129835 -0.06777850352497289" rpy="0 0 0"/>
+    <mass value="2.558626424804792"/>
+    <inertia ixx="0.003544" iyy="0.003698" izz="0.00139" ixy="-6.2e-05" iyz="-7e-05" ixz="-0.000184"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.026359 0.067245 -0.416935" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_hip_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.026359 0.067245 -0.416935" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_hip_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_knee_pitch">
+  <inertial>
+    <origin xyz="-0.0009283177138570547 -0.022504727488628973 -0.09715107435025044" rpy="0 0 0"/>
+    <mass value="0.2823180672271054"/>
+    <inertia ixx="0.001138" iyy="0.001153" izz="8.6e-05" ixy="-1e-06" iyz="-4.2e-05" ixz="-4.8e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.027822 0.067391 -0.27367" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_knee_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.027822 0.067391 -0.27367" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_knee_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_ankle_pitch">
+  <inertial>
+    <origin xyz="0.007288245310902677 -0.021195062659644798 -0.036244681304355486" rpy="0 0 0"/>
+    <mass value="0.11561362457503904"/>
+    <inertia ixx="5e-05" iyy="4.5e-05" izz="3.5e-05" ixy="-0.0" iyz="3e-06" ixz="1e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.022386 0.072814 -0.083766" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_ankle_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.022386 0.072814 -0.083766" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_ankle_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_hip_pitch">
+  <inertial>
+    <origin xyz="0.005319272701873774 0.013691893389325457 -0.0677785035335986" rpy="0 0 0"/>
+    <mass value="2.5586264255364757"/>
+    <inertia ixx="0.003544" iyy="0.003698" izz="0.00139" ixy="6.2e-05" iyz="7e-05" ixz="-0.000184"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.026359 -0.067245 -0.416935" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_hip_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.026359 -0.067245 -0.416935" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_hip_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_ankle_roll">
+  <inertial>
+    <origin xyz="0.0025863156667297535 -0.009700135548590533 -0.019556804508556028" rpy="0 0 0"/>
+    <mass value="0.15237292646979797"/>
+    <inertia ixx="5.7e-05" iyy="0.000234" izz="0.000263" ixy="1.6e-05" iyz="-5e-06" ixz="3e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.050895 0.086697 -0.035056" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_ankle_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.050895 0.086697 -0.035056" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_ankle_roll.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_left_toe_pitch">
+  <inertial>
+    <origin xyz="0.014984981445626822 -0.002540967040328551 -0.00858133447275348" rpy="0 0 0"/>
+    <mass value="0.030347897482325643"/>
+    <inertia ixx="8e-06" iyy="4e-06" izz="1.1e-05" ixy="-0.0" iyz="0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.117173 -0.099631 -0.020191" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_toe_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.117173 -0.099631 -0.020191" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_left_toe_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="leg_right_toe_pitch">
+  <inertial>
+    <origin xyz="0.014984729654798606 0.002541045857521518 -0.008581276240729099" rpy="0 0 0"/>
+    <mass value="0.03034789132477301"/>
+    <inertia ixx="8e-06" iyy="4e-06" izz="1.1e-05" ixy="0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.115181 0.09946 -0.020167" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_toe_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.115181 0.09946 -0.020167" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/leg_right_toe_pitch.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="imu_2">
+  <inertial>
+    <origin xyz="6.854536786261856e-10 -1.3322676295501878e-16 0.001461485781704852" rpy="0 0 0"/>
+    <mass value="0.014574034267677826"/>
+    <inertia ixx="1e-06" iyy="1e-06" izz="2e-06" ixy="-0.0" iyz="0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.003 0.0 -0.452231" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/imu_2.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.003 0.0 -0.452231" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find littlegreen_description)/meshes/imu_2.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="leg_left_hip_roll_joint" type="revolute">
+  <origin xyz="-0.01843 0.036325 0.448589" rpy="0 0 0"/>
+  <parent link="base"/>
+  <child link="leg_left_hip_roll"/>
+  <axis xyz="-0.0 0.0 -1.0"/>
+  <limit upper="0.523599" lower="-0.698132" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_left_hip_yaw_joint" type="revolute">
+  <origin xyz="-0.005888 0.048681 0.017448" rpy="0 0 0"/>
+  <parent link="leg_left_hip_roll"/>
+  <child link="leg_left_hip_yaw"/>
+  <axis xyz="1.0 0.0 0.0"/>
+  <limit upper="1.22173" lower="-0.087266" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_left_knee_pitch_joint" type="revolute">
+  <origin xyz="0.001463 0.000146 -0.143265" rpy="0 0 0"/>
+  <parent link="leg_left_hip_pitch"/>
+  <child link="leg_left_knee_pitch"/>
+  <axis xyz="-0.003746 0.999951 0.009124"/>
+  <limit upper="1.396263" lower="-0.0" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_left_ankle_pitch_joint" type="revolute">
+  <origin xyz="-0.005436 0.005423 -0.189904" rpy="0 0 0"/>
+  <parent link="leg_left_knee_pitch"/>
+  <child link="leg_left_ankle_pitch"/>
+  <axis xyz="-0.087156 0.995794 0.028261"/>
+  <limit upper="1.134464" lower="-0.383972" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_left_ankle_roll_joint" type="revolute">
+  <origin xyz="0.028509 0.013883 -0.04871" rpy="0 0 0"/>
+  <parent link="leg_left_ankle_pitch"/>
+  <child link="leg_left_ankle_roll"/>
+  <axis xyz="-0.996271 -0.085443 -0.012019"/>
+  <limit upper="0.610865" lower="-0.226893" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_hip_roll_joint" type="revolute">
+  <origin xyz="-0.01843 -0.036325 0.448589" rpy="0 0 0"/>
+  <parent link="base"/>
+  <child link="leg_right_hip_roll"/>
+  <axis xyz="0.0 0.0 1.0"/>
+  <limit upper="0.523599" lower="-0.698132" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_hip_yaw_joint" type="revolute">
+  <origin xyz="-0.005888 -0.048681 0.017448" rpy="0 0 0"/>
+  <parent link="leg_right_hip_roll"/>
+  <child link="leg_right_hip_yaw"/>
+  <axis xyz="-1.0 0.0 -0.0"/>
+  <limit upper="1.22173" lower="-0.087266" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_hip_pitch_joint" type="revolute">
+  <origin xyz="0.050677 0.017761 -0.049102" rpy="0 0 0"/>
+  <parent link="leg_right_hip_yaw"/>
+  <child link="leg_right_hip_pitch"/>
+  <axis xyz="0.09088 0.995829 -0.008048"/>
+  <limit upper="0.785398" lower="-1.48353" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_knee_pitch_joint" type="revolute">
+  <origin xyz="0.001463 -0.000146 -0.143265" rpy="0 0 0"/>
+  <parent link="leg_right_hip_pitch"/>
+  <child link="leg_right_knee_pitch"/>
+  <axis xyz="0.003746 0.999951 -0.009124"/>
+  <limit upper="1.48353" lower="0.0" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_ankle_pitch_joint" type="revolute">
+  <origin xyz="-0.005436 -0.005423 -0.189904" rpy="0 0 0"/>
+  <parent link="leg_right_knee_pitch"/>
+  <child link="leg_right_ankle_pitch"/>
+  <axis xyz="0.087156 0.995794 -0.028261"/>
+  <limit upper="1.134464" lower="-0.383972" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_left_hip_pitch_joint" type="revolute">
+  <origin xyz="0.050677 -0.017761 -0.049102" rpy="0 0 0"/>
+  <parent link="leg_left_hip_yaw"/>
+  <child link="leg_left_hip_pitch"/>
+  <axis xyz="-0.09088 0.995829 0.008048"/>
+  <limit upper="0.785398" lower="-1.48353" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_ankle_roll_joint" type="revolute">
+  <origin xyz="0.028509 -0.013883 -0.04871" rpy="0 0 0"/>
+  <parent link="leg_right_ankle_pitch"/>
+  <child link="leg_right_ankle_roll"/>
+  <axis xyz="0.996271 -0.085443 0.012019"/>
+  <limit upper="0.785398" lower="-0.226893" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_left_toe_pitch_joint" type="revolute">
+  <origin xyz="0.066278 0.012934 -0.014865" rpy="0 0 0"/>
+  <parent link="leg_left_ankle_roll"/>
+  <child link="leg_left_toe_pitch"/>
+  <axis xyz="0.085669 -0.996129 -0.019672"/>
+  <limit upper="0.610865" lower="-0.087266" effort="100" velocity="100"/>
+</joint>
+
+<joint name="leg_right_toe_pitch_joint" type="revolute">
+  <origin xyz="0.064286 -0.012763 -0.014889" rpy="0 0 0"/>
+  <parent link="leg_right_ankle_roll"/>
+  <child link="leg_right_toe_pitch"/>
+  <axis xyz="-0.085669 -0.996129 0.019672"/>
+  <limit upper="0.610865" lower="-0.087266" effort="100" velocity="100"/>
+</joint>
+
+<joint name="base_imu_2" type="fixed">
+  <origin xyz="0.003 0.0 0.452231" rpy="0 0 0"/>
+  <parent link="base"/>
+  <child link="imu_2"/>
+</joint>
+
+</robot>

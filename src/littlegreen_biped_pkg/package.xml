@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>littlegreen_biped_pkg</name>
+  <version>0.3.0</version>
+  <description>Motor controller and inference package for LittleGreen Biped</description>
+
+  <maintainer email="scott.milich@me.com">scott</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- C++ dependencies -->
+  <depend>rclcpp</depend>
+  <depend>ament_index_cpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <exec_depend>rclpy</exec_depend>
+
+  <!-- YAML Parsing C++ -->
+  <depend>yaml-cpp</depend>
+
+  <!-- Python dependencies -->
+  <exec_depend>python3</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>ros2launch</exec_depend>
+  <exec_depend>joy</exec_depend>
+  <exec_depend>teleop_twist_joy</exec_depend>
+  <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+  <exec_depend>xterm</exec_depend>
+  <exec_depend>joystick_bridge</exec_depend>
+  <exec_depend>pd_controller_pkg</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <!-- Users should install either onnxruntime or onnxruntime-gpu manually -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+

@@ -1,0 +1,44 @@
+/**:
+  ros__parameters:
+    # Publish exact policy observation/action post-processing diagnostics at policy rate.
+    publish_policy_debug: true
+
+    # live publishes /desired_position; shadow publishes only
+    # /policy_shadow/desired_position; disabled evaluates readiness without ONNX.
+    policy_output_mode: live
+    shadow_desired_position_topic: /policy_shadow/desired_position
+
+    # Sensor transport freshness gates. /joint_states contains the latest cached
+    # 12-joint snapshot, so this timeout only checks that the message stream is alive.
+    imu_timeout_sec: 0.050
+    joint_state_timeout_sec: 0.150
+
+    # Physical per-servo freshness gate. /joint_feedback_age_ms is computed from
+    # the last successful ST3215 read timestamp for each joint. A faster MCU read
+    # schedule automatically produces smaller ages; no host code change is needed.
+    require_joint_feedback_age: true
+    joint_feedback_age_topic_timeout_sec: 0.150
+    joint_feedback_max_age_sec: 0.250
+
+    # A missing/stale teleop stream does not stop balancing; it zeros obs[0:3].
+    command_timeout_sec: 0.500
+    zero_command_on_timeout: true
+
+    # The current policy contract includes qdot[12], so all joint velocities are required.
+    require_joint_velocity: true
+
+    # Physical ICM-20948 sensor frame -> robot base frame, row-major 3x3 rotation.
+    # Verified working mounting hypothesis:
+    #   x_base =  y_imu
+    #   y_base = -x_imu
+    #   z_base =  z_imu
+    imu_to_base_matrix:
+      - 0.0
+      - 1.0
+      - 0.0
+      - -1.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0

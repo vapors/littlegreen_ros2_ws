@@ -1,0 +1,9 @@
+topics:
+  - name: keyboard
+    topic: /cmd_vel_keyboard
+    timeout: 0.5
+    priority: 10
+  - name: joystick
+    topic: /cmd_vel_joy
+    timeout: 0.5
+    priority: 20

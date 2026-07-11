@@ -1,0 +1,40 @@
+schema_version: 1
+workspace_release: 2.5.1
+workspace_directory: berkeley_ros2_ws_v2_5_1_src
+base_archive:
+  filename: berkeley_ros2_ws_v2_5_src_documented(1).zip
+  sha256: 540d84ff82a864f081274de10d8181f4c6b33a06270f63b7807943049d9bff3c
+scope:
+  runtime_driver: bhl_st3215_driver
+  laboratory_tools: bhl_st3215_tools
+  offline_read_only_maintenance: bhl_st3215_maintenance
+  imu_contract_tools: bhl_imu_tools
+  policy_shadow_owner: berkeley_biped_pkg
+key_package_versions:
+  bhl_st3215_driver: 0.2.8
+  bhl_st3215_tools: 0.1.0
+  bhl_st3215_maintenance: 0.1.0
+  bhl_imu_tools: 0.1.0
+  berkeley_biped_pkg: 0.2.1
+protected_configuration_sha256:
+  bhl_st3215_driver/config/servo_map.yaml: 56176642d65b71c34f29a9cf53e54b7c6cb0b4c318d78d591c8708c73d73229d
+  berkeley_biped_pkg/src/configs/joint_map.yaml: dd886478ae1ff63f70ffd976c65ca0d42741aba3e08c56d6d905331743b0118c
+  pd_controller_pkg/config/pd_config.yaml: 78e769668a46a0898c52db4220af0d60b6603309f90be486f4ce1716e9e0d8a7
+  bhl_st3215_driver/config/servo_driver.yaml: 477e6602142cbf6183231487a1aeca56778b21c5a99923be88a62327b2abe69b
+validation:
+  python_source_compile: PASS
+  package_xml_parse: PASS
+  yaml_parse: PASS
+  new_python_entrypoint_audit: PASS
+  standalone_cpp_syntax: PASS
+  protocol_packet_assertion_smoke: PASS
+  pseudo_tty_cross_process_uart_lock_smoke: PASS
+  full_colcon_build: NOT_RUN_NO_ROS2_ENVIRONMENT
+  orange_pi_hardware_bus_test: NOT_RUN_NO_HARDWARE
+  imu_live_test: NOT_RUN_NO_HARDWARE
+  onnx_shadow_live_test: NOT_RUN_NO_ROS2_ONNX_RUNTIME
+acceptance_checklist: docs/V2_5_1_ACCEPTANCE_CHECKLIST.md
+protected_configuration_unchanged_from_v2_5:
+- bhl_st3215_driver/config/servo_map.yaml
+- berkeley_biped_pkg/src/configs/joint_map.yaml
+- pd_controller_pkg/config/pd_config.yaml

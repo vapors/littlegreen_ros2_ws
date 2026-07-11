@@ -1,0 +1,35 @@
+# LittleGreen standing/crouch pose library template.
+#
+# Capture poses with:
+#   ros2 run lgh_st3215_tools standing_characterization \
+#     --mode capture_pose \
+#     --pose-name normal_stand \
+#     --base-com-height-mean-m 0.480 \
+#     --pose-library ~/.ros/lgh_standing_poses.yaml
+#
+# The capture runner disables torque through the native driver. The robot must be
+# mechanically supported while torque is off. The target_rad vectors are filled
+# from measured cycle telemetry, not hand-authored here.
+
+schema_version: 1
+robot: LittleGreen
+joint_order:
+  - leg_left_hip_roll_joint
+  - leg_left_hip_yaw_joint
+  - leg_left_hip_pitch_joint
+  - leg_left_knee_pitch_joint
+  - leg_left_ankle_pitch_joint
+  - leg_left_ankle_roll_joint
+  - leg_right_hip_roll_joint
+  - leg_right_hip_yaw_joint
+  - leg_right_hip_pitch_joint
+  - leg_right_knee_pitch_joint
+  - leg_right_ankle_pitch_joint
+  - leg_right_ankle_roll_joint
+
+# Fill from the measured normal-stand capture. Expected project target is roughly
+# 0.47-0.49 m, but the runner stores the operator's measured value rather than
+# assuming one.
+standing_base_com_height_mean_m: null
+
+poses: {}

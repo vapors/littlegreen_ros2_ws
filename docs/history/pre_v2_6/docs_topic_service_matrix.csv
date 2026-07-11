@@ -1,0 +1,49 @@
+owner,direction,name,type,purpose,qos_or_notes
+bhl_st3215_driver,sub,/servo_target_radians,std_msgs/msg/Float64MultiArray,Canonical 12-joint position target in radians,"best effort, keep-last 1"
+bhl_st3215_driver,pub,/joint_states,sensor_msgs/msg/JointState,Canonical measured position and derived/filter velocity,sensor QoS; compact name=[] by default
+bhl_st3215_driver,pub,/joint_feedback_age_ms,std_msgs/msg/UInt32MultiArray,Per-joint physical read age in ms,sensor QoS
+bhl_st3215_driver,pub,/st3215_driver/raw_position_steps,std_msgs/msg/Int32MultiArray,Raw encoder steps in canonical order,50 Hz nominal; commissioning profile only
+bhl_st3215_driver,pub,/st3215_driver/raw_speed,std_msgs/msg/Int32MultiArray,Raw servo speed register values,50 Hz nominal; commissioning profile only
+bhl_st3215_driver,pub,/st3215_driver/telemetry,bhl_st3215_driver/msg/ServoTelemetry,Cycle-synchronous identification and bus telemetry,best effort; 50 Hz nominal; commissioning profile only
+bhl_st3215_driver,pub,/st3215_driver/diagnostics,diagnostic_msgs/msg/DiagnosticArray,"Health, timing, counters, watchdog, feedback ages",1 Hz nominal
+bhl_st3215_driver,pub,/servo_target_steps_debug,std_msgs/msg/String,Radian-to-step target conversion mirror,1 Hz diagnostics cadence; commissioning profile only
+bhl_st3215_driver,pub,/st3215_feedback_debug,std_msgs/msg/String,Optional legacy feedback debug string,disabled by default
+bhl_st3215_driver,service,/st3215_driver/move_to_default_pose,std_srvs/srv/Trigger,Guarded smoothstep move to training default,
+bhl_st3215_driver,service,/st3215_driver/abort_pose_move,std_srvs/srv/Trigger,Abort ramp and latch/hold latest safe pose,
+bhl_st3215_driver,service,/st3215_driver/hold_current_pose,std_srvs/srv/Trigger,Latch measured pose and assert software pose override,
+bhl_st3215_driver,service,/st3215_driver/release_pose_override,std_srvs/srv/Trigger,Release internal pose override and accept external targets,
+bhl_st3215_driver,service,/st3215_driver/disable_torque_all,std_srvs/srv/Trigger,Broadcast torque disable; mechanically support robot,
+bhl_st3215_driver,service,/st3215_driver/enable_torque_hold_current,std_srvs/srv/Trigger,Enable torque at measured pose; override stays active,
+berkeley_biped_node,sub,/imu/data,sensor_msgs/msg/Imu,Physical IMU orientation and angular velocity,
+berkeley_biped_node,sub,/joint_states,sensor_msgs/msg/JointState,Canonical joint position/velocity feedback,
+berkeley_biped_node,sub,/joint_feedback_age_ms,std_msgs/msg/UInt32MultiArray,Hardware read-age gate on real hardware,
+berkeley_biped_node,sub,/joint_states_position,sensor_msgs/msg/JointState,Legacy split-position compatibility input,
+berkeley_biped_node,sub,/joint_states_velocity,sensor_msgs/msg/JointState,Legacy split-velocity compatibility input,
+berkeley_biped_node,sub,/command_velocity,geometry_msgs/msg/Twist,Canonical velocity command input,
+berkeley_biped_node,sub,/joy,sensor_msgs/msg/Joy,Connectivity compatibility only; callback intentionally no-op,
+berkeley_biped_node,pub,/desired_position,std_msgs/msg/Float64MultiArray,12-joint policy target in canonical radians,reliable; only created when policy_output_mode=live
+berkeley_biped_node,pub,/policy_ready,std_msgs/msg/Bool,Readiness gate state,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_status,std_msgs/msg/String,Readiness/status reason,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_debug/observation,std_msgs/msg/Float64MultiArray,Exact 45-element observation vector,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_debug/raw_action,std_msgs/msg/Float64MultiArray,Raw ONNX output,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_debug/clipped_raw_action,std_msgs/msg/Float64MultiArray,Action after network-range clipping,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_debug/target_unclipped,std_msgs/msg/Float64MultiArray,Default + action-scale target before joint limit clip,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_debug/target_clipped,std_msgs/msg/Float64MultiArray,Final policy target after measured hardware-limit clip,debug topics best effort where applicable
+berkeley_biped_node,pub,/policy_debug/saturation_mask,std_msgs/msg/UInt8MultiArray,Per-joint lower/upper saturation code,debug topics best effort where applicable
+pd_controller_node,sub,/desired_position,std_msgs/msg/Float64MultiArray,Primary policy/reference input,
+pd_controller_node,sub,/desired_joint_position,std_msgs/msg/Float64MultiArray,Alternate compatible reference input,
+pd_controller_node,sub,/joint_states,sensor_msgs/msg/JointState,Canonical feedback,
+pd_controller_node,sub,/joint_states_position,sensor_msgs/msg/JointState,Legacy split-position feedback,
+pd_controller_node,sub,/joint_states_velocity,sensor_msgs/msg/JointState,Legacy split-velocity feedback,
+pd_controller_node,pub,/servo_target_radians,std_msgs/msg/Float64MultiArray,Safe shaped or outer-loop position command to native driver,
+pd_controller_node,pub,/safe_joint_targets,sensor_msgs/msg/JointState,Safe target position/velocity mirror,
+pd_controller_node,pub,/pd_torque_debug,std_msgs/msg/Float64MultiArray,Legacy torque-like PD debug only; not hardware command,
+pd_controller_node,pub,/outer_controller/velocity_command,std_msgs/msg/Float64MultiArray,Outer-loop integrated velocity command,
+pd_controller_node,pub,/outer_controller/position_error,std_msgs/msg/Float64MultiArray,Outer-loop position error,
+pd_controller_node,pub,/outer_controller/integral_error,std_msgs/msg/Float64MultiArray,PID integral state,
+pd_controller_node,pub,/outer_controller/status,std_msgs/msg/String,Controller mode/readiness/status,
+pd_controller_node,service,/pd_controller/reset_to_feedback,std_srvs/srv/Trigger,Reset shaper/controller state to current measured feedback,
+cmd_vel_to_file,sub,/command_velocity,geometry_msgs/msg/Twist,Writes x y yaw command to /tmp/joystick_cmd.txt,
+servo_test_node,sub,/servo_test_command,std_msgs/msg/String,Legacy named pose or servo sweep command,
+servo_test_node,pub,/servo_position_speed,std_msgs/msg/Float64MultiArray,Legacy servo-test output; not native v2.5 driver command path,
+berkeley_biped_node,pub,/policy_shadow/desired_position,std_msgs/msg/Float64MultiArray,Shadow-only proposed 12-joint target; never forwarded by dedicated shadow launch,best effort; only created when policy_output_mode=shadow
