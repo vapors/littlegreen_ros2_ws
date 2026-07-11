@@ -75,11 +75,16 @@ rosidl_get_typesupport_target(cpp_typesupport_target
 target_link_libraries(lgh_st3215_driver_node "${cpp_typesupport_target}")
 
 install(
-  TARGETS
-    ${PROJECT_NAME}_core
-    lgh_st3215_driver_node
+  TARGETS ${PROJECT_NAME}_core
+  EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
+
+install(
+  TARGETS lgh_st3215_driver_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -105,8 +110,7 @@ if(BUILD_TESTING)
   endif()
 endif()
 
-ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME}_core)
-ament_export_dependencies(yaml-cpp rosidl_default_runtime)
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(yaml-cpp Threads rosidl_default_runtime)
 
 ament_package()

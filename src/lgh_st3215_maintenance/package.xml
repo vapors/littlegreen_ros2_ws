@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>lgh_st3215_maintenance</name>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
   <description>Offline read-only ST3215 bus inspection and control-table backup tools for LittleGreen.</description>
   <maintainer email="scott.milich@me.com">Scott Milich</maintainer>
   <license>Apache-2.0</license>

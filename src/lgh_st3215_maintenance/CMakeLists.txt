@@ -10,15 +10,30 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_package(lgh_st3215_driver REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
+find_package(lgh_st3215_driver REQUIRED)
+
+if(TARGET lgh_st3215_driver::lgh_st3215_driver_core)
+  set(LGH_ST3215_DRIVER_CORE_TARGET
+      lgh_st3215_driver::lgh_st3215_driver_core)
+elseif(TARGET lgh_st3215_driver_core)
+  # Compatibility fallback for an un-namespaced CMake export.
+  set(LGH_ST3215_DRIVER_CORE_TARGET lgh_st3215_driver_core)
+else()
+  message(FATAL_ERROR
+    "lgh_st3215_driver was found, but its core CMake target was not exported")
+endif()
 
 foreach(tool bus_scan verify_ids register_dump backup_control_tables)
   add_executable(${tool} src/${tool}.cpp)
   target_include_directories(${tool} PRIVATE include)
-  ament_target_dependencies(${tool} ament_index_cpp lgh_st3215_driver)
-  target_link_libraries(${tool} yaml-cpp Threads::Threads)
+  ament_target_dependencies(${tool} ament_index_cpp)
+  target_link_libraries(${tool}
+    ${LGH_ST3215_DRIVER_CORE_TARGET}
+    yaml-cpp
+    Threads::Threads
+  )
   install(TARGETS ${tool} DESTINATION lib/${PROJECT_NAME})
 endforeach()
 

@@ -1,4 +1,4 @@
-# Complete Orange Pi Installation — LittleGreen ROS 2 v2.6.0
+# Complete Orange Pi Installation — LittleGreen ROS 2 v2.6.1
 
 This guide installs a clean `~/littlegreen_ros2_ws` deployment on an Orange Pi 5 Max running Ubuntu 22.04 aarch64.
 
@@ -30,7 +30,7 @@ identification and standing datasets
 
 Do not source the old workspace while installing the new one.
 
-## 2. Place the v2.6.0 workspace
+## 2. Place the v2.6.1 workspace
 
 The distributed ZIP contains one top-level directory named `littlegreen_ros2_ws`.
 
@@ -280,7 +280,7 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
 
 ## 11. IMU boundary
 
-v2.6.0 contains source-independent IMU tools, not a new direct Orange Pi I2C/SPI driver. The current micro-ROS source or a future direct driver must publish the canonical `/imu/data` topic before these pass:
+v2.6.1 contains source-independent IMU tools, not a new direct Orange Pi I2C/SPI driver. The current micro-ROS source or a future direct driver must publish the canonical `/imu/data` topic before these pass:
 
 ```bash
 ros2 run lgh_imu_tools imu_preflight

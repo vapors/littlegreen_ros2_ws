@@ -1,7 +1,6 @@
 #pragma once
-
-#include "lgh_st3215_driver/serial_port.hpp"
 #include "lgh_st3215_driver/protocol.hpp"
+#include "lgh_st3215_driver/serial_port.hpp"
 #include <chrono>
 #include <cstdint>
 #include <iomanip>

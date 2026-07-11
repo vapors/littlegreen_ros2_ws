@@ -1,8 +1,8 @@
-# LittleGreen ROS 2 Workspace v2.6.0
+# LittleGreen ROS 2 Workspace v2.6.1
 
 Complete ROS 2 Humble source workspace for the LittleGreen biped hardware stack on the Orange Pi 5 Max.
 
-v2.6.0 is the first workspace released under the LittleGreen naming contract:
+v2.6.1 is the first workspace released under the LittleGreen naming contract:
 
 ```text
 workspace                 littlegreen_ros2_ws
@@ -11,7 +11,7 @@ policy package stem       littlegreen_biped
 robot description         littlegreen_description
 ```
 
-The control, calibration, joint-map, and servo-map behavior is inherited from the archived v2.5.1 baseline. The breaking change in v2.6.0 is package, executable, file, report-directory, and workspace identity.
+The control, calibration, joint-map, and servo-map behavior is inherited from the archived v2.5.1 baseline. The breaking change in v2.6.1 is package, executable, file, report-directory, and workspace identity.
 
 ## Package boundaries
 
@@ -67,7 +67,7 @@ Hardware commissioning sequence: [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_
 ## Safety boundary
 
 - Servo writes are disabled by default.
-- Maintenance commands are read-only in v2.6.0.
+- Maintenance commands are read-only in v2.6.1.
 - Policy shadow mode does not publish on `/desired_position`.
 - Software pose holds and torque commands are not electrical emergency stops.
 - The robot must remain securely supported during initial commissioning, with physical power disconnect immediately accessible.
@@ -90,15 +90,15 @@ ros2 run lgh_st3215_tools st3215_preflight \
 
 ## Documentation map
 
-- [`docs/V2_6_0_RELEASE.md`](docs/V2_6_0_RELEASE.md) — release scope and exclusions
+- [`docs/V2_6_1_RELEASE.md`](docs/V2_6_1_RELEASE.md) — release scope and exclusions
 - [`docs/INSTALL_ORANGE_PI.md`](docs/INSTALL_ORANGE_PI.md) — complete software install
 - [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.md) — staged commissioning
-- [`docs/MIGRATION_V2_5_1_TO_V2_6_0.md`](docs/MIGRATION_V2_5_1_TO_V2_6_0.md) — rename map
-- [`docs/V2_6_0_REFERENCE.md`](docs/V2_6_0_REFERENCE.md) — package and command reference
+- [`docs/MIGRATION_V2_5_1_TO_V2_6_1.md`](docs/MIGRATION_V2_5_1_TO_V2_6_1.md) — rename map
+- [`docs/V2_6_1_REFERENCE.md`](docs/V2_6_1_REFERENCE.md) — package and command reference
 - [`docs/COMMAND_CHEATSHEET.md`](docs/COMMAND_CHEATSHEET.md) — common commands
 - [`docs/KNOWN_LEGACY_AND_CAVEATS.md`](docs/KNOWN_LEGACY_AND_CAVEATS.md) — intentional legacy references and limits
-- [`docs/V2_6_0_VALIDATION.md`](docs/V2_6_0_VALIDATION.md) — static validation record and on-device boundary
-- [`docs/V2_6_0_BUILD_MANIFEST.yaml`](docs/V2_6_0_BUILD_MANIFEST.yaml) — package and critical-artifact hashes
+- [`docs/V2_6_1_VALIDATION.md`](docs/V2_6_1_VALIDATION.md) — static validation record and on-device boundary
+- [`docs/V2_6_1_BUILD_MANIFEST.yaml`](docs/V2_6_1_BUILD_MANIFEST.yaml) — package and critical-artifact hashes
 - [`docs/history/pre_v2_6/`](docs/history/pre_v2_6/) — preserved historical records
 
 ## Validation status

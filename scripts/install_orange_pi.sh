@@ -12,7 +12,7 @@ usage() {
   cat <<EOF
 Usage: $0 [options]
 
-Complete LittleGreen v2.6.0 install for Orange Pi 5 Max running Ubuntu 22.04 aarch64.
+Complete LittleGreen v2.6.1 install for Orange Pi 5 Max running Ubuntu 22.04 aarch64.
 
 Options:
   --skip-ros       Do not install ROS 2/system dependencies.
@@ -60,7 +60,7 @@ if [[ "$WORKSPACE" != "$HOME/littlegreen_ros2_ws" ]]; then
   echo "      The canonical deployment path is $HOME/littlegreen_ros2_ws"
 fi
 
-echo "==> Validating the v2.6.0 source tree"
+echo "==> Validating the v2.6.1 source tree"
 "$SCRIPT_DIR/validate_source_tree.py"
 
 if [[ $SKIP_ROS -eq 0 ]]; then
@@ -128,7 +128,7 @@ fi
 
 cat <<EOF
 
-LittleGreen ROS 2 v2.6.0 installation finished.
+LittleGreen ROS 2 v2.6.1 installation finished.
 
 Next steps:
   1. Log out and back in so the dialout group is active.

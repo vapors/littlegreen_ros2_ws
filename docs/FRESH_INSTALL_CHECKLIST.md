@@ -1,4 +1,4 @@
-# Fresh Install and Hardware Commissioning Checklist — v2.6.0
+# Fresh Install and Hardware Commissioning Checklist — v2.6.1
 
 Use this checklist after completing [`INSTALL_ORANGE_PI.md`](INSTALL_ORANGE_PI.md).
 
@@ -88,7 +88,7 @@ ros2 run lgh_st3215_maintenance backup_control_tables
 
 **Pass:** expected IDs are found without duplicates or transaction errors.
 
-The v2.6.0 maintenance package performs no EEPROM writes.
+The v2.6.1 maintenance package performs no EEPROM writes.
 
 ## Gate 5 — feedback-only runtime driver
 
@@ -204,7 +204,7 @@ Expected runtime-safe surface:
 
 ## Gate 9 — policy shadow only
 
-The Track 1 deployment bundle is not yet the v2.6.0 hardware authorization boundary. Use the packaged policy only for software/shadow validation.
+The Track 1 deployment bundle is not yet the v2.6.1 hardware authorization boundary. Use the packaged policy only for software/shadow validation.
 
 Keep servo writes disabled:
 
