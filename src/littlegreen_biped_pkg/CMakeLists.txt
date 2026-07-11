@@ -120,10 +120,7 @@ ament_target_dependencies(littlegreen_biped_node
   yaml-cpp
 )
 
-target_include_directories(littlegreen_biped_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(littlegreen_biped_node PUBLIC c_std_99 cxx_std_17)
+
 
 # Install executable
 install(TARGETS littlegreen_biped_node
@@ -147,6 +144,12 @@ install(DIRECTORY launch
 install(FILES POLICY_SHADOW.md
   DESTINATION share/${PROJECT_NAME}
 )
+
+target_include_directories(littlegreen_biped_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(littlegreen_biped_node PUBLIC c_std_99 cxx_std_17)
+
 # Optional testing
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
