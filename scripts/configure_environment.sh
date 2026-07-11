@@ -68,5 +68,6 @@ PY
 
 echo "Wrote: $ENV_FILE"
 echo "Updated: $BASHRC"
-echo "Open a new shell or run:"
-echo "  source \"$ENV_FILE\""
+echo "Open a new shell, or refresh the current terminal with:"
+echo "  source ~/.bashrc"
+echo "Directly sourcing $ENV_FILE is equivalent but optional."

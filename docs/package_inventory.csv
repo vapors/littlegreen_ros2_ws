@@ -1,5 +1,5 @@
 package,version,build_type,path,colcon_status,ignore_marker,description
-joystick_bridge,0.0.0,ament_python,src/joystick_bridge,active,,TODO: Package description
+joystick_bridge,0.0.0,ament_python,src/joystick_bridge,active,,Small LittleGreen command-velocity bridge used by the current launch graph.
 joy,3.3.0,ament_cmake,src/joystick_drivers/joy,active,,"The joy package contains joy_node, a node that interfaces a generic joystick to ROS 2. This node publishes a ""Joy"" message, which contains the current state of each one of the joystick's buttons and axes."
 joy_linux,3.3.0,ament_cmake,src/joystick_drivers/joy_linux,active,,"ROS2 driver for a generic Linux joystick. Will contain a MacOS and Windows version later. The joy package contains joy_node, a node that interfaces a generic Linux joystick to ROS2. This node publishes a ""Joy"" message, which contains the current state of each one of the joystick's buttons and axes."
 joystick_drivers,2.0.0,unknown,src/joystick_drivers/joystick_drivers,ignored,AMENT_IGNORE,This metapackage depends on packages for interfacing common joysticks and human input devices with ROS.
@@ -8,11 +8,11 @@ sdl2_vendor,3.3.0,ament_cmake,src/joystick_drivers/sdl2_vendor,active,,Vendor li
 spacenav,3.3.0,ament_cmake,src/joystick_drivers/spacenav,active,,ROS interface to the 3Dconnexion SpaceNavigator 6DOF joystick.
 wiimote,3.3.0,ament_cmake,src/joystick_drivers/wiimote,active,,"The wiimote package allows ROS nodes to communicate with a Nintendo Wiimote and its related peripherals, including the Nunchuk, Motion Plus, and (experimentally) the Classic. The package implements a ROS node that uses Bluetooth to communicate with the Wiimote device, obtaining accelerometer and gyro data, the state of LEDs, the IR camera, rumble (vibrator), buttons, joystick, and battery state. The node additionally enables ROS nodes to control the Wiimote's LEDs and vibration for feedback to the human Wiimote operator. LEDs and vibration may be switched on and off, or made to operate according to a timed pattern."
 wiimote_msgs,3.3.0,ament_cmake,src/joystick_drivers/wiimote_msgs,active,,Messages used by wiimote package.
-lgh_imu_tools,0.2.0,ament_python,src/lgh_imu_tools,active,,Source-independent IMU validation and characterization tools for LittleGreen.
-lgh_st3215_driver,0.3.0,ament_cmake,src/lgh_st3215_driver,active,,Native single-bus ST3215 ROS 2 driver for LittleGreen.
-lgh_st3215_maintenance,0.2.0,ament_cmake,src/lgh_st3215_maintenance,active,,Offline read-only ST3215 bus inspection and control-table backup tools for LittleGreen.
-lgh_st3215_tools,0.2.0,ament_python,src/lgh_st3215_tools,active,,"Guarded calibration, characterization, preflight, auditing, and dataset tools for LittleGreen ST3215 hardware."
-littlegreen_biped_pkg,0.3.0,ament_cmake,src/littlegreen_biped_pkg,active,,Motor controller and inference package for LittleGreen Biped
-littlegreen_description,0.1.0,ament_python,src/littlegreen_description,active,,"URDF, meshes, RViz, and Gazebo description for LittleGreen."
-pd_controller_pkg,0.2.0,ament_python,src/pd_controller_pkg,active,,Safety/rate-limit controller for LittleGreen joint targets.
+lgh_imu_tools,0.2.0,ament_python,src/lgh_imu_tools,active,,Source-independent validation and characterization of the canonical /imu/data interface.
+lgh_st3215_driver,0.3.1,ament_cmake,src/lgh_st3215_driver,active,,Sole normal runtime owner of the LittleGreen ST3215 UART bus.
+lgh_st3215_maintenance,0.2.1,ament_cmake,src/lgh_st3215_maintenance,active,,Offline read-only ST3215 bus inspection and control-table backup tools.
+lgh_st3215_tools,0.2.1,ament_python,src/lgh_st3215_tools,active,,"Guarded calibration, characterization, preflight, auditing, and dataset tools."
+littlegreen_biped_pkg,0.3.1,ament_cmake,src/littlegreen_biped_pkg,active,,"LittleGreen observation construction, ONNX inference, and live/shadow/disabled policy output."
+littlegreen_description,0.1.0,ament_python,src/littlegreen_description,active,,"LittleGreen URDF, meshes, RViz resources, and optional legacy Gazebo files."
+pd_controller_pkg,0.2.0,ament_python,src/pd_controller_pkg,active,,Safety filtering and optional outer-loop shaping for LittleGreen joint targets.
 teleop_twist_joy,2.4.8,ament_cmake,src/teleop_twist_joy,active,,Generic joystick teleop for twist robots.

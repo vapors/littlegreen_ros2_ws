@@ -1,13 +1,14 @@
-# Integration with the current littlegreen_ros2_ws
+# Runtime Integration
 
-The native driver is intentionally compatible with the current policy + PD graph, so no topic rename is required for the first pass.
+The native ST3215 driver preserves the current policy and controller topic contract.
 
-## Current graph
+## Normal control graph
 
 ```text
 /imu/data ---------------------------> littlegreen_biped_node
 /joint_states -----------------------> littlegreen_biped_node
 /joint_feedback_age_ms -------------> littlegreen_biped_node
+/command_velocity ------------------> littlegreen_biped_node
 
 littlegreen_biped_node
   /desired_position
@@ -24,62 +25,44 @@ lgh_st3215_driver
         +--> /st3215_driver/diagnostics
 ```
 
-## Recommended commissioning order
+## Commissioning integration
 
-### Terminal 1: native servo driver, feedback only
+Start the driver separately so the active profile and write state remain explicit:
 
 ```bash
-source /opt/ros/humble/setup.bash
-source ~/littlegreen_ros2_ws/install/setup.bash
-
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
+  profile:=commissioning \
   enable_writes:=false
 ```
 
-### Terminal 2: policy with IMU override for interface testing
+Validate:
 
 ```bash
-source /opt/ros/humble/setup.bash
-source ~/littlegreen_ros2_ws/install/setup.bash
-
-ros2 run littlegreen_biped_pkg littlegreen_biped_node \
-  --ros-args \
-  -p override_imu:=true
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode commissioning \
+  --expect-writes false
 ```
 
-The policy should move from waiting for joint state / hardware ages to ready once both native feedback topics are fresh and complete.
+## Policy shadow integration
 
-### Terminal 3: inspect diagnostics
+Use the runtime-safe publication surface and keep writes disabled:
 
 ```bash
-ros2 topic hz /joint_states
-ros2 topic hz /joint_feedback_age_ms
-ros2 topic echo /joint_feedback_age_ms --once
-ros2 topic echo /st3215_driver/diagnostics --once
+ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
+  profile:=runtime_safe \
+  enable_writes:=false
 ```
 
-## Adding the driver to the existing launch file later
+Then start the dedicated policy-only shadow launch:
 
-After feedback-only and write-enabled commissioning, the following node can be added to `littlegreen_biped_launch.py`:
-
-```python
-Node(
-    package='lgh_st3215_driver',
-    executable='lgh_st3215_driver_node',
-    name='lgh_st3215_driver',
-    output='screen',
-    parameters=[
-        [FindPackageShare('lgh_st3215_driver'), '/config/servo_driver.yaml'],
-        {
-            'port': '/dev/ttyS3',
-            'writes_enabled': True,
-            'joint_map_path': [
-                FindPackageShare('lgh_st3215_driver'),
-                '/config/servo_map.yaml',
-            ],
-        },
-    ],
-),
+```bash
+ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 ```
 
-For the first integrated live test, launching the servo driver separately is preferable because `enable_writes` remains visually explicit at the command line.
+Do not use `override_imu:=true` as a hardware commissioning substitute. Shadow validation should use the real `/imu/data` stream after the IMU preflight passes.
+
+## Live integration boundary
+
+The broader `littlegreen_biped_launch.py` starts joystick, teleop, the policy node, the file bridge, and `pd_controller_pkg`. Keep the servo driver in a separate launch during early deployment so `profile` and `enable_writes` remain visible and independently controllable.
+
+Live motion remains gated by the Track 1 deployment bundle and hardware-side contract audit.

@@ -1,183 +1,167 @@
-# Recommended Workflows — v2.6.0
+# Recommended Workflows
 
-## 1. Runtime authority hierarchy
-
-Keep these responsibilities separate:
+## 1. Fresh installation
 
 ```text
-Track 1 training
-  hardware_contract.py
-      ↓ matching canonical radians
-ROS policy/control
-  littlegreen_biped_pkg/src/configs/joint_map.yaml
-      ↓
-Native hardware
-  lgh_st3215_driver/config/servo_map.yaml
-      ↓
-ST3215 raw steps
+validate source
+→ install software
+→ log out/in
+→ verify overlay
+→ run the staged commissioning checklist
 ```
 
-In v2.6.0:
+Use:
 
-- `joint_map.yaml` is authoritative for policy-node and PD-controller target clipping;
-- `servo_map.yaml` is authoritative for physical sign, center calibration, radian conversion, final radian clamp, and raw-step clamp;
-- `joint_limits.yaml` is a compatibility/documentation mirror only;
-- the URDF/Xacro is not the active hardware safety authority.
+- [`INSTALL_ORANGE_PI.md`](INSTALL_ORANGE_PI.md)
+- [`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md)
 
-## 2. Daily bring-up
+## 2. Feedback-only hardware observation
 
-1. Mechanically support the robot.
-2. Source ROS and the workspace.
-3. Start the native driver feedback-only with the `commissioning` profile.
-4. Verify all 12 joint reads, feedback ages, telemetry, diagnostics, and ST3215 preflight.
-5. Verify the current `/imu/data` source with `lgh_imu_tools`.
-6. Stop the commissioning driver and use `runtime_safe`, still with writes disabled, for policy shadow work.
-7. Run the dedicated policy shadow launch and inspect observations, actions, and targets.
-8. Relaunch write-enabled only for an explicitly planned guarded hardware test.
-9. Keep policy live output disconnected until the Track 1 deployment bundle and hardware contract are audited.
+```bash
+ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
+  profile:=commissioning \
+  enable_writes:=false
+```
 
-## 3. Calibration workflow
+Then:
+
+```bash
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode feedback \
+  --expect-writes false
+```
+
+Use this before any write-enabled test.
+
+## 3. Hardware snapshot
+
+With the commissioning driver running:
+
+```bash
+ros2 run lgh_st3215_tools hardware_snapshot
+```
+
+Preserve the generated report with the related calibration, identification, or standing dataset.
+
+## 4. Offline bus maintenance
 
 ```text
-mechanically align q_default
-        ↓
-feedback-only native driver
-        ↓
-lgh_st3215_tools capture_calibration
-        ↓
-review proposal and status flags
-        ↓
-lgh_st3215_tools apply_calibration dry run
-        ↓
-apply center_step changes
-        ↓
-rebuild/relaunch driver
-        ↓
-lgh_st3215_tools verify_calibration
+stop runtime driver
+→ acquire UART through maintenance package
+→ scan/verify/read/backup
+→ stop maintenance
+→ restart runtime driver
 ```
 
-Calibration changes `center_step` in software. It does not rewrite hidden servo EEPROM center offsets.
+Commands:
 
-## 4. Policy bring-up workflow
+```bash
+ros2 run lgh_st3215_maintenance bus_scan --first-id 1 --last-id 12
+ros2 run lgh_st3215_maintenance verify_ids
+ros2 run lgh_st3215_maintenance register_dump --id 1 --address 0x00 --length 0x47
+ros2 run lgh_st3215_maintenance backup_control_tables
+```
 
-Current v2.6.0 boundary:
+Do not run maintenance and the driver at the same time.
+
+## 5. Calibration
 
 ```text
-runtime_safe driver + writes disabled
-        ↓
-canonical real joint state and IMU
-        ↓
-dedicated policy_shadow.launch.py
-        ↓
-/policy_ready and shadow target stream
-        ↓
-inspect observation/raw action/clipped target/saturation mask
-        ↓
-Track 1 paired deployment bundle arrives
-        ↓
-golden-vector and hardware contract audit
-        ↓
-only then plan guarded live safety_only tests
+commissioning profile, writes disabled
+→ physically place the robot in the known reference pose
+→ capture raw centers
+→ inspect proposal
+→ dry-run apply
+→ apply source map
+→ rebuild driver
+→ verify feedback-only
+→ perform guarded write-enabled pose test
 ```
 
-Aggressive `outer_pd` or `outer_pid` tuning is deferred. It must be treated as a separate measured plant change, not an automatic part of first policy deployment.
+Use [`CALIBRATION_WORKFLOW.md`](CALIBRATION_WORKFLOW.md).
 
-## 5. Actuator identification workflow
-
-For the Track 1 nominal actuator model:
-
-- keep policy off;
-- keep downstream outer-loop feedback off;
-- use `command_path=direct`;
-- use the fixed max-envelope profile (`speed=0`, `acceleration=0`);
-- support the robot so the tested joint condition matches the intended experiment;
-- treat timing, actuator onset, velocity response, lag proxy, residual error, and hysteresis as distinct effects.
-
-Use standing-load experiments as a **loaded-response extension and validation layer**, not as a replacement for suspended single-joint identification.
-
-## 6. Standing-pose capture workflow
-
-Capture mode intentionally uses manual torque-off positioning:
+## 6. Servo identification
 
 ```text
-preflight
-  ↓
-explicit TORQUE OFF confirmation phrase
-  ↓
-torque disable + pose override
-  ↓
-operator positions full robot pose
-  ↓
-press Enter
-  ↓
-2 s median capture (default)
-  ↓
-q-std stability check
-  ↓
-Track 1 / servo-map contract check
-  ↓
-replace only that named pose in the pose library
+securely support robot
+→ disconnect policy
+→ commissioning profile
+→ preflight
+→ enable writes explicitly
+→ run one joint at a time
+→ preserve dataset and manifest
 ```
 
-Default library location:
+Show the current options:
+
+```bash
+ros2 run lgh_st3215_tools servo_identification --help
+```
+
+## 7. Standing characterization
+
+Use the guarded standing tool only after suspended identification and calibration are confirmed. Keep the policy disconnected and record the mechanical support condition.
+
+```bash
+ros2 run lgh_st3215_tools standing_characterization --help
+```
+
+## 8. IMU validation
 
 ```text
-~/.ros/lgh_standing_poses.yaml
+source publishes /imu/data
+→ imu_preflight
+→ stationary characterization
+→ known-orientation audit
+→ repeat after any source or mounting change
 ```
 
-Capture audits default to:
+Commands:
+
+```bash
+ros2 run lgh_imu_tools imu_preflight
+ros2 run lgh_imu_tools stationary_characterization --duration-sec 20
+ros2 run lgh_imu_tools orientation_audit --pose neutral
+```
+
+## 9. Policy shadow
 
 ```text
-~/.ros/lgh_standing_pose_capture_audits/
+runtime_safe driver
++ writes disabled
++ real joint feedback
++ real IMU
+→ policy shadow
+→ log proposed targets
+→ no live desired-position authority
 ```
 
-## 7. Standing-load evaluation workflow
+Launch:
 
-Recommended ladder:
+```bash
+ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
+  profile:=runtime_safe \
+  enable_writes:=false
+```
+
+```bash
+ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
+```
+
+Verify the policy does not publish `/desired_position`.
+
+## 10. Future live-policy gate
+
+Live policy motion is deferred until the Track 1 deployment bundle is paired with the hardware workspace and the observation/action contract is audited.
+
+The initial live path should use:
 
 ```text
-normal
-→ shallow
-→ medium
-→ deep
-→ medium
-→ shallow
-→ normal
+validated policy bundle
+→ policy shadow
+→ safety_only controller mode
+→ guarded zero-command standing
+→ short supervised run windows
 ```
 
-Use `--no-return-between-poses` with the explicit down/up ladder to avoid direct normal→deep jumps.
-
-For controlled speed characterization:
-
-- use the same requested speed in crouch and stand-return directions;
-- use measured/logged `q_ref` peak velocity as the analysis independent variable;
-- keep `--min-transition-sec 0.25` for the aggressive loaded sweep unless intentionally designing a step-like test;
-- preserve the exact pose-library hash in metadata.
-
-## 8. Data locations
-
-| Data | Default location |
-|---|---|
-| standing pose library | `~/.ros/lgh_standing_poses.yaml` |
-| pose capture audits | `~/.ros/lgh_standing_pose_capture_audits/` |
-| standing-load reports | `~/littlegreen_ros2_ws/track2_standing_reports/<timestamp>_standing_load/` |
-| actuator identification reports | relative `identification_reports/<timestamp>.../` unless overridden |
-| calibration reports | relative `calibration_reports/` unless overridden |
-| joystick command mirror | `/tmp/joystick_cmd.txt` |
-
-## 9. Current v2.6.0 joint contract
-
-| Idx | Joint | ID | Sign | Center | q_default | Lower | Upper | Safe steps |
-|---|---|---|---|---|---|---|---|---|
-| 0 | leg_left_hip_roll_joint | 1 | -1 | 2041 | 0.000 | -0.695 | 0.781 | 1532..2494 |
-| 1 | leg_left_hip_yaw_joint | 2 | -1 | 2027 | 0.000 | -0.089 | 0.644 | 1607..2085 |
-| 2 | leg_left_hip_pitch_joint | 3 | -1 | 2110 | -0.100 | -1.922 | 0.681 | 1666..3363 |
-| 3 | leg_left_knee_pitch_joint | 4 | -1 | 2051 | 0.400 | 0.135 | 2.235 | 594..1963 |
-| 4 | leg_left_ankle_pitch_joint | 5 | 1 | 2024 | -0.300 | -0.810 | 0.710 | 1496..2487 |
-| 5 | leg_left_ankle_roll_joint | 6 | 1 | 2021 | 0.000 | -0.514 | 0.913 | 1686..2616 |
-| 6 | leg_right_hip_roll_joint | 7 | 1 | 2038 | 0.000 | -0.874 | 0.643 | 1468..2457 |
-| 7 | leg_right_hip_yaw_joint | 8 | 1 | 2040 | 0.000 | -0.057 | 0.701 | 2003..2497 |
-| 8 | leg_right_hip_pitch_joint | 9 | 1 | 2123 | -0.100 | -1.991 | 0.546 | 825..2479 |
-| 9 | leg_right_knee_pitch_joint | 10 | 1 | 2051 | 0.400 | 0.172 | 2.241 | 2163..3512 |
-| 10 | leg_right_ankle_pitch_joint | 11 | -1 | 2077 | -0.300 | -0.845 | 0.819 | 1543..2628 |
-| 11 | leg_right_ankle_roll_joint | 12 | -1 | 2058 | 0.000 | -0.443 | 1.062 | 1366..2347 |
+Do not begin with aggressive `outer_pd` or `outer_pid` tuning.

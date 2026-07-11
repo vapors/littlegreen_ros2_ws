@@ -1,0 +1,169 @@
+workspace: littlegreen_ros2_ws
+release: 2.6.0
+generated_utc: '2026-07-11T17:28:04+00:00'
+target:
+  board: Orange Pi 5 Max
+  architecture: aarch64
+  os: Ubuntu 22.04 Jammy
+  ros_distro: Humble
+  ros2_apt_source: 1.2.0 (default pin)
+  onnxruntime: 1.22.0
+naming:
+  hardware_prefix: lgh
+  policy_stem: littlegreen_biped
+  description_package: littlegreen_description
+source_tree:
+  file_count_excluding_manifest: 326
+  size_bytes_excluding_manifest: 26721349
+packages:
+- name: joystick_bridge
+  version: 0.0.0
+  build_type: ament_python
+  path: src/joystick_bridge
+  status: active
+- name: joy
+  version: 3.3.0
+  build_type: ament_cmake
+  path: src/joystick_drivers/joy
+  status: active
+- name: joy_linux
+  version: 3.3.0
+  build_type: ament_cmake
+  path: src/joystick_drivers/joy_linux
+  status: active
+- name: joystick_drivers
+  version: 2.0.0
+  build_type: unknown
+  path: src/joystick_drivers/joystick_drivers
+  status: ignored
+- name: ps3joy
+  version: 2.0.0
+  build_type: unknown
+  path: src/joystick_drivers/ps3joy
+  status: ignored
+- name: sdl2_vendor
+  version: 3.3.0
+  build_type: ament_cmake
+  path: src/joystick_drivers/sdl2_vendor
+  status: active
+- name: spacenav
+  version: 3.3.0
+  build_type: ament_cmake
+  path: src/joystick_drivers/spacenav
+  status: active
+- name: wiimote
+  version: 3.3.0
+  build_type: ament_cmake
+  path: src/joystick_drivers/wiimote
+  status: active
+- name: wiimote_msgs
+  version: 3.3.0
+  build_type: ament_cmake
+  path: src/joystick_drivers/wiimote_msgs
+  status: active
+- name: lgh_imu_tools
+  version: 0.2.0
+  build_type: ament_python
+  path: src/lgh_imu_tools
+  status: active
+- name: lgh_st3215_driver
+  version: 0.3.0
+  build_type: ament_cmake
+  path: src/lgh_st3215_driver
+  status: active
+- name: lgh_st3215_maintenance
+  version: 0.2.0
+  build_type: ament_cmake
+  path: src/lgh_st3215_maintenance
+  status: active
+- name: lgh_st3215_tools
+  version: 0.2.0
+  build_type: ament_python
+  path: src/lgh_st3215_tools
+  status: active
+- name: littlegreen_biped_pkg
+  version: 0.3.0
+  build_type: ament_cmake
+  path: src/littlegreen_biped_pkg
+  status: active
+- name: littlegreen_description
+  version: 0.1.0
+  build_type: ament_python
+  path: src/littlegreen_description
+  status: active
+- name: pd_controller_pkg
+  version: 0.2.0
+  build_type: ament_python
+  path: src/pd_controller_pkg
+  status: active
+- name: teleop_twist_joy
+  version: 2.4.8
+  build_type: ament_cmake
+  path: src/teleop_twist_joy
+  status: active
+critical_artifacts:
+- artifact: servo_map
+  path: src/lgh_st3215_driver/config/servo_map.yaml
+  sha256: cdcc557ae2da63cbd54cd3197675db43cd10fc08d486bf1974666902a38a0408
+  size_bytes: 3526
+- artifact: servo_driver
+  path: src/lgh_st3215_driver/config/servo_driver.yaml
+  sha256: e53520a367f0ba543f19a8cfe7fca25c79ae834e880a47f07cf6358ad5b72b1a
+  size_bytes: 4660
+- artifact: commissioning_profile
+  path: src/lgh_st3215_driver/config/profiles/commissioning.yaml
+  sha256: 954d79e873b8cc370d51ee6f823b9309203d83a24e26318a3191d41f1a5c3737
+  size_bytes: 328
+- artifact: runtime_safe_profile
+  path: src/lgh_st3215_driver/config/profiles/runtime_safe.yaml
+  sha256: e264b41f0f0e052d366c8786e370071f4d356b04706ab497757caeb206ca378b
+  size_bytes: 331
+- artifact: servo_telemetry_msg
+  path: src/lgh_st3215_driver/msg/ServoTelemetry.msg
+  sha256: f5dac0edee5e6158bfe8c329c5fab59025fad52977cbb62245a7405420bab92a
+  size_bytes: 1323
+- artifact: imu_contract
+  path: src/lgh_imu_tools/config/imu_contract.yaml
+  sha256: 50b0fac795a42d12cfb7e5e735224c67e1931972a496d13684421e6ef3f6a8a9
+  size_bytes: 443
+- artifact: joint_map
+  path: src/littlegreen_biped_pkg/src/configs/joint_map.yaml
+  sha256: ec37205f9cf2e57a183b201abc9974cd763de4b409a41f4424de0fe9c06f02ba
+  size_bytes: 9825
+- artifact: joint_limits
+  path: src/littlegreen_biped_pkg/src/configs/joint_limits.yaml
+  sha256: 8e30b7e1fe534e53cca2790b1fc197c7e6cf51aeb91d484c0459ca70524c64cc
+  size_bytes: 1267
+- artifact: policy_yaml
+  path: src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
+  sha256: bc81a869662f6897dedd5e21f69216f5dde24ff0940a498cb0732b47d8a705b2
+  size_bytes: 2197
+- artifact: policy_runtime
+  path: src/littlegreen_biped_pkg/src/configs/policy_runtime.yaml
+  sha256: cf60fa2784648623d62b5fae97ef8327648cb90812e553bc9d522e8200f017f3
+  size_bytes: 1591
+- artifact: policy_onnx
+  path: src/littlegreen_biped_pkg/src/configs/policy.onnx
+  sha256: a09803aeda3847b46ac0ab8878ee406adaed49e1d8332be5f29496bfb6362088
+  size_bytes: 252181
+- artifact: pd_config
+  path: src/pd_controller_pkg/config/pd_config.yaml
+  sha256: b90530181619982bd6d871248c2620ed10915e90a63122761e19d2f1d5fd2635
+  size_bytes: 3248
+- artifact: standing_pose_library
+  path: src/lgh_st3215_tools/config/standing_pose_library.yaml
+  sha256: 9803653a254dc64bbf17fd1ec4977c99561310ab08548f1635c8ce77188a271a
+  size_bytes: 1142
+- artifact: track1_action_contract
+  path: src/lgh_st3215_tools/config/track1_action_contract_v3.yaml
+  sha256: 535c447299578d06ee7fa3387c89edf4208ac1fb4ca14dce6165f9784c91840f
+  size_bytes: 1649
+provenance:
+  source_release: berkeley_ros2_ws_v2_5_1_src.zip
+  source_release_sha256: 168b8aec916630b0d581a850471d54963bd3fe843ee390b56c09a83e267af47e
+  intentional_legacy_references:
+  - bhl_st3215_microros_pio_v6_5_8/include/servo_map.h (source provenance only)
+  - Velocity-Lilgreen-Humanoid-v0 (current Track 1 policy task identifier)
+  - /home/scott/Berkeley-Humanoid-Lite/... (current Track 1 export provenance paths)
+validation_boundary: Static source validation only; Orange Pi colcon, UART, IMU, ONNX runtime, and hardware acceptance remain
+  required.

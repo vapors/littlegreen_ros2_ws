@@ -1,29 +1,28 @@
-# LittleGreen v2.6.4 Commissioning Sequence
+# Commissioning Sequence
 
-This is the abbreviated sequence. The authoritative fresh-install gate checklist is [`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md).
+This page is the concise commissioning path. Use [`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md) for the full acceptance record.
 
-## 1. Verify the install and active overlay
+## 1. Verify software and host access
 
 ```bash
-# New terminals are already configured. For the current terminal only:
-source ~/.bashrc
 cd ~/littlegreen_ros2_ws
-./scripts/verify_install.sh --software-only
+./scripts/verify_install.sh
 ```
 
-Old package names should not be visible in `ros2 pkg list`.
+Confirm `/dev/ttyS3`, `dialout`, and the active workspace overlay.
 
-## 2. Read-only bus verification
+## 2. Inspect the bus offline
 
-With the normal driver stopped and the robot securely supported:
+Stop the runtime driver:
 
 ```bash
+ros2 run lgh_st3215_maintenance bus_scan --first-id 1 --last-id 12
 ros2 run lgh_st3215_maintenance verify_ids
 ```
 
-The v2.6.0 maintenance package is read-only.
+Maintenance directly owns the UART and is read-only.
 
-## 3. Feedback-only commissioning profile
+## 3. Launch feedback-only commissioning
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -31,39 +30,36 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-Inspect:
-
-```bash
-ros2 topic hz /joint_states
-ros2 topic hz /joint_feedback_age_ms
-ros2 topic hz /st3215_driver/telemetry
-ros2 topic echo /st3215_driver/diagnostics --once
-```
-
-Run the domain preflight:
+Run both preflight views:
 
 ```bash
 ros2 run lgh_st3215_tools st3215_preflight \
   --mode feedback \
   --expect-writes false
+
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode commissioning \
+  --expect-writes false
 ```
 
-Do not continue after a failed or refused preflight.
+Capture:
 
-## 4. IMU contract
+```bash
+ros2 run lgh_st3215_tools hardware_snapshot
+```
 
-Bring up the current micro-ROS IMU source or the future direct driver, then:
+## 4. Validate the IMU boundary
 
 ```bash
 ros2 run lgh_imu_tools imu_preflight
 ros2 run lgh_imu_tools stationary_characterization --duration-sec 20
 ```
 
-Repeat orientation/extrinsic testing whenever the sensor mounting or transport changes.
+Perform the orientation audit after any sensor, mounting, transport, or driver change.
 
-## 5. Runtime-safe publication profile
+## 5. Validate the runtime-safe topic surface
 
-Stop the commissioning driver and launch:
+Stop the commissioning driver and relaunch:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -71,39 +67,34 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-This keeps joint state, feedback age, and diagnostics while suppressing high-rate laboratory publications. It does not change the underlying feedback read.
+```bash
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode runtime \
+  --expect-writes false
+```
 
-## 6. Policy shadow
+## 6. Run policy shadow
 
-Until Track 1 supplies the audited deployment bundle, use the current policy only in shadow mode:
+Keep writes disabled:
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 ```
 
-Verify that the policy publishes `/policy_shadow/desired_position` and does not publish `/desired_position`.
+Confirm `/policy_shadow/desired_position` is active and the policy is not a publisher on `/desired_position`.
 
-## 7. Guarded write-enabled startup hold
+## 7. Plan any write-enabled test explicitly
 
-Only after the preceding gates pass, with the robot securely supported:
+Return to the `commissioning` profile only for a defined guarded operation:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   profile:=commissioning \
-  enable_writes:=true \
-  default_pose_move_duration_sec:=8.0
+  enable_writes:=true
 ```
 
-The driver must begin from complete fresh measured feedback and hold the measured current pose.
+The policy must remain disconnected during servo identification, calibration motion, and standing characterization.
 
-## 8. Guarded pose motion
+## Current release gates
 
-```bash
-ros2 run lgh_st3215_tools pose_console
-```
-
-The software abort holds the latest measured pose; the physical power disconnect remains the emergency action.
-
-## 9. Deferred live-policy and outer-loop work
-
-Do not release live policy commands solely because the software and shadow checks pass. The next gate is Track 1 deployment-bundle pairing and golden-vector contract validation. Aggressive outer-PD tuning is outside v2.6.0.
+Passing installation, driver, IMU, and shadow checks does not by itself authorize live policy motion. The next live-policy gate is a paired Track 1 deployment bundle and a hardware-side contract audit. Aggressive outer-PD tuning remains deferred.

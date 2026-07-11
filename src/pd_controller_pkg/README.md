@@ -23,7 +23,7 @@ q_cmd_next = q_cmd_prev + bounded(qdot_cmd) * dt
 The output remains `/servo_target_radians`; ST3215 step conversion remains in
 `lgh_st3215_driver`.
 
-The v2 default mode is `safety_only`. This allows policy diagnostics and physical
+The default mode is `safety_only`. This allows policy diagnostics and physical
 pose commissioning without changing the previous downstream command behavior.
 
 ## Reset state to feedback

@@ -137,7 +137,7 @@ install(DIRECTORY src/configs
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
-install(FILES POLICY_SHADOW.md
+install(FILES POLICY_SHADOW.md POLICY_DEBUG.md
   DESTINATION share/${PROJECT_NAME}
 )
 # Optional testing

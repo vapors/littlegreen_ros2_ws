@@ -1,81 +1,35 @@
-# Complete Orange Pi Installation — LittleGreen ROS 2 v2.6.3
+# Orange Pi Installation
 
 This guide installs a clean `~/littlegreen_ros2_ws` deployment on an Orange Pi 5 Max running Ubuntu 22.04 aarch64.
 
-The automated installer performs the software setup, but it deliberately does **not** modify Orange Pi boot overlays, UART pinmux, servo power wiring, micro-ROS firmware, direct IMU configuration, systemd units, or external shell scripts.
+The installer handles the software environment. It deliberately does **not** modify Orange Pi boot overlays, UART pinmux, servo power wiring, micro-ROS firmware, direct IMU configuration, systemd units, or external shell scripts.
 
-## 1. Before replacing the old workspace
+## 1. Place the workspace
 
-Archive the previous source and any local data that are not already backed up:
-
-```bash
-mkdir -p ~/workspace_archives
-
-tar -czf ~/workspace_archives/berkeley_ros2_ws_v2_5_1_local_$(date -u +%Y%m%dT%H%M%SZ).tar.gz \
-  -C ~ berkeley_ros2_ws
-```
-
-Also preserve any locally modified:
+Clone or extract the repository so the canonical path is:
 
 ```text
-servo_map.yaml
-policy bundles
-systemd units
-udev rules
-shell aliases
-micro-ROS launch scripts
-calibration reports
-identification and standing datasets
+~/littlegreen_ros2_ws
 ```
 
-Do not source the old workspace while installing the new one.
-
-## 2. Place the v2.6.3 workspace
-
-The distributed ZIP contains one top-level directory named `littlegreen_ros2_ws`.
-
-Verify the downloaded archive when the `.sha256` file is beside it:
+Then:
 
 ```bash
-sha256sum -c littlegreen_ros2_ws_v2_6_0.sha256
-```
-
-Then extract:
-
-```bash
-cd ~
-unzip littlegreen_ros2_ws_v2_6_0.zip
 cd ~/littlegreen_ros2_ws
-```
-
-Confirm the source-tree release:
-
-```bash
 cat VERSION
-# expected: 2.6.0
-```
-
-Make scripts executable if the archive tool did not preserve permissions:
-
-```bash
 chmod +x scripts/*.sh scripts/*.py
-```
-
-Run the ROS-independent source audit before installing anything:
-
-```bash
 ./scripts/validate_source_tree.py
 ```
 
-Expected result:
+Expected:
 
 ```text
 SOURCE VALIDATION: PASS
 ```
 
-A warning about the historical Track 1 task identifier `Velocity-Lilgreen-Humanoid-v0` is expected until Track 1 supplies the new deployment bundle.
+Warnings about retained source provenance or the current Track 1 task identifier are informational.
 
-## 3. Confirm the operating-system baseline
+## 2. Confirm the host baseline
 
 ```bash
 source /etc/os-release
@@ -90,11 +44,11 @@ ubuntu 22.04
 aarch64
 ```
 
-The install script refuses another distribution, Ubuntu release, or architecture rather than attempting a partial deployment.
+The installer refuses unsupported distributions, Ubuntu releases, and architectures rather than attempting a partial installation.
 
-## 4. Run the complete installer
+## 3. Run the installer
 
-Run as your normal login user, not root:
+Run as the normal login user, not root:
 
 ```bash
 cd ~/littlegreen_ros2_ws
@@ -104,148 +58,128 @@ cd ~/littlegreen_ros2_ws
 The installer:
 
 1. validates Ubuntu 22.04 and aarch64;
-2. installs locale and build prerequisites;
+2. installs build and locale prerequisites;
 3. configures the official ROS 2 apt source;
-4. installs ROS 2 Humble `ros-base`, ROS development tools, `rosdep`, and `colcon`;
+4. installs ROS 2 Humble `ros-base`, development tools, `rosdep`, and `colcon`;
 5. initializes or updates `rosdep`;
 6. adds the current user to `dialout`;
-7. downloads and extracts ONNX Runtime 1.22.0 for Linux aarch64;
-8. resolves workspace dependencies with `rosdep`;
+7. installs ONNX Runtime 1.22.0 for Linux aarch64;
+8. resolves workspace dependencies;
 9. performs a clean `colcon build --symlink-install`;
-10. creates `~/.config/littlegreen/ros2_env.sh` and an idempotent `.bashrc` source block.
+10. creates `~/.config/littlegreen/ros2_env.sh`;
+11. adds one managed LittleGreen source block to `~/.bashrc`.
 
-The installer uses `apt-get update` and explicit package installation. It does not perform a broad distribution upgrade, preserving the host’s Orange Pi BSP/kernel management boundary.
+The robot image intentionally uses `ros-base`; Gazebo is not required.
 
 ### Installer options
 
 ```text
 --skip-ros       keep an existing ROS/system dependency installation
---skip-onnx      keep an existing ONNX Runtime installation
---skip-build     configure dependencies but do not build
-
-`--skip-onnx` reuses an existing ONNX Runtime installation; it does not remove the ONNX Runtime build dependency. The default expected location is `~/libs/onnxruntime-linux-aarch64-1.22.0`.
---no-bashrc      create no automatic shell-source block
+--skip-onnx      reuse an existing ONNX Runtime installation
+--skip-build     install/configure dependencies but do not run rosdep or colcon
+--no-bashrc      do not add the environment source block to ~/.bashrc
 ```
 
-Example for an already configured ROS host:
+Examples:
 
 ```bash
 ./scripts/install_orange_pi.sh --skip-ros
+./scripts/install_orange_pi.sh --skip-ros --skip-onnx
 ```
 
-## 5. Offline ONNX Runtime installation
-
-The policy node is a C++ executable and requires the ONNX Runtime C/C++ archive, not only the Python package.
-
-The default expected path is:
+`--skip-onnx` expects ONNX Runtime to already exist at:
 
 ```text
 ~/libs/onnxruntime-linux-aarch64-1.22.0
 ```
 
-For an offline host, copy this archive onto the Orange Pi:
+or at the path supplied in `ONNXRUNTIME_DIR`.
+
+## 4. Offline ONNX Runtime installation
+
+The policy node requires the ONNX Runtime C/C++ archive, not only the Python package.
+
+For an offline host, copy this archive to the Orange Pi:
 
 ```text
 onnxruntime-linux-aarch64-1.22.0.tgz
 ```
 
-Then run:
+Then:
 
 ```bash
 ONNXRUNTIME_ARCHIVE=/path/to/onnxruntime-linux-aarch64-1.22.0.tgz \
   ./scripts/install_onnxruntime_aarch64.sh
 ```
 
-The installer records the downloaded archive checksum and source URL inside the extracted ONNX Runtime directory.
+## 5. Activate group membership and shell environment
 
-## 6. Log out and back in
-
-The `dialout` group change does not affect the current login session. Log out and back in, or reboot cleanly:
+The `dialout` group change requires a new login session. Log out and back in, or reboot:
 
 ```bash
 sudo reboot
 ```
 
-After reconnecting:
+The installer already adds this managed block to `~/.bashrc`:
 
 ```bash
-id -nG
+# >>> LittleGreen ROS 2 environment >>>
+source "/home/<user>/.config/littlegreen/ros2_env.sh"
+# <<< LittleGreen ROS 2 environment <<<
 ```
 
-Confirm `dialout` appears.
+Do not add a duplicate source line.
 
-## 7. Load the new environment
-
-The installer adds the LittleGreen environment file to `~/.bashrc`, so every new interactive Bash terminal loads it automatically. You do not need to add another source line.
-
-For the terminal that was already open during installation, either open a new terminal or run:
+New interactive Bash terminals load the environment automatically. In the terminal that ran the installer, either open a new terminal or run:
 
 ```bash
 source ~/.bashrc
 ```
 
-Directly sourcing the generated file is equivalent but optional:
+Directly sourcing the generated environment file is equivalent but optional:
 
 ```bash
 source ~/.config/littlegreen/ros2_env.sh
 ```
 
-The generated file defines:
+Scripts and systemd launch wrappers that do not read `~/.bashrc` should source the generated environment file explicitly.
 
-```text
-LITTLEGREEN_ROS2_WS=~/littlegreen_ros2_ws
-ONNXRUNTIME_DIR=~/libs/onnxruntime-linux-aarch64-1.22.0
-LD_LIBRARY_PATH=$ONNXRUNTIME_DIR/lib:...
-```
-
-Inspect the active workspace:
-
-```bash
-printf '%s\n' "$LITTLEGREEN_ROS2_WS"
-printf '%s\n' "$ONNXRUNTIME_DIR"
-```
-
-## 8. Verify the software installation
+## 6. Verify the software installation
 
 ```bash
 cd ~/littlegreen_ros2_ws
 ./scripts/verify_install.sh --software-only
 ```
 
-The check verifies:
-
-- ROS 2 Humble base;
-- ONNX Runtime headers and shared library;
-- the built workspace overlay;
-- discovery of all LittleGreen packages;
-- absence of old package names in the active overlay;
-- the source-tree rename/syntax audit.
-
 Exit codes:
 
-```text
-0  pass
-2  pass with warnings
-3  failure
-```
+| Code | Meaning |
+|---:|---|
+| `0` | pass |
+| `2` | pass with warnings |
+| `3` | failure |
 
-List the renamed packages:
+Confirm the active packages:
 
 ```bash
 ros2 pkg list | grep -E '^(lgh_|littlegreen_)'
 ```
 
-Confirm old package names are not sourced:
+Confirm the driver resolves inside this workspace:
 
 ```bash
-ros2 pkg list | grep -E '^(bhl_|berkeley_biped|lilgreen_)'
+ros2 pkg prefix lgh_st3215_driver
 ```
 
-The second command should return no output. If old packages remain visible, open a clean shell and inspect `AMENT_PREFIX_PATH` for an old overlay.
+Expected prefix:
 
-## 9. Manual rebuild workflow
+```text
+/home/<user>/littlegreen_ros2_ws/install/lgh_st3215_driver
+```
 
-For later source changes:
+## 7. Rebuild after source changes
+
+Normal rebuild:
 
 ```bash
 cd ~/littlegreen_ros2_ws
@@ -258,70 +192,86 @@ Clean rebuild:
 ./scripts/build_workspace.sh --clean
 ```
 
-The build helper runs:
+Useful options:
 
-```bash
-rosdep install --from-paths src --ignore-src --rosdistro humble -r -y
-colcon build --symlink-install
+```text
+--skip-rosdep
+--release
+--debug
 ```
 
-## 10. Confirm UART prerequisites
+## 8. Confirm UART access
 
-The installer does not enable UART overlays. Verify the UART established during Track 2 testing still exists:
+The installer does not enable UART overlays. Verify the host configuration established for `/dev/ttyS3` is still present:
 
 ```bash
 ls -l /dev/ttyS3
-```
-
-Check access:
-
-```bash
+id -nG | tr ' ' '\n' | grep '^dialout$'
 test -r /dev/ttyS3 && test -w /dev/ttyS3 && echo UART_ACCESS_OK
 ```
 
-The default driver launch uses `/dev/ttyS3` at 1,000,000 baud. Override the port only when intentionally testing another configured UART:
+Do not apply servo power or enable writes until the staged checklist reaches that gate.
 
-```bash
-ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
-  port:=/dev/ttyS3 \
-  profile:=commissioning \
-  enable_writes:=false
-```
+## 9. Confirm the IMU boundary
 
-## 11. IMU boundary
-
-v2.6.3 contains source-independent IMU tools, not a new direct Orange Pi I2C/SPI driver. The current micro-ROS source or a future direct driver must publish the canonical `/imu/data` topic before these pass:
+The workspace includes source-independent IMU tools, not a direct Orange Pi I2C/SPI IMU driver. The current micro-ROS source or a future direct driver must publish `/imu/data`.
 
 ```bash
 ros2 run lgh_imu_tools imu_preflight
 ros2 run lgh_imu_tools stationary_characterization --duration-sec 20
 ```
 
-Do not treat `override_imu:=true` as a substitute for hardware IMU commissioning.
+`override_imu:=true` is a software test option, not a hardware commissioning substitute.
 
-## 12. Continue with staged commissioning
+## 10. Troubleshooting
 
-Do not enable servo writes immediately after installation. Continue with:
+### APT reports conflicting `Signed-By` values
 
-[`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md)
-
-The first hardware launch is feedback-only and uses the `commissioning` profile.
-
-
-## Troubleshooting strict-shell setup errors
-
-v2.6.3 guards ROS environment sourcing against Bash `set -u`. If an older workspace reports:
-
-```text
-/opt/ros/humble/setup.bash: line 8: AMENT_TRACE_SETUP_FILES: unbound variable
-```
-
-apply the v2.6.3 shell hotfix or temporarily resume manually with:
+The installer normally disables a duplicate legacy ROS source automatically. If APT still reports a conflict, inspect the active ROS entries:
 
 ```bash
-set +u
-source /opt/ros/humble/setup.bash
-set -u
+grep -RnsE \
+  'packages\.ros\.org/ros2/ubuntu|repo\.ros2\.org' \
+  /etc/apt/sources.list \
+  /etc/apt/sources.list.d \
+  2>/dev/null
 ```
 
-The manual form is only a temporary workaround; the v2.6.3 scripts preserve and restore the caller's original nounset state automatically.
+When both `ros2.sources` and an older `ros2.list` define the same repository, keep `ros2.sources` and disable the older file:
+
+```bash
+sudo mv /etc/apt/sources.list.d/ros2.list \
+  /etc/apt/sources.list.d/ros2.list.disabled
+
+sudo apt-get clean
+sudo apt-get update
+sudo dpkg --configure -a
+sudo apt-get --fix-broken install
+```
+
+### `rosdep` fails
+
+First repair APT, then rerun:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd ~/littlegreen_ros2_ws
+rosdep install --from-paths src --ignore-src --rosdistro humble -r -y
+```
+
+The hardware workspace does not require `gazebo_ros`.
+
+### Current shell cannot see the workspace
+
+```bash
+source ~/.bashrc
+ros2 pkg prefix lgh_st3215_driver
+```
+
+Do not add another LittleGreen environment line to `~/.bashrc`.
+
+## 11. Continue with staged commissioning
+
+Do not enable servo writes immediately after installation.
+
+Continue with [`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md).

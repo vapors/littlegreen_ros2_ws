@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ROS-independent validation for the LittleGreen v2.6.4 source workspace."""
+"""ROS-independent validation for the current LittleGreen source workspace."""
 from __future__ import annotations
 
 import ast
