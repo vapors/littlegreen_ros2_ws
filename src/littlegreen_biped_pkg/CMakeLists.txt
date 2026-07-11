@@ -129,13 +129,17 @@ target_compile_features(littlegreen_biped_node PUBLIC c_std_99 cxx_std_17)
 install(TARGETS littlegreen_biped_node
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY include/
+  DESTINATION include
+  )
 # Install resources
 install(DIRECTORY src/checkpoints
-  DESTINATION share/${PROJECT_NAME})
+  DESTINATION share/${PROJECT_NAME}
+  )
 install(DIRECTORY src/configs
-  DESTINATION share/${PROJECT_NAME})
-install(DIRECTORY include/
-  DESTINATION include)
+  DESTINATION share/${PROJECT_NAME}
+  )
+
 # Install launch files
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
