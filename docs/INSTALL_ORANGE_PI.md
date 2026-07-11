@@ -1,4 +1,4 @@
-# Complete Orange Pi Installation — LittleGreen ROS 2 v2.6.1
+# Complete Orange Pi Installation — LittleGreen ROS 2 v2.6.3
 
 This guide installs a clean `~/littlegreen_ros2_ws` deployment on an Orange Pi 5 Max running Ubuntu 22.04 aarch64.
 
@@ -30,7 +30,7 @@ identification and standing datasets
 
 Do not source the old workspace while installing the new one.
 
-## 2. Place the v2.6.1 workspace
+## 2. Place the v2.6.3 workspace
 
 The distributed ZIP contains one top-level directory named `littlegreen_ros2_ws`.
 
@@ -122,6 +122,8 @@ The installer uses `apt-get update` and explicit package installation. It does n
 --skip-ros       keep an existing ROS/system dependency installation
 --skip-onnx      keep an existing ONNX Runtime installation
 --skip-build     configure dependencies but do not build
+
+`--skip-onnx` reuses an existing ONNX Runtime installation; it does not remove the ONNX Runtime build dependency. The default expected location is `~/libs/onnxruntime-linux-aarch64-1.22.0`.
 --no-bashrc      create no automatic shell-source block
 ```
 
@@ -280,7 +282,7 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
 
 ## 11. IMU boundary
 
-v2.6.1 contains source-independent IMU tools, not a new direct Orange Pi I2C/SPI driver. The current micro-ROS source or a future direct driver must publish the canonical `/imu/data` topic before these pass:
+v2.6.3 contains source-independent IMU tools, not a new direct Orange Pi I2C/SPI driver. The current micro-ROS source or a future direct driver must publish the canonical `/imu/data` topic before these pass:
 
 ```bash
 ros2 run lgh_imu_tools imu_preflight
@@ -296,3 +298,22 @@ Do not enable servo writes immediately after installation. Continue with:
 [`FRESH_INSTALL_CHECKLIST.md`](FRESH_INSTALL_CHECKLIST.md)
 
 The first hardware launch is feedback-only and uses the `commissioning` profile.
+
+
+## Troubleshooting strict-shell setup errors
+
+v2.6.3 guards ROS environment sourcing against Bash `set -u`. If an older workspace reports:
+
+```text
+/opt/ros/humble/setup.bash: line 8: AMENT_TRACE_SETUP_FILES: unbound variable
+```
+
+apply the v2.6.3 shell hotfix or temporarily resume manually with:
+
+```bash
+set +u
+source /opt/ros/humble/setup.bash
+set -u
+```
+
+The manual form is only a temporary workaround; the v2.6.3 scripts preserve and restore the caller's original nounset state automatically.

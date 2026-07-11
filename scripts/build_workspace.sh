@@ -8,11 +8,35 @@ RUN_ROSDEP=1
 BUILD_TYPE="RelWithDebInfo"
 
 usage() {
-  cat <<EOF
+  cat <<EOF_USAGE
 Usage: $0 [--clean] [--skip-rosdep] [--release|--debug]
 
 Builds the complete LittleGreen ROS 2 workspace.
-EOF
+EOF_USAGE
+}
+
+# ROS-generated setup files are not guaranteed to be compatible with Bash
+# nounset (`set -u`). Preserve the caller's nounset state while sourcing them.
+source_setup_nounset_safe() {
+  local setup_file="$1"
+  local nounset_was_on=0
+  local source_rc=0
+
+  case "$-" in
+    *u*) nounset_was_on=1; set +u ;;
+  esac
+
+  # shellcheck disable=SC1090
+  if source "$setup_file"; then
+    source_rc=0
+  else
+    source_rc=$?
+  fi
+
+  if [[ $nounset_was_on -eq 1 ]]; then
+    set -u
+  fi
+  return "$source_rc"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -31,7 +55,7 @@ if [[ ! -f /opt/ros/humble/setup.bash ]]; then
   echo "ERROR: ROS 2 Humble is not installed at /opt/ros/humble." >&2
   exit 4
 fi
-source /opt/ros/humble/setup.bash
+source_setup_nounset_safe /opt/ros/humble/setup.bash
 
 ORT_DIR="${ONNXRUNTIME_DIR:-$HOME/libs/onnxruntime-linux-aarch64-1.22.0}"
 if [[ ! -f "$ORT_DIR/include/onnxruntime_cxx_api.h" || ! -f "$ORT_DIR/lib/libonnxruntime.so" ]]; then
@@ -56,6 +80,6 @@ colcon build \
   --event-handlers console_direct+ \
   --cmake-args -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
 
-source "$WORKSPACE/install/setup.bash"
+source_setup_nounset_safe "$WORKSPACE/install/setup.bash"
 echo
 printf 'Build completed. Overlay: %s\n' "$WORKSPACE/install/setup.bash"

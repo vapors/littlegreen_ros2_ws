@@ -12,10 +12,35 @@ pass() { printf 'PASS  %s\n' "$*"; }
 warning() { printf 'WARN  %s\n' "$*"; warn=$((warn+1)); }
 error() { printf 'FAIL  %s\n' "$*"; fail=$((fail+1)); }
 
+# ROS-generated setup files may reference variables before assigning them and
+# therefore are not guaranteed to be compatible with `set -u`.
+source_setup_nounset_safe() {
+  local setup_file="$1"
+  local nounset_was_on=0
+  local source_rc=0
+
+  case "$-" in
+    *u*) nounset_was_on=1; set +u ;;
+  esac
+
+  # shellcheck disable=SC1090
+  if source "$setup_file"; then
+    source_rc=0
+  else
+    source_rc=$?
+  fi
+
+  if [[ $nounset_was_on -eq 1 ]]; then
+    set -u
+  fi
+  return "$source_rc"
+}
+
 [[ -f /opt/ros/humble/setup.bash ]] && pass "ROS 2 Humble base installed" || error "missing /opt/ros/humble/setup.bash"
 if [[ -f /opt/ros/humble/setup.bash ]]; then
-  # shellcheck disable=SC1091
-  source /opt/ros/humble/setup.bash
+  if ! source_setup_nounset_safe /opt/ros/humble/setup.bash; then
+    error "failed to source /opt/ros/humble/setup.bash"
+  fi
 fi
 
 ORT_DIR="${ONNXRUNTIME_DIR:-$HOME/libs/onnxruntime-linux-aarch64-1.22.0}"
@@ -24,9 +49,11 @@ ORT_DIR="${ONNXRUNTIME_DIR:-$HOME/libs/onnxruntime-linux-aarch64-1.22.0}"
 export LD_LIBRARY_PATH="$ORT_DIR/lib:${LD_LIBRARY_PATH:-}"
 
 if [[ -f "$WORKSPACE/install/setup.bash" ]]; then
-  # shellcheck disable=SC1091
-  source "$WORKSPACE/install/setup.bash"
-  pass "workspace overlay exists"
+  if source_setup_nounset_safe "$WORKSPACE/install/setup.bash"; then
+    pass "workspace overlay exists"
+  else
+    error "workspace overlay exists but could not be sourced"
+  fi
 else
   error "missing workspace overlay; run scripts/build_workspace.sh"
 fi
