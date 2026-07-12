@@ -58,6 +58,34 @@ ros2 run lgh_st3215_tools st3215_preflight \
 
 Continue with [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.md).
 
+
+
+# LittleGreen Ubuntu 22.04 x86_64 installer
+
+
+```bash
+cd ~/littlegreen_ros2_ws
+chmod +x scripts/install_ubuntu_x86_64.sh scripts/install_onnxruntime_x86_64.sh
+./scripts/install_ubuntu_x86_64.sh
+```
+
+Supported options:
+
+```text
+--skip-ros
+--skip-onnx
+--skip-build
+--no-bashrc
+```
+
+The default ONNX Runtime path is:
+
+```text
+~/libs/onnxruntime-linux-x64-1.22.0
+```
+
+This installer uses ROS 2 Humble `ros-base` and does not install Gazebo.
+
 ## Driver profiles
 
 Profiles select the ROS publication surface. They do **not** enable writes or change bus timing, register reads, joint mapping, or the ST3215 motion profile.
