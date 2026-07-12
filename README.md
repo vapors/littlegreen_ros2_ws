@@ -60,7 +60,7 @@ Continue with [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.m
 
 
 
-# LittleGreen Ubuntu 22.04 x86_64 installer
+### ShadowMode (for Isaac Sim ) LittleGreen Ubuntu 22.04 x86_64 installer
 
 
 ```bash
@@ -83,6 +83,9 @@ The default ONNX Runtime path is:
 ```text
 ~/libs/onnxruntime-linux-x64-1.22.0
 ```
+
+[ add more about shadow mode and launcher here ]
+
 
 This installer uses ROS 2 Humble `ros-base` and does not install Gazebo.
 
