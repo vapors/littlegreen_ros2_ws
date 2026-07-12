@@ -50,9 +50,22 @@ ros2 run lgh_st3215_tools hardware_snapshot
 
 ## 4. Validate the IMU boundary
 
+Launch IMU micro - ROS agent
+
 ```bash
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 115200 -v0 
+```
+and validate topics
+/imu/data
+
+```bash
+ros2 topic echo /imu/data --once
+```
+Perform orientation audit and preflight
+
+```bash
+ros2 run lgh_imu_tools stationary_characterization --duration-sec 10
 ros2 run lgh_imu_tools imu_preflight
-ros2 run lgh_imu_tools stationary_characterization --duration-sec 20
 ```
 
 Perform the orientation audit after any sensor, mounting, transport, or driver change.
