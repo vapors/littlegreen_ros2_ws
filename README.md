@@ -10,7 +10,7 @@ The current source release is recorded in [`VERSION`](VERSION). This repository 
 | `lgh_st3215_tools` | Guarded calibration, characterization, preflight, auditing, and datasets |
 | `lgh_st3215_maintenance` | Offline read-only direct-bus inspection; the driver must be stopped |
 | `lgh_imu_tools` | Source-independent validation of the canonical `/imu/data` interface |
-| `littlegreen_biped_pkg` | Observation construction, ONNX inference, and live/shadow/disabled policy output |
+| `littlegreen_biped_pkg` | Observation construction, action-contract-v3 validation, ONNX inference, and live/shadow/disabled policy output |
 | `pd_controller_pkg` | Safety filtering and optional outer-loop command shaping |
 | `littlegreen_description` | Robot description and visualization resources |
 
@@ -37,6 +37,8 @@ Then verify the software installation:
 ```
 
 Full instructions: [`docs/INSTALL_ORANGE_PI.md`](docs/INSTALL_ORANGE_PI.md)
+
+For an Ubuntu 22.04 x86_64 development host, use [`docs/INSTALL_UBUNTU_X86_64.md`](docs/INSTALL_UBUNTU_X86_64.md).
 
 ### First feedback-only launch
 
@@ -119,6 +121,7 @@ Most-used pages:
 - [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.md) — staged acceptance gates
 - [`docs/COMMAND_CHEATSHEET.md`](docs/COMMAND_CHEATSHEET.md) — common commands
 - [`docs/INTERFACES_AND_PARAMETERS.md`](docs/INTERFACES_AND_PARAMETERS.md) — launch arguments, profiles, topics, services, and parameters
+- [`docs/LIVE_POLICY_DEPLOYMENT.md`](docs/LIVE_POLICY_DEPLOYMENT.md) — paired policy installation, shadow validation, and guarded live launch sequence
 - [`docs/CALIBRATION_WORKFLOW.md`](docs/CALIBRATION_WORKFLOW.md) — guarded center calibration
 - [`docs/HARDWARE_CONTRACT.md`](docs/HARDWARE_CONTRACT.md) — authoritative joint limits and runtime ownership
 - [`docs/SAFETY_AND_LIMITATIONS.md`](docs/SAFETY_AND_LIMITATIONS.md) — current boundaries and deferred work
@@ -128,7 +131,8 @@ Historical release and migration records remain available under `docs/archive/` 
 
 ## Supported deployment baseline
 
-- Orange Pi 5 Max, aarch64
+- Orange Pi 5 Max, aarch64, for robot deployment
+- Ubuntu 22.04 x86_64, for host-side build and policy inspection
 - Ubuntu 22.04 Jammy
 - ROS 2 Humble
 - ONNX Runtime C/C++ 1.22.0

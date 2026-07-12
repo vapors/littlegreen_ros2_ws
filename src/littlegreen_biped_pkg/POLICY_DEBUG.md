@@ -16,7 +16,7 @@ Type: `std_msgs/msg/Float64MultiArray`
 6:9    projected gravity
 9:21   q - q_default
 21:33  qdot
-33:45  previous clipped raw action
+33:45  previous bounded normalized action
 ```
 
 ## `/policy_debug/raw_action`
@@ -30,7 +30,7 @@ Raw action after action-limit clipping.
 ## `/policy_debug/target_unclipped`
 
 ```text
-q_default + action_scale * clipped_raw_action
+q_default + action_residual_scale_rad * clipped_raw_action
 ```
 
 before physical joint-limit clipping.

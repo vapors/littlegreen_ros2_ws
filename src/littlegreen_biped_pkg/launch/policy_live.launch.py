@@ -1,15 +1,14 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    pd_share = FindPackageShare('pd_controller_pkg')
-    teleop_share = FindPackageShare('teleop_twist_joy')
     biped_share = FindPackageShare('littlegreen_biped_pkg')
+    pd_share = FindPackageShare('pd_controller_pkg')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -23,76 +22,34 @@ def generate_launch_description():
             description='Policy freshness, safety, and IMU extrinsic parameters.',
         ),
         DeclareLaunchArgument(
-            'onnx_model_path',
-            default_value='',
-            description='Optional explicit ONNX override.',
-        ),
-        DeclareLaunchArgument(
             'joint_map',
             default_value=[biped_share, '/configs/joint_map.yaml'],
-            description='Canonical LittleGreen joint map.',
+            description='Canonical LittleGreen joint order, defaults, and physical bounds.',
+        ),
+        DeclareLaunchArgument(
+            'onnx_model_path',
+            default_value='',
+            description='Optional explicit ONNX override. Empty uses the model paired with policy_config.',
         ),
         DeclareLaunchArgument(
             'pd_config',
             default_value=[pd_share, '/config/pd_config.yaml'],
-            description='Downstream safety and command-shaping parameters.',
+            description='Downstream safety and command-shaping configuration.',
         ),
         DeclareLaunchArgument(
             'controller_mode',
             default_value='safety_only',
-            description='safety_only, outer_pd, or outer_pid.',
-        ),
-        DeclareLaunchArgument(
-            'teleop_config',
-            default_value=[teleop_share, '/config/shanwan.config.yaml'],
-            description='Joystick mapping.',
+            description='Initial live deployment must use safety_only. outer_pd/outer_pid are experimental.',
         ),
         DeclareLaunchArgument(
             'use_sim',
             default_value='false',
-            description='Use simulation QoS/data behavior.',
+            description='Use simulation QoS/data behavior when true.',
         ),
         DeclareLaunchArgument(
             'override_imu',
             default_value='false',
-            description='Use nominal IMU values instead of /imu/data.',
-        ),
-        DeclareLaunchArgument(
-            'policy_output_mode',
-            default_value='live',
-            description='Policy output mode: live, shadow, or disabled.',
-        ),
-        Node(
-            package='joy',
-            executable='joy_node',
-            name='joy_node',
-            output='screen',
-        ),
-        Node(
-            package='teleop_twist_joy',
-            executable='teleop_node',
-            name='teleop_twist_joy_node',
-            output='screen',
-            parameters=[LaunchConfiguration('teleop_config')],
-            remappings=[('/cmd_vel', '/cmd_vel_joy')],
-        ),
-        Node(
-            package='teleop_twist_keyboard',
-            executable='teleop_twist_keyboard',
-            name='teleop_twist_keyboard',
-            output='screen',
-            prefix='xterm -e',
-            remappings=[('/cmd_vel', '/cmd_vel_keyboard')],
-        ),
-        Node(
-            package='twist_mux',
-            executable='twist_mux',
-            name='twist_mux',
-            output='screen',
-            parameters=[
-                PathJoinSubstitution([biped_share, 'configs', 'twist_mux.yaml'])
-            ],
-            remappings=[('/cmd_vel_out', '/command_velocity')],
+            description='Use nominal IMU values instead of /imu/data. Not recommended for live hardware.',
         ),
         Node(
             package='littlegreen_biped_pkg',
@@ -109,15 +66,9 @@ def generate_launch_description():
                     'policy_config_path': LaunchConfiguration('policy_config'),
                     'joint_map_path': LaunchConfiguration('joint_map'),
                     'onnx_model_path': LaunchConfiguration('onnx_model_path'),
-                    'policy_output_mode': LaunchConfiguration('policy_output_mode'),
+                    'policy_output_mode': 'live',
                 },
             ],
-        ),
-        Node(
-            package='joystick_bridge',
-            executable='cmd_vel_to_file',
-            name='cmd_vel_to_file_node',
-            output='screen',
         ),
         Node(
             package='pd_controller_pkg',

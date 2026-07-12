@@ -212,7 +212,7 @@ ros2 topic echo /policy_status --once
 - policy readiness/status is observable;
 - no servo command authority is created by shadow mode.
 
-The packaged policy is for software and shadow validation until the formal Track 1 deployment bundle is paired and audited.
+For a deployed action-contract-v3 bundle, startup must report successful contract validation against `joint_map.yaml` and successful ONNX checksum verification. Complete the live sequence only through [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
 ## Gate 11 — guarded write-enabled work
 

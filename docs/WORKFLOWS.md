@@ -150,18 +150,26 @@ ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 
 Verify the policy does not publish `/desired_position`.
 
-## 10. Future live-policy gate
-
-Live policy motion is deferred until the Track 1 deployment bundle is paired with the hardware workspace and the observation/action contract is audited.
-
-The initial live path should use:
+## 10. Guarded live policy
 
 ```text
-validated policy bundle
-→ policy shadow
-→ safety_only controller mode
+paired action-contract-v3 YAML + ONNX
+→ package-only rebuild
+→ runtime-safe driver and IMU preflight with writes disabled
+→ policy shadow acceptance
+→ runtime-safe driver preflight with writes enabled
+→ policy_live.launch.py with safety_only
 → guarded zero-command standing
 → short supervised run windows
 ```
 
-Do not begin with aggressive `outer_pd` or `outer_pid` tuning.
+Launch the explicit live stack with:
+
+```bash
+ros2 launch littlegreen_biped_pkg policy_live.launch.py \
+  controller_mode:=safety_only
+```
+
+The complete deployment and stop sequence is documented in [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
+
+Do not begin with `outer_pd` or `outer_pid` tuning.

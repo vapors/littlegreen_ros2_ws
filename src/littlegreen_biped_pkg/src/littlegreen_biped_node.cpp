@@ -3,6 +3,7 @@
 //
 // Responsibilities:
 //   - Load a paired deployment YAML + ONNX policy artifact.
+//   - Validate action-contract-v3 defaults, bounds, and action mapping against joint_map.yaml.
 //   - Build the exact 45-element observation vector used during training.
 //   - Apply the physical IMU-frame -> base-frame extrinsic transform.
 //   - Gate inference on complete, fresh, finite sensor data.
@@ -578,6 +579,52 @@ private:
         return values;
     }
 
+    static std::vector<int> load_int_vector(
+        const YAML::Node& node,
+        size_t expected_size,
+        const std::string& field_name)
+    {
+        if (!node || !node.IsSequence()) {
+            throw std::runtime_error("Missing or non-sequence YAML field: " + field_name);
+        }
+
+        std::vector<int> values;
+        values.reserve(node.size());
+        for (const auto& value : node) {
+            values.push_back(value.as<int>());
+        }
+        if (values.size() != expected_size) {
+            throw std::runtime_error(
+                "YAML field size mismatch for " + field_name +
+                ": expected " + std::to_string(expected_size) +
+                ", got " + std::to_string(values.size()));
+        }
+        return values;
+    }
+
+    static std::vector<std::string> load_string_vector(
+        const YAML::Node& node,
+        size_t expected_size,
+        const std::string& field_name)
+    {
+        if (!node || !node.IsSequence()) {
+            throw std::runtime_error("Missing or non-sequence YAML field: " + field_name);
+        }
+
+        std::vector<std::string> values;
+        values.reserve(node.size());
+        for (const auto& value : node) {
+            values.push_back(value.as<std::string>());
+        }
+        if (values.size() != expected_size) {
+            throw std::runtime_error(
+                "YAML field size mismatch for " + field_name +
+                ": expected " + std::to_string(expected_size) +
+                ", got " + std::to_string(values.size()));
+        }
+        return values;
+    }
+
     void load_policy_config(const std::string& config_path)
     {
         RCLCPP_INFO(this->get_logger(), "Loading policy config from: %s", config_path.c_str());
@@ -598,19 +645,96 @@ private:
             policy_config_["action_limit_lower"], num_actions_, "action_limit_lower");
         action_limit_upper_ = load_float_vector(
             policy_config_["action_limit_upper"], num_actions_, "action_limit_upper");
-        action_scale_ = load_float_vector(
-            policy_config_["action_scale"], num_actions_, "action_scale");
+
+        if (policy_config_["action_contract_version"]) {
+            action_contract_version_ = policy_config_["action_contract_version"].as<int>();
+            if (action_contract_version_ != 3) {
+                throw std::runtime_error(
+                    "Unsupported action_contract_version: " +
+                    std::to_string(action_contract_version_) + ". Expected 3.");
+            }
+
+            if (!policy_config_["action_transform"]) {
+                throw std::runtime_error(
+                    "Action contract v3 is missing required YAML field: action_transform");
+            }
+            action_transform_ = policy_config_["action_transform"].as<std::string>();
+            if (action_transform_ != "bounded_default_centered_symmetric_residual") {
+                throw std::runtime_error(
+                    "Unsupported action contract v3 transform: " + action_transform_);
+            }
+
+            action_residual_scale_rad_ = load_float_vector(
+                policy_config_["action_residual_scale_rad"],
+                num_actions_,
+                "action_residual_scale_rad");
+            exported_action_default_rad_ = load_float_vector(
+                policy_config_["action_default_rad"],
+                num_actions_,
+                "action_default_rad");
+            exported_action_target_lower_rad_ = load_float_vector(
+                policy_config_["action_target_lower_rad"],
+                num_actions_,
+                "action_target_lower_rad");
+            exported_action_target_upper_rad_ = load_float_vector(
+                policy_config_["action_target_upper_rad"],
+                num_actions_,
+                "action_target_upper_rad");
+            exported_action_indices_ = load_int_vector(
+                policy_config_["action_indices"], num_actions_, "action_indices");
+
+            const size_t num_joints = policy_config_["num_joints"]
+                ? policy_config_["num_joints"].as<size_t>() : 0U;
+            if (num_joints == 0U) {
+                throw std::runtime_error(
+                    "Action contract v3 requires a positive num_joints field");
+            }
+            exported_sim_joint_names_ = load_string_vector(
+                policy_config_["joints"], num_joints, "joints");
+            exported_sim_default_joint_positions_ = load_float_vector(
+                policy_config_["default_joint_positions"],
+                num_joints,
+                "default_joint_positions");
+
+            if (!policy_config_["previous_action_observation"]) {
+                throw std::runtime_error(
+                    "Action contract v3 is missing required YAML field: previous_action_observation");
+            }
+            previous_action_observation_ =
+                policy_config_["previous_action_observation"].as<std::string>();
+            if (previous_action_observation_ != "bounded_normalized_action") {
+                throw std::runtime_error(
+                    "Unsupported previous_action_observation for action contract v3: " +
+                    previous_action_observation_);
+            }
+        } else {
+            action_contract_version_ = 0;
+            action_transform_ = "legacy_default_centered_scale";
+            action_residual_scale_rad_ = load_float_vector(
+                policy_config_["action_scale"], num_actions_, "action_scale");
+            RCLCPP_WARN(
+                this->get_logger(),
+                "Legacy policy action schema detected (no action_contract_version). "
+                "Use a paired action-contract-v3 deployment bundle for current hardware policy work.");
+        }
 
         for (size_t i = 0; i < num_actions_; ++i) {
             if (action_limit_lower_[i] > action_limit_upper_[i]) {
                 throw std::runtime_error("action limit lower > upper at index " + std::to_string(i));
             }
+            if (!(action_residual_scale_rad_[i] > 0.0f)) {
+                throw std::runtime_error(
+                    "action residual scale must be positive at index " + std::to_string(i));
+            }
         }
 
         RCLCPP_INFO(
             this->get_logger(),
-            "Policy config loaded: num_observations=%zu, num_actions=%zu, policy_dt=%.3f",
-            num_observations_, num_actions_, policy_dt_);
+            "Policy config loaded: num_observations=%zu, num_actions=%zu, policy_dt=%.3f, action_contract=%s",
+            num_observations_,
+            num_actions_,
+            policy_dt_,
+            action_contract_version_ == 3 ? "v3" : "legacy");
     }
 
     void load_joint_map(const std::string& joint_map_path)
@@ -708,15 +832,115 @@ private:
 
         const size_t n = num_actions_;
         if (joint_names_.size() != n ||
+            sim_joint_indices_.size() != n ||
             micro_ros_array_indices_.size() != n ||
             default_joint_positions_.size() != n ||
             joint_lower_limits_.size() != n ||
             joint_upper_limits_.size() != n ||
-            action_scale_.size() != n ||
+            action_residual_scale_rad_.size() != n ||
             action_limit_lower_.size() != n ||
             action_limit_upper_.size() != n) {
             throw std::runtime_error("joint map / policy vector size mismatch");
         }
+
+        if (action_contract_version_ != 3) {
+            return;
+        }
+
+        if (exported_action_default_rad_.size() != n ||
+            exported_action_target_lower_rad_.size() != n ||
+            exported_action_target_upper_rad_.size() != n ||
+            exported_action_indices_.size() != n) {
+            throw std::runtime_error("action contract v3 vector size mismatch");
+        }
+
+        constexpr float tolerance_rad = 1.0e-5f;
+        const auto require_close = [tolerance_rad](
+            float exported,
+            float hardware,
+            const std::string& field,
+            const std::string& joint_name,
+            size_t index) {
+            if (std::fabs(exported - hardware) > tolerance_rad) {
+                std::ostringstream stream;
+                stream << std::setprecision(10)
+                       << "Policy/joint-map mismatch for " << field
+                       << " at action[" << index << "] " << joint_name
+                       << ": exported=" << exported
+                       << ", joint_map=" << hardware
+                       << ", tolerance=" << tolerance_rad;
+                throw std::runtime_error(stream.str());
+            }
+        };
+
+        for (size_t i = 0; i < n; ++i) {
+            if (exported_action_indices_[i] != sim_joint_indices_[i]) {
+                throw std::runtime_error(
+                    "Policy/joint-map action_indices mismatch at action[" +
+                    std::to_string(i) + "] " + joint_names_[i] +
+                    ": exported sim index " + std::to_string(exported_action_indices_[i]) +
+                    ", joint_map sim index " + std::to_string(sim_joint_indices_[i]));
+            }
+
+            const int sim_index = exported_action_indices_[i];
+            if (sim_index < 0 ||
+                static_cast<size_t>(sim_index) >= exported_sim_joint_names_.size() ||
+                static_cast<size_t>(sim_index) >= exported_sim_default_joint_positions_.size()) {
+                throw std::runtime_error(
+                    "Policy action_indices contains out-of-range sim index at action[" +
+                    std::to_string(i) + "]");
+            }
+
+            if (exported_sim_joint_names_[static_cast<size_t>(sim_index)] != joint_names_[i]) {
+                throw std::runtime_error(
+                    "Policy/joint-map joint-name mismatch at action[" +
+                    std::to_string(i) + "]: exported=" +
+                    exported_sim_joint_names_[static_cast<size_t>(sim_index)] +
+                    ", joint_map=" + joint_names_[i]);
+            }
+
+            require_close(
+                exported_action_default_rad_[i],
+                default_joint_positions_[i],
+                "action_default_rad",
+                joint_names_[i],
+                i);
+            require_close(
+                exported_sim_default_joint_positions_[static_cast<size_t>(sim_index)],
+                default_joint_positions_[i],
+                "default_joint_positions[action_indices]",
+                joint_names_[i],
+                i);
+            require_close(
+                exported_action_target_lower_rad_[i],
+                joint_lower_limits_[i],
+                "action_target_lower_rad",
+                joint_names_[i],
+                i);
+            require_close(
+                exported_action_target_upper_rad_[i],
+                joint_upper_limits_[i],
+                "action_target_upper_rad",
+                joint_names_[i],
+                i);
+
+            if (std::fabs(action_limit_lower_[i] + 1.0f) > tolerance_rad ||
+                std::fabs(action_limit_upper_[i] - 1.0f) > tolerance_rad) {
+                throw std::runtime_error(
+                    "Action contract v3 requires normalized action limits [-1, 1] at action[" +
+                    std::to_string(i) + "] " + joint_names_[i]);
+            }
+            if (exported_action_target_lower_rad_[i] > exported_action_default_rad_[i] ||
+                exported_action_default_rad_[i] > exported_action_target_upper_rad_[i]) {
+                throw std::runtime_error(
+                    "Action contract v3 default is outside physical bounds at action[" +
+                    std::to_string(i) + "] " + joint_names_[i]);
+            }
+        }
+
+        RCLCPP_INFO(
+            this->get_logger(),
+            "Action contract v3 validated against joint_map.yaml: defaults, physical bounds, joint names, and action indices match.");
     }
 
     void initialize_state_storage()
@@ -1273,7 +1497,7 @@ private:
             const float clipped_raw = clamp_float(
                 raw_actions[i], action_limit_lower_[i], action_limit_upper_[i]);
             const float target_unclipped =
-                default_joint_positions_[i] + action_scale_[i] * clipped_raw;
+                default_joint_positions_[i] + action_residual_scale_rad_[i] * clipped_raw;
             const float target_clipped = clamp_float(
                 target_unclipped, joint_lower_limits_[i], joint_upper_limits_[i]);
 
@@ -1579,7 +1803,16 @@ private:
     std::vector<float> joint_upper_limits_;
     std::vector<float> action_limit_lower_;
     std::vector<float> action_limit_upper_;
-    std::vector<float> action_scale_;
+    int action_contract_version_ = 0;
+    std::string action_transform_;
+    std::string previous_action_observation_;
+    std::vector<float> action_residual_scale_rad_;
+    std::vector<float> exported_action_default_rad_;
+    std::vector<float> exported_action_target_lower_rad_;
+    std::vector<float> exported_action_target_upper_rad_;
+    std::vector<int> exported_action_indices_;
+    std::vector<std::string> exported_sim_joint_names_;
+    std::vector<float> exported_sim_default_joint_positions_;
 
     mutable std::mutex state_mutex_;
     std::vector<float> prev_actions_;

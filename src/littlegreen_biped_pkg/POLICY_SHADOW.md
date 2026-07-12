@@ -37,4 +37,6 @@ ros2 topic echo /policy_status --once
 ros2 topic hz /policy_shadow/desired_position
 ```
 
-The packaged policy remains a workspace snapshot. Pair and audit the formal Track 1 deployment bundle before using shadow results to authorize live hardware commands.
+For action contract v3, node startup verifies the exported residual scale, defaults, physical bounds, joint names, and action indices against `joint_map.yaml`, then verifies the ONNX checksum. Any mismatch is fatal.
+
+After shadow acceptance, use `policy_live.launch.py` with `controller_mode:=safety_only`. The complete sequence is documented in the workspace page `docs/LIVE_POLICY_DEPLOYMENT.md`.

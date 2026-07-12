@@ -2,8 +2,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>littlegreen_biped_pkg</name>
-  <version>0.3.1</version>
-  <description>Motor controller and inference package for LittleGreen Biped</description>
+  <version>0.4.0</version>
+  <description>LittleGreen policy inference, action-contract validation, shadow/live launch, and deployment package</description>
 
   <maintainer email="scott.milich@me.com">scott</maintainer>
   <license>Apache-2.0</license>

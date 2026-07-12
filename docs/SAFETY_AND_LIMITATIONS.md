@@ -47,7 +47,7 @@ The dedicated shadow launch starts only the policy node and publishes proposed t
 
 It does not create a policy publisher on `/desired_position`.
 
-The packaged policy remains suitable for software and shadow validation. Live policy motion should wait for the formal Track 1 deployment bundle and hardware-side contract audit.
+Live policy motion requires a paired Track 1 YAML/ONNX bundle, successful action-contract-v3 validation against `joint_map.yaml`, checksum verification, driver and IMU preflight, and an accepted shadow run. Use [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
 ## Use the dedicated shadow launch
 
@@ -61,7 +61,7 @@ ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 
 ## Aggressive outer PD is deferred
 
-`pd_controller_pkg` supports `safety_only`, `outer_pd`, and `outer_pid`. Initial deployment comparison should use shadow mode and then the existing `safety_only` path after the policy bundle is validated.
+`pd_controller_pkg` supports `safety_only`, `outer_pd`, and `outer_pid`. Initial live deployment must use shadow mode followed by the `safety_only` path after the policy bundle is validated.
 
 Do not interpret the current outer-loop gains as identified physical stiffness or damping.
 

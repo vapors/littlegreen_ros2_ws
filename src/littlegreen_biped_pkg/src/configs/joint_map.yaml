@@ -1,12 +1,13 @@
 # LittleGreen canonical sim-to-real joint map.
-# v2.5: canonical joint limits synchronized to the measured hardware contract.
+#
+# The joints[] section is authoritative for policy action order, training
+# defaults, and physical hardware bounds. Policy timing, residual scale, and
+# artifact identity are supplied by the paired deployment policy YAML.
 # lgh_st3215_driver/config/servo_map.yaml remains authoritative for native
-# ST3215 conversion and clamping; this map is authoritative for policy-node and
-# pd_controller_pkg target clamping in canonical ROS joint radians.
+# ST3215 conversion and final servo-step clamping.
 
-schema_version: 1
+schema_version: 2
 robot: LittleGreen
-isaac_task: Velocity-Lilgreen-Humanoid-v0
 policy_interface:
   onnx_input_name: obs
   onnx_input_shape:
@@ -16,11 +17,13 @@ policy_interface:
   onnx_output_shape:
   - 1
   - 12
-  policy_dt: 0.04
-  control_dt: 0.04
-  action_type: relative_joint_position
-  action_scale: 0.25
-  action_formula: target_joint_rad = default_joint_rad + action_scale * clipped_raw_action
+  action_contract_version: 3
+  action_transform: bounded_default_centered_symmetric_residual
+  action_formula: q_target = clip(q_default + clip(a_raw, -1, 1) * action_residual_scale_rad, physical_lower, physical_upper)
+  previous_action_observation: bounded_normalized_action
+  policy_timing_source: paired policy YAML
+  action_residual_scale_source: paired policy YAML
+  physical_bounds_source: joints[].limit_lower_rad and joints[].limit_upper_rad
   observation_layout:
     command_velocity:
     - 0
@@ -40,13 +43,11 @@ policy_interface:
     joint_velocity:
     - 21
     - 32
-    previous_raw_action:
+    previous_bounded_normalized_action:
     - 33
     - 44
   policy_checkpoint_relative_path: policy.onnx
   policy_checkpoint_filename: policy.onnx
-  physics_dt: 0.005
-  decimation: 8
   action_indices:
   - 0
   - 1
@@ -60,8 +61,6 @@ policy_interface:
   - 10
   - 11
   - 12
-  action_limit_lower: -10000
-  action_limit_upper: 10000
   sim_num_joints: 14
   sim_joint_order:
   - leg_left_hip_roll_joint
@@ -93,20 +92,14 @@ policy_interface:
   - -0.3
   - 0.0
   - 0.0
-  note_command_velocity: policy.yaml contains an exported command_velocity sample; deployment should overwrite obs[0:3] with live command velocity,
-    not hard-code that sample.
+  note_command_velocity: The exported policy YAML may contain a sampled command_velocity value. Runtime always supplies obs[0:3] from /command_velocity or the configured timeout behavior.
+
 ros_interface:
   canonical_joint_state_topic: /joint_states
-  canonical_policy_command_topic: /desired_joint_position
+  canonical_policy_command_topic: /desired_position
   canonical_policy_command_units: radians
-  recommended_servo_command_topic: /servo_position_speed
-  recommended_servo_command_layout:
-  - pos0_steps
-  - speed0
-  - pos1_steps
-  - speed1
-  - '...'
-  note: Keep ROS-level policy commands in radians; convert to ST3215 steps only at the ESP32/servo layer.
+  servo_command_topic: /servo_target_radians
+  note: Keep policy and controller commands in canonical joint radians. Convert and clamp to ST3215 steps only in lgh_st3215_driver.
 servo_bus:
   model: ST3215
   protocol: Feetech STS / SCServo
@@ -376,11 +369,3 @@ joints:
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
   policy_effort_limit: 6.0
-source_policy_yaml:
-  exported_at: '2026-07-01T20:49:25'
-  task: Velocity-Lilgreen-Humanoid-v0
-  checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/humanoid/2026-07-01_20-33-02_resume_seed42_from_15000/model_15999.pt
-  export_dir: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/humanoid/2026-07-01_20-33-02_resume_seed42_from_15000/exported
-  policy_checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/humanoid/2026-07-01_20-33-02_resume_seed42_from_15000/exported/policy.onnx
-  policy_checkpoint_relative_path: policy.onnx
-  policy_checkpoint_filename: policy.onnx

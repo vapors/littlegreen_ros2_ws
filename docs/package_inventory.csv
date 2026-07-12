@@ -12,7 +12,7 @@ lgh_imu_tools,0.2.0,ament_python,src/lgh_imu_tools,active,,Source-independent va
 lgh_st3215_driver,0.3.1,ament_cmake,src/lgh_st3215_driver,active,,Sole normal runtime owner of the LittleGreen ST3215 UART bus.
 lgh_st3215_maintenance,0.2.1,ament_cmake,src/lgh_st3215_maintenance,active,,Offline read-only ST3215 bus inspection and control-table backup tools.
 lgh_st3215_tools,0.2.1,ament_python,src/lgh_st3215_tools,active,,"Guarded calibration, characterization, preflight, auditing, and dataset tools."
-littlegreen_biped_pkg,0.3.1,ament_cmake,src/littlegreen_biped_pkg,active,,"LittleGreen observation construction, ONNX inference, and live/shadow/disabled policy output."
+littlegreen_biped_pkg,0.4.0,ament_cmake,src/littlegreen_biped_pkg,active,,"LittleGreen observation construction, action-contract-v3 validation, ONNX inference, and live/shadow/disabled policy output."
 littlegreen_description,0.1.0,ament_python,src/littlegreen_description,active,,"LittleGreen URDF, meshes, RViz resources, and optional legacy Gazebo files."
 pd_controller_pkg,0.2.0,ament_python,src/pd_controller_pkg,active,,Safety filtering and optional outer-loop shaping for LittleGreen joint targets.
 teleop_twist_joy,2.4.8,ament_cmake,src/teleop_twist_joy,active,,Generic joystick teleop for twist robots.

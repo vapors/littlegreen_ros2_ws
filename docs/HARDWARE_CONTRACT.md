@@ -18,6 +18,12 @@ The active ROS 2 control path uses the measured 12-joint LittleGreen hardware en
 
 The URDF is not the final servo safety clamp.
 
+## Action-contract-v3 deployment check
+
+For a v3 policy bundle, `littlegreen_biped_node` compares the exported action defaults and physical target bounds against the `joints[]` section of `joint_map.yaml` before loading the ONNX session. It also checks action indices and selected simulation joint names. Any mismatch is fatal.
+
+Policy timing and `action_residual_scale_rad` are supplied by the paired policy YAML; they are intentionally not duplicated as runtime authority in `joint_map.yaml`.
+
 ## Canonical joint order and safe limits
 
 | Index | Joint | Lower rad | Upper rad |

@@ -43,7 +43,15 @@ if [[ -f /opt/ros/humble/setup.bash ]]; then
   fi
 fi
 
-ORT_DIR="${ONNXRUNTIME_DIR:-$HOME/libs/onnxruntime-linux-aarch64-1.22.0}"
+if [[ -n "${ONNXRUNTIME_DIR:-}" ]]; then
+  ORT_DIR="$ONNXRUNTIME_DIR"
+else
+  case "$(uname -m)" in
+    aarch64|arm64) ORT_DIR="$HOME/libs/onnxruntime-linux-aarch64-1.22.0" ;;
+    x86_64|amd64) ORT_DIR="$HOME/libs/onnxruntime-linux-x64-1.22.0" ;;
+    *) ORT_DIR="$HOME/libs/onnxruntime-unsupported-architecture" ;;
+  esac
+fi
 [[ -f "$ORT_DIR/include/onnxruntime_cxx_api.h" ]] && pass "ONNX Runtime headers found" || error "missing ONNX Runtime headers at $ORT_DIR"
 [[ -f "$ORT_DIR/lib/libonnxruntime.so" ]] && pass "ONNX Runtime shared library found" || error "missing ONNX Runtime library at $ORT_DIR"
 export LD_LIBRARY_PATH="$ORT_DIR/lib:${LD_LIBRARY_PATH:-}"

@@ -3,7 +3,22 @@ set -euo pipefail
 
 WORKSPACE="${LITTLEGREEN_ROS2_WS:-$HOME/littlegreen_ros2_ws}"
 ORT_VERSION="${ONNXRUNTIME_VERSION:-1.22.0}"
-ORT_DIR="${ONNXRUNTIME_DIR:-$HOME/libs/onnxruntime-linux-aarch64-${ORT_VERSION}}"
+if [[ -n "${ONNXRUNTIME_DIR:-}" ]]; then
+  ORT_DIR="$ONNXRUNTIME_DIR"
+else
+  case "$(uname -m)" in
+    aarch64|arm64)
+      ORT_DIR="$HOME/libs/onnxruntime-linux-aarch64-${ORT_VERSION}"
+      ;;
+    x86_64|amd64)
+      ORT_DIR="$HOME/libs/onnxruntime-linux-x64-${ORT_VERSION}"
+      ;;
+    *)
+      echo "ERROR: Unsupported architecture $(uname -m); set ONNXRUNTIME_DIR explicitly." >&2
+      exit 5
+      ;;
+  esac
+fi
 CONFIG_DIR="$HOME/.config/littlegreen"
 ENV_FILE="$CONFIG_DIR/ros2_env.sh"
 BASHRC="$HOME/.bashrc"

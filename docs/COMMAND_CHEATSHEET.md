@@ -211,9 +211,17 @@ ros2 run lgh_imu_tools orientation_audit \
 ros2 run lgh_imu_tools imu_recorder --duration-sec 10
 ```
 
-## Policy shadow
+## Policy deployment
 
-Run the servo driver separately in `runtime_safe` with writes disabled:
+Rebuild after replacing a policy YAML/ONNX pair:
+
+```bash
+cd ~/littlegreen_ros2_ws
+colcon build --symlink-install --packages-select littlegreen_biped_pkg
+source install/setup.bash
+```
+
+Shadow mode, with the driver separately running in `runtime_safe` and writes disabled:
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
@@ -227,6 +235,15 @@ ros2 topic echo /policy_status --once
 ros2 topic echo /policy_ready --once
 ros2 topic info /desired_position --verbose
 ```
+
+Guarded live mode, only after shadow acceptance and a write-enabled runtime preflight:
+
+```bash
+ros2 launch littlegreen_biped_pkg policy_live.launch.py \
+  controller_mode:=safety_only
+```
+
+Full sequence: [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
 ## ROS graph inspection
 

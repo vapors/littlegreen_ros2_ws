@@ -1,21 +1,23 @@
 metadata:
-  exported_at: '2026-07-01T20:49:25'
-  task: Velocity-Lilgreen-Humanoid-v0
-  checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/humanoid/2026-07-01_20-33-02_resume_seed42_from_15000/model_15999.pt
-  export_dir: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/humanoid/2026-07-01_20-33-02_resume_seed42_from_15000/exported
+  exported_at: '2026-07-12T12:48:15'
+  task: Velocity-Lilgreen-Hardware-ST3215-Loaded-v3
+  checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_0_st3215_loaded/2026-07-12_00-19-38_hardware_st3215_loaded_v143_from_stand5000_seed42/model_14999.pt
+  export_dir: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_0_st3215_loaded/2026-07-12_00-19-38_hardware_st3215_loaded_v143_from_stand5000_seed42/exported
   policy_filename: policy.onnx
   policy_format: onnx
-  policy_sha256: a09803aeda3847b46ac0ab8878ee406adaed49e1d8332be5f29496bfb6362088
-policy_checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/humanoid/2026-07-01_20-33-02_resume_seed42_from_15000/exported/policy.onnx
+  policy_sha256: 920b37466647a8340e504ea8a9d3aff18d49c6f03f321ebdda3d0c88a4fa0681
+policy_checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_0_st3215_loaded/2026-07-12_00-19-38_hardware_st3215_loaded_v143_from_stand5000_seed42/exported/policy.onnx
 policy_checkpoint_relative_path: policy.onnx
 policy_checkpoint_filename: policy.onnx
+policy_sha256: 920b37466647a8340e504ea8a9d3aff18d49c6f03f321ebdda3d0c88a4fa0681
 ip_robot_addr: 127.0.0.1
 ip_policy_obs_port: 10000
 ip_host_addr: 127.0.0.1
 ip_policy_acs_port: 10001
-control_dt: 0.04
-policy_dt: 0.04
+control_dt: 0.02
+policy_dt: 0.02
 physics_dt: 0.005
+decimation: 4
 num_joints: 14
 joints:
 - leg_left_hip_roll_joint
@@ -63,19 +65,19 @@ joint_kd:
 - 2.0
 - 0.05000000074505806
 effort_limits:
-- 6.0
-- 6.0
-- 6.0
-- 6.0
-- 6.0
-- 6.0
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
 - 9.999999747378752e-05
-- 6.0
-- 6.0
-- 6.0
-- 6.0
-- 6.0
-- 6.0
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
+- 2.940000057220459
 - 9.999999747378752e-05
 default_base_position:
 - 0.0
@@ -99,11 +101,10 @@ default_joint_positions:
 num_observations: 45
 history_length: 0
 command_velocity:
-- -0.2331652045249939
-- -0.2243705689907074
-- 0.597463846206665
+- 0.10485655069351196
+- -0.0379488542675972
+- -0.14857815206050873
 num_actions: 12
-action_scale: 0.25
 action_indices:
 - 0
 - 1
@@ -117,7 +118,243 @@ action_indices:
 - 10
 - 11
 - 12
-action_limit_lower: -10000
-action_limit_upper: 10000
-policy_sha256: a09803aeda3847b46ac0ab8878ee406adaed49e1d8332be5f29496bfb6362088
-decimation: 8
+action_contract_version: 3
+action_contract_name: bounded_default_centered_symmetric_residual
+action_transform: bounded_default_centered_symmetric_residual
+action_equation: q_target = clip(q_default + clip(a_raw,-1,1) * residual_scale_rad,
+  physical_lower, physical_upper)
+action_limit_lower: -1.0
+action_limit_upper: 1.0
+action_residual_scale_rad:
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+action_target_lower_rad:
+- -0.694893296912195
+- -0.0889708856973672
+- -1.92207792722071
+- 0.134990309333936
+- -0.809941856003619
+- -0.51388356394169
+- -0.874369049094815
+- -0.0567572891517687
+- -1.99110706267556
+- 0.171805848243192
+- -0.845223414124988
+- -0.44332044769895
+action_target_upper_rad:
+- 0.780796221033791
+- 0.644271930911969
+- 0.681087469821225
+- 2.23501000794938
+- 0.710233104791052
+- 0.912718568791956
+- 0.642737950124084
+- 0.701029220063738
+- 0.546097160487288
+- 2.24114593110092
+- 0.819145740730932
+- 1.06151470521686
+action_nominal_residual_lower_rad:
+- -0.2
+- -0.0889708856973672
+- -0.30000000000000004
+- 0.2
+- -0.5
+- -0.2
+- -0.2
+- -0.0567572891517687
+- -0.30000000000000004
+- 0.2
+- -0.5
+- -0.2
+action_nominal_residual_upper_rad:
+- 0.2
+- 0.2
+- 0.1
+- 0.6000000000000001
+- -0.09999999999999998
+- 0.2
+- 0.2
+- 0.2
+- 0.1
+- 0.6000000000000001
+- -0.09999999999999998
+- 0.2
+action_default_rad:
+- 0.0
+- 0.0
+- -0.1
+- 0.4
+- -0.3
+- 0.0
+- 0.0
+- 0.0
+- -0.1
+- 0.4
+- -0.3
+- 0.0
+previous_action_observation: bounded_normalized_action
+deployment_requires_action_contract_transform: true
+deployment_requires_action_contract_v3_transform: true
+training_actuator_model_name: berkeley_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_fast_train+track1_loaded_actuator_extension_v2:stage_b_loaded_fast_train
+training_actuator_model_stage: stage_b_loaded_v143_fast_train
+training_actuator_bus_phase_delay_s_range:
+- 0.0
+- 0.02
+training_actuator_response_delay_s_range:
+- 0.0244220505
+- 0.0489510989
+training_actuator_response_delay_scale: 0.6
+training_actuator_tau_median_s:
+- 0.0612211433357803
+- 0.05753315097324084
+- 0.0574714989321171
+- 0.05302891683983318
+- 0.054073859670749215
+- 0.05538691651516961
+- 0.054194108680670774
+- 0.05874058950153927
+- 0.05747848484523601
+- 0.0505718209627494
+- 0.05311845484702155
+- 0.05449327342549488
+training_actuator_tau_p10_s:
+- 0.047119075381686686
+- 0.049248427068473356
+- 0.04831932991060572
+- 0.046048115624422
+- 0.04287262140686741
+- 0.04699290632602462
+- 0.047123842231697396
+- 0.052519719422536686
+- 0.041503553719827925
+- 0.047610106194435016
+- 0.04067646637120415
+- 0.05050005800250108
+training_actuator_tau_p90_s:
+- 0.06442285824583682
+- 0.061003083199851524
+- 0.06219295115734977
+- 0.06035558518591397
+- 0.06340721514179626
+- 0.06473844941806041
+- 0.061694215037563366
+- 0.06437356156896673
+- 0.06091093634691331
+- 0.06444860360231222
+- 0.06451180749663984
+- 0.06456403499818139
+training_actuator_velocity_scale_range:
+- 1.04
+- 1.18
+training_actuator_special_transients_enabled: false
+deployment_actuator_model_is_training_only: true
+training_loaded_actuator_dataset_name: track1_loaded_actuator_extension_v2
+training_loaded_envelope_enabled: true
+training_loaded_envelope_combination_rule: min(stage_a_unloaded_velocity_cap, loaded_trajectory_envelope)
+training_loaded_crouch_direction_sign:
+- -1
+- 1
+- -1
+- 1
+- -1
+- 1
+- -1
+- 1
+- -1
+- 1
+- -1
+- 1
+training_loaded_crouch_low_demand_gain:
+- 0.853240864877988
+- 0.7742168144674261
+- 0.5561976464574944
+- 0.7093610570990286
+- 0.835729227211154
+- 0.7068385177542612
+- 0.853240864877988
+- 0.7742168144674261
+- 0.5561976464574944
+- 0.7093610570990286
+- 0.835729227211154
+- 0.7068385177542612
+training_loaded_crouch_vmax_rad_s:
+- 0.40581949464787187
+- 0.6443286768088556
+- 1.70053602694104
+- 1.1776129510006368
+- 0.7697119853572694
+- 0.7221514635426171
+- 0.40581949464787187
+- 0.6443286768088556
+- 1.70053602694104
+- 1.1776129510006368
+- 0.7697119853572694
+- 0.7221514635426171
+training_loaded_return_low_demand_gain:
+- 0.7717192457086172
+- 0.7080706538042757
+- 0.5687273072895153
+- 0.7146960927876614
+- 0.8157768251787225
+- 0.7100238552497466
+- 0.7717192457086172
+- 0.7080706538042757
+- 0.5687273072895153
+- 0.7146960927876614
+- 0.8157768251787225
+- 0.7100238552497466
+training_loaded_return_vmax_rad_s:
+- 0.39511696307122546
+- 0.49366834121343106
+- 1.7304575268159563
+- 1.1630749813090666
+- 0.700353006241388
+- 0.757723806246477
+- 0.39511696307122546
+- 0.49366834121343106
+- 1.7304575268159563
+- 1.1630749813090666
+- 0.700353006241388
+- 0.757723806246477
+training_loaded_direction_conditioning_weight:
+- 0
+- 0
+- 0
+- 1
+- 0
+- 0
+- 0
+- 0
+- 0
+- 1
+- 0
+- 0
+training_loaded_return_tau_scale:
+- 1
+- 1
+- 1
+- 1.1
+- 1
+- 1
+- 1
+- 1
+- 1
+- 1.1
+- 1
+- 1
+training_loaded_velocity_scale_range:
+- 1.04
+- 1.16
+training_loaded_envelope_interpretation: empirical loaded whole-body trajectory envelope;
+  not an intrinsic motor speed, torque-speed, stiffness, or damping model

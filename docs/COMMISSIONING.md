@@ -95,6 +95,8 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
 
 The policy must remain disconnected during servo identification, calibration motion, and standing characterization.
 
-## Current release gates
+## Live-policy gate
 
-Passing installation, driver, IMU, and shadow checks does not by itself authorize live policy motion. The next live-policy gate is a paired Track 1 deployment bundle and a hardware-side contract audit. Aggressive outer-PD tuning remains deferred.
+Passing installation, driver, and IMU checks does not by itself authorize live policy motion. Deploy a paired Track 1 YAML/ONNX bundle, confirm action-contract-v3 and checksum validation at node startup, complete shadow acceptance, and then follow [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
+
+Initial live deployment uses `controller_mode:=safety_only`. Aggressive outer-PD tuning remains deferred.

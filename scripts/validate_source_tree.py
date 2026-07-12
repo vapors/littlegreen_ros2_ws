@@ -112,11 +112,36 @@ required_files = [
     SRC / "lgh_st3215_tools/lgh_st3215_tools/diagnostic_compat.py",
     SRC / "littlegreen_biped_pkg/src/littlegreen_biped_node.cpp",
     SRC / "littlegreen_biped_pkg/launch/littlegreen_biped_launch.py",
+    SRC / "littlegreen_biped_pkg/launch/policy_shadow.launch.py",
+    SRC / "littlegreen_biped_pkg/launch/policy_live.launch.py",
     SRC / "littlegreen_description/urdf/littlegreen.xacro",
+    ROOT / "scripts/install_ubuntu_x86_64.sh",
+    ROOT / "scripts/install_onnxruntime_x86_64.sh",
+    ROOT / "docs/LIVE_POLICY_DEPLOYMENT.md",
+    ROOT / "docs/INSTALL_UBUNTU_X86_64.md",
 ]
 for p in required_files:
     if not p.is_file():
         errors.append(f"missing required file: {p.relative_to(ROOT)}")
+
+
+# Guard the current action-contract-v3 deployment boundary against accidental
+# regression to the legacy action_scale-only parser.
+policy_node = SRC / "littlegreen_biped_pkg/src/littlegreen_biped_node.cpp"
+if policy_node.is_file():
+    policy_text = policy_node.read_text(encoding="utf-8")
+    required_contract_tokens = [
+        'action_contract_version',
+        'action_residual_scale_rad',
+        'action_default_rad',
+        'action_target_lower_rad',
+        'action_target_upper_rad',
+        'previous_action_observation',
+        'Action contract v3 validated against joint_map.yaml',
+    ]
+    for token in required_contract_tokens:
+        if token not in policy_text:
+            errors.append(f"policy node is missing action-contract-v3 token: {token}")
 
 # The current Track 1 policy snapshot retains its historical task identifier by design.
 legacy_task = "Velocity-Lilgreen-Humanoid-v0"

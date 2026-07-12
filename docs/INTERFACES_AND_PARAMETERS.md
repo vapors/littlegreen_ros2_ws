@@ -211,9 +211,40 @@ Key options:
 
 ## 7. Policy launches
 
+The policy launch files do not start the ST3215 driver or IMU source. Those hardware authorities remain separately managed.
+
+### `policy_shadow.launch.py`
+
+Starts only `littlegreen_biped_node` with `policy_output_mode=shadow`.
+
+| Argument | Default |
+|---|---|
+| `policy_config` | packaged `policy_latest.yaml` |
+| `policy_runtime_config` | packaged `policy_runtime.yaml` |
+| `joint_map` | packaged `joint_map.yaml` |
+| `onnx_model_path` | empty |
+| `use_sim` | `false` |
+| `override_imu` | `false` |
+| `shadow_desired_position_topic` | `/policy_shadow/desired_position` |
+
+### `policy_live.launch.py`
+
+Starts `littlegreen_biped_node` in live mode and starts `pd_controller_node`. It does not start teleop.
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `policy_config` | packaged `policy_latest.yaml` | Policy YAML paired with the ONNX model |
+| `policy_runtime_config` | packaged `policy_runtime.yaml` | Freshness gates and IMU transform |
+| `joint_map` | packaged `joint_map.yaml` | Canonical joint defaults and physical bounds |
+| `onnx_model_path` | empty | Explicit model override |
+| `pd_config` | packaged `pd_config.yaml` | Downstream safety and shaping config |
+| `controller_mode` | `safety_only` | Initial live deployment must use `safety_only` |
+| `use_sim` | `false` | Simulation QoS/data behavior |
+| `override_imu` | `false` | Nominal IMU override; not recommended on live hardware |
+
 ### `littlegreen_biped_launch.py`
 
-This broader launch starts joystick input, teleop, the policy node, the command-file bridge, and `pd_controller_pkg`.
+Starts joystick input, teleop, the policy node, the command-file bridge, and `pd_controller_node`.
 
 | Argument | Default | Meaning |
 |---|---|---|
@@ -228,19 +259,34 @@ This broader launch starts joystick input, teleop, the policy node, the command-
 | `override_imu` | `false` | Inject nominal IMU values instead of `/imu/data` |
 | `policy_output_mode` | `live` | `live`, `shadow`, or `disabled` |
 
-Use the dedicated shadow launch for initial hardware observation; the broader launch still starts downstream nodes.
+### `biped_teleop_mux.launch.py`
 
-### `policy_shadow.launch.py`
+Starts joystick and keyboard teleop, `twist_mux`, the policy node, the command-file bridge, and `pd_controller_node`. Keyboard teleop is opened with `xterm`.
 
-Starts only `littlegreen_biped_node` with `policy_output_mode=shadow`.
+Use the dedicated shadow and live launch files for first hardware deployment. See [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
-| Argument | Default |
-|---|---|
-| `policy_config` | packaged `policy_latest.yaml` |
-| `policy_runtime_config` | packaged `policy_runtime.yaml` |
-| `joint_map` | packaged `joint_map.yaml` |
-| `onnx_model_path` | empty |
-| `override_imu` | `false` |
+### Action contract v3
+
+When `action_contract_version: 3` is present, `littlegreen_biped_node` requires the bounded default-centered symmetric residual transform and loads `action_residual_scale_rad` directly.
+
+The node validates the following exported fields against `joint_map.yaml` before ONNX inference starts:
+
+```text
+action_indices
+action_default_rad
+action_target_lower_rad
+action_target_upper_rad
+joints[action_indices]
+default_joint_positions[action_indices]
+```
+
+It also requires normalized action limits `[-1, 1]`, positive residual scales, and:
+
+```text
+previous_action_observation: bounded_normalized_action
+```
+
+Legacy YAML without `action_contract_version` remains readable through the older `action_scale` field, but current hardware deployment should use a paired v3 bundle.
 
 ## 8. Policy output modes
 

@@ -54,7 +54,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
 
   set(
     ONNXRUNTIME_DIR
-    "$ENV{HOME}/libs/onnxruntime-linux-x64-gpu-${ONNXRUNTIME_VERSION}"
+    "$ENV{HOME}/libs/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}"
   )
 
 else()
@@ -137,7 +137,7 @@ install(DIRECTORY src/configs
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
-install(FILES POLICY_SHADOW.md POLICY_DEBUG.md
+install(FILES POLICY_SHADOW.md POLICY_LIVE.md POLICY_DEBUG.md
   DESTINATION share/${PROJECT_NAME}
 )
 # Optional testing

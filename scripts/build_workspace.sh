@@ -57,10 +57,28 @@ if [[ ! -f /opt/ros/humble/setup.bash ]]; then
 fi
 source_setup_nounset_safe /opt/ros/humble/setup.bash
 
-ORT_DIR="${ONNXRUNTIME_DIR:-$HOME/libs/onnxruntime-linux-aarch64-1.22.0}"
+if [[ -n "${ONNXRUNTIME_DIR:-}" ]]; then
+  ORT_DIR="$ONNXRUNTIME_DIR"
+else
+  case "$(uname -m)" in
+    aarch64|arm64)
+      ORT_DIR="$HOME/libs/onnxruntime-linux-aarch64-1.22.0"
+      INSTALL_HINT="$WORKSPACE/scripts/install_onnxruntime_aarch64.sh"
+      ;;
+    x86_64|amd64)
+      ORT_DIR="$HOME/libs/onnxruntime-linux-x64-1.22.0"
+      INSTALL_HINT="$WORKSPACE/scripts/install_onnxruntime_x86_64.sh"
+      ;;
+    *)
+      echo "ERROR: Unsupported architecture $(uname -m); set ONNXRUNTIME_DIR explicitly." >&2
+      exit 4
+      ;;
+  esac
+fi
+INSTALL_HINT="${INSTALL_HINT:-set ONNXRUNTIME_DIR to a valid ONNX Runtime installation}"
 if [[ ! -f "$ORT_DIR/include/onnxruntime_cxx_api.h" || ! -f "$ORT_DIR/lib/libonnxruntime.so" ]]; then
   echo "ERROR: ONNX Runtime C/C++ package not found at $ORT_DIR" >&2
-  echo "Run: $WORKSPACE/scripts/install_onnxruntime_aarch64.sh" >&2
+  echo "Run: $INSTALL_HINT" >&2
   exit 4
 fi
 export ONNXRUNTIME_DIR="$ORT_DIR"
