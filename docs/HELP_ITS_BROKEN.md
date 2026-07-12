@@ -13,22 +13,24 @@ Also inspect the active prefix paths:
 echo "$AMENT_PREFIX_PATH" | tr ':' '\n'
 echo "$CMAKE_PREFIX_PATH" | tr ':' '\n'
 ```
-# Check whether the new workspace captured the old underlay
+## Check whether the new workspace captured the old underlay
 
+
+```bash
 grep -RnsE \
   'berkeley_ros2_ws|bhl_st3215_driver|berkeley_biped_pkg|lilgreen_description' \
   ~/littlegreen_ros2_ws/install/setup.* \
   ~/littlegreen_ros2_ws/install/_local_setup_util_* \
   2>/dev/null
 ``` 
-# If that prints an old path such as:
+## If that prints an old path such as:
 
 ```bash
 /home/scott/berkeley_ros2_ws/install
 then the LittleGreen workspace was built on top of the old overlay. Removing a line from ~/.bashrc will not fix the generated setup files; the workspace needs a clean rebuild from a clean ROS environment.
 # Clean rebuild without inherited overlays
 ```
-# Start a sterile shell:
+## Start a sterile shell:
 
 ```bash
 env -i \
@@ -41,7 +43,7 @@ env -i \
   LANG="${LANG:-en_US.UTF-8}" \
   bash --noprofile --norc
 ```
-# Inside that clean shell:
+## Inside that clean shell:
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -61,7 +63,7 @@ colcon build \
   --symlink-install \
   --event-handlers console_direct+
 ```
-# Then test before sourcing anything else:
+## Then test before sourcing anything else:
 
 ```bash
 source ~/littlegreen_ros2_ws/install/setup.bash
@@ -70,7 +72,7 @@ ros2 pkg prefix lgh_st3215_driver
 ros2 pkg prefix littlegreen_biped_pkg
 ros2 pkg prefix littlegreen_description
 ```
-# The old names should now fail with “package not found”:
+## The old names should now fail with “package not found”:
 
 ```bash
 ros2 pkg prefix bhl_st3215_driver
@@ -87,7 +89,7 @@ exit
 
 Then close the original terminal and open a new one.
 
-# Check the LittleGreen environment file
+## Check the LittleGreen environment file
 
 It should source only ROS Humble and the new workspace:
 
@@ -111,3 +113,5 @@ grep -RnsE \
   2>/dev/null
 ```
 You can keep the old workspace archived; its presence on disk is harmless. The important requirements are that it is not sourced and that the current LittleGreen install/setup.bash was not generated with the old workspace as an underlay.
+
+# should be good to go
