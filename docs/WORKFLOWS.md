@@ -153,7 +153,8 @@ Verify the policy does not publish `/desired_position`.
 ## 10. Guarded live policy
 
 ```text
-paired action-contract-v3 YAML + ONNX
+paired action-contract-v3/v4 YAML + ONNX
+→ policy_bundle_audit PASS
 → package-only rebuild
 → runtime-safe driver and IMU preflight with writes disabled
 → policy shadow acceptance

@@ -213,6 +213,12 @@ ros2 run lgh_imu_tools imu_recorder --duration-sec 10
 
 ## Policy deployment
 
+Audit the paired policy bundle and hardware map:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_bundle_audit
+```
+
 Rebuild after replacing a policy YAML/ONNX pair:
 
 ```bash
@@ -234,6 +240,12 @@ ros2 topic hz /policy_shadow/desired_position
 ros2 topic echo /policy_status --once
 ros2 topic echo /policy_ready --once
 ros2 topic info /desired_position --verbose
+```
+
+Capture Track 1-aligned observable runtime metrics:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_runtime_metrics --duration-sec 30
 ```
 
 Guarded live mode, only after shadow acceptance and a write-enabled runtime preflight:

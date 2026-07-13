@@ -113,8 +113,8 @@ FAIL  |error| >  0.05 rad
 Expected default joint vector:
 
 ```text
-[0.0, 0.0, -0.1, 0.4, -0.3, 0.0,
- 0.0, 0.0, -0.1, 0.4, -0.3, 0.0]
+[0.0, 0.0, -0.24, 0.62, -0.22, 0.0,
+ 0.0, 0.0, -0.24, 0.62, -0.22, 0.0]
 ```
 
 ## 7. Guarded write-enabled verification

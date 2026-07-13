@@ -1,8 +1,8 @@
 # Live Policy Deployment
 
-This page covers the guarded transition from a Track 1 deployment bundle to a live LittleGreen hardware policy. It assumes that servo, IMU, and shadow-mode commissioning already pass.
+This page covers the guarded transition from a paired Track 1 export to a live LittleGreen hardware policy. Servo, IMU, and shadow commissioning must already pass.
 
-Live deployment is not a single launch command. Treat it as a staged sequence with an explicit stop point between each stage.
+Live deployment is a staged sequence. Stop between stages and review the result before continuing.
 
 ## 1. Runtime data path
 
@@ -26,56 +26,77 @@ lgh_st3215_driver
 12 × ST3215 servos
 ```
 
-`littlegreen_biped_node` owns observation construction, ONNX inference, action-contract transformation, and policy target generation. `pd_controller_node` owns the downstream safety envelope and command shaping. `lgh_st3215_driver` remains the only normal runtime owner of the servo UART.
+The policy node owns observation construction, ONNX inference, action-contract transformation, and target generation. `pd_controller_node` owns the downstream safety envelope. `lgh_st3215_driver` remains the sole normal UART owner.
 
-## 2. Required deployment bundle
+## 2. Current v2.7.1 policy contract
 
-Deploy the YAML and ONNX model as a pair:
+The packaged Track 1 v1.4.5s3 bundle uses:
+
+```text
+Task:      Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
+Interface: observation[45] -> action[12]
+Rate:      50 Hz
+Contract:  action_contract_version: 4
+Transform: bounded_default_centered_vector_residual
+Profile:   v1_4_5_stabilized_vector_residual
+```
+
+Contract v4 applies a per-joint residual vector:
+
+```text
+bounded_action[i] = clip(raw_action[i], -1, 1)
+nominal_target[i] = q_default[i] + residual_scale_rad[i] * bounded_action[i]
+q_target[i]       = clip(nominal_target[i], physical_lower[i], physical_upper[i])
+```
+
+The previous-action observation stores the bounded normalized action, not the resulting position target.
+
+The policy node also retains compatibility with action contract v3. Current v1.4.5s3 deployment must use v4; do not convert it to a scalar or uniform residual scale.
+
+## 3. Required paired bundle
+
+Deploy these together:
 
 ```text
 src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
 src/littlegreen_biped_pkg/src/configs/policy.onnx
 ```
 
-The YAML should resolve the model with:
+The v4 YAML must include:
 
 ```yaml
-policy_checkpoint_relative_path: policy.onnx
-policy_sha256: <sha256 of policy.onnx>
-```
-
-For action contract v3, the policy YAML must contain:
-
-```yaml
-action_contract_version: 3
-action_transform: bounded_default_centered_symmetric_residual
-action_limit_lower: -1.0
-action_limit_upper: 1.0
-action_residual_scale_rad: [12 values]
+action_contract_version: 4
+action_transform: bounded_default_centered_vector_residual
+action_residual_scale_rad: [12 per-joint values]
 action_default_rad: [12 values]
 action_target_lower_rad: [12 values]
 action_target_upper_rad: [12 values]
+action_nominal_residual_lower_rad: [12 values]
+action_nominal_residual_upper_rad: [12 values]
 action_indices: [12 values]
 previous_action_observation: bounded_normalized_action
+deployment_contract_profile: v1_4_5_stabilized_vector_residual
+deployment_requires_action_contract_v4_transform: true
+policy_sha256: <sha256 of policy.onnx>
 ```
 
-At startup, the policy node verifies:
+Before loading the ONNX session, the node validates:
 
-- the ONNX SHA-256 against `policy_sha256`;
-- ONNX input and output dimensions against `45 → 12`;
-- `action_indices` against the canonical `sim_joint_index` values in `joint_map.yaml`;
-- exported action joint names against the canonical joint names;
-- `action_default_rad` and selected `default_joint_positions` against `default_joint_rad`;
-- `action_target_lower_rad` and `action_target_upper_rad` against the hardware bounds in `joint_map.yaml`;
-- normalized action bounds of `[-1, 1]`;
-- positive residual scales;
-- `previous_action_observation: bounded_normalized_action`.
+- ONNX SHA-256 and the `45 → 12` model interface;
+- action indices and selected simulation joint names;
+- exported defaults against `joint_map.yaml`;
+- exported physical lower/upper bounds against `joint_map.yaml`;
+- normalized action limits `[-1, 1]`;
+- positive, non-uniform v4 residual scales;
+- nominal residual bounds recomputed from defaults, scales, and physical limits;
+- `previous_action_observation: bounded_normalized_action`;
+- the required v4 transform flag and deployment profile.
 
-Any mismatch is fatal. Do not bypass the check by editing a single field in isolation.
+Any mismatch is fatal. Do not bypass validation by editing a single ROS-side field.
 
-## 3. Install a new policy pair
+## 4. Install and audit a Track 1 export
 
-Keep a backup of the currently installed source pair:
+Back up the current pair:
 
 ```bash
 cd ~/littlegreen_ros2_ws
@@ -87,7 +108,7 @@ cp src/littlegreen_biped_pkg/src/configs/policy.onnx \
   src/littlegreen_biped_pkg/src/configs/policy.onnx.previous
 ```
 
-Copy the Track 1 export:
+Copy the new export:
 
 ```bash
 cp /path/to/exported/policy.yaml \
@@ -97,25 +118,24 @@ cp /path/to/exported/policy.onnx \
   src/littlegreen_biped_pkg/src/configs/policy.onnx
 ```
 
-Confirm the checksum before rebuilding:
+Run the offline bundle audit before building:
 
 ```bash
-cd ~/littlegreen_ros2_ws
-
-EXPECTED_SHA="$(python3 - <<'PY'
-import yaml
-with open('src/littlegreen_biped_pkg/src/configs/policy_latest.yaml') as f:
-    print(yaml.safe_load(f)['policy_sha256'])
-PY
-)"
-
-ACTUAL_SHA="$(sha256sum src/littlegreen_biped_pkg/src/configs/policy.onnx | awk '{print $1}')"
-
-printf 'expected: %s\nactual:   %s\n' "$EXPECTED_SHA" "$ACTUAL_SHA"
-test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+python3 src/littlegreen_biped_pkg/scripts/policy_bundle_audit.py \
+  --policy-yaml src/littlegreen_biped_pkg/src/configs/policy_latest.yaml \
+  --onnx src/littlegreen_biped_pkg/src/configs/policy.onnx \
+  --joint-map src/littlegreen_biped_pkg/src/configs/joint_map.yaml
 ```
 
-Rebuild only the policy package:
+After installation, the equivalent command is:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_bundle_audit
+```
+
+A successful audit exits `0`. A contract mismatch exits `2`; malformed configuration exits `5`.
+
+## 5. Rebuild and restart
 
 ```bash
 cd ~/littlegreen_ros2_ws
@@ -130,11 +150,11 @@ colcon build \
 source install/setup.bash
 ```
 
-A running node must be restarted after a policy update. The node loads the YAML and ONNX files only during startup.
+Restart every running policy node after a policy update. The YAML and ONNX model are loaded only at startup.
 
-## 4. Stage A — hardware feedback and IMU
+## 6. Stage A — feedback-only hardware and IMU
 
-Mechanically support the robot and keep servo writes disabled:
+Mechanically support the robot and keep writes disabled:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -142,43 +162,26 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-Start the current IMU source in another terminal. The source may be micro-ROS, direct I2C, or direct SPI, but it must publish the canonical `/imu/data` contract.
-
-Run the runtime preflight:
+Start the current IMU source separately. It may be micro-ROS, direct I2C, or direct SPI, but it must publish the canonical `/imu/data` contract.
 
 ```bash
 ros2 run lgh_st3215_tools st3215_preflight \
   --mode runtime \
   --expect-writes false
-```
 
-Confirm the IMU boundary separately:
-Launch IMU micro - ROS agent
-
-```bash
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 115200 -v0 
-```
-and validate topics
-
-```bash
-ros2 topic echo /imu/data --once
-```
-Perform the orientation audit after any sensor, mounting, transport, or driver change.
-```bash
-ros2 run lgh_imu_tools stationary_characterization --duration-sec 10
-
-```
-Preflight
-```bash
 ros2 run lgh_imu_tools imu_preflight
 ```
 
+After a sensor, mount, transport, or driver change, also run:
 
-Do not continue until both checks pass.
+```bash
+ros2 run lgh_imu_tools stationary_characterization --duration-sec 10
+ros2 run lgh_imu_tools orientation_audit --pose neutral
+```
 
-## 5. Stage B — policy shadow
+Do not continue until servo and IMU checks pass.
 
-Launch the policy without downstream command authority:
+## 7. Stage B — policy shadow
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
@@ -187,8 +190,8 @@ ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 Expected startup lines include:
 
 ```text
-Policy config loaded: ... action_contract=v3
-Action contract v3 validated against joint_map.yaml ...
+Policy config loaded: ... action_contract=v4, profile=v1_4_5_stabilized_vector_residual
+Action contract v4 validated against joint_map.yaml ... nominal residual bounds match.
 Policy artifact checksum verified ...
 ONNX model loaded ...
 ```
@@ -206,34 +209,40 @@ ros2 topic hz /policy_shadow/desired_position
 In shadow mode:
 
 - the policy publishes `/policy_shadow/desired_position`;
-- the policy does not create a publisher on `/desired_position`;
+- the policy creates no publisher on `/desired_position`;
 - `pd_controller_node` is not launched;
-- the servo driver remains feedback-only.
+- the driver remains feedback-only.
 
-Inspect the debug topics before authorizing live output:
+Inspect policy post-processing:
 
 ```bash
 ros2 topic echo /policy_debug/raw_action --once
 ros2 topic echo /policy_debug/clipped_raw_action --once
+ros2 topic echo /policy_debug/target_unclipped --once
 ros2 topic echo /policy_debug/target_clipped --once
 ros2 topic echo /policy_debug/saturation_mask --once
 ```
 
+Capture Track 1-aligned real-hardware metrics:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_runtime_metrics \
+  --duration-sec 30
+```
+
+See [`TRACK1_TRACK2_POLICY_METRICS.md`](TRACK1_TRACK2_POLICY_METRICS.md) for interpretation and current observability limits.
+
 Stop shadow mode before proceeding.
 
-## 6. Stage C — write-enabled driver hold
+## 8. Stage C — write-enabled driver hold
 
-Keep the robot supported and the physical servo-power disconnect immediately accessible.
-
-Stop the feedback-only driver, then restart it with writes enabled:
+Keep the robot supported and the physical servo-power disconnect immediately accessible. Stop the feedback-only driver, then restart it:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   profile:=runtime_safe \
   enable_writes:=true
 ```
-
-Before the policy stack starts, the driver uses its current-position startup hold after complete feedback becomes available.
 
 Run preflight again:
 
@@ -243,25 +252,23 @@ ros2 run lgh_st3215_tools st3215_preflight \
   --expect-writes true
 ```
 
-Do not continue if feedback is stale, diagnostics are not healthy, or the driver reports an unexpected command publisher.
+Do not continue if feedback is stale, diagnostics are unhealthy, the pose override is unexpected, or the command graph contains an unrecognized publisher.
 
-## 7. Stage D — live policy with safety-only shaping
-
-Start the explicit live launch:
+## 9. Stage D — live policy with safety-only shaping
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_live.launch.py \
   controller_mode:=safety_only
 ```
 
-`policy_live.launch.py` starts only:
+The launch starts only:
 
 ```text
 littlegreen_biped_node
 pd_controller_node
 ```
 
-It does not start the servo driver, IMU source, joystick, or keyboard. Those remain separately controlled so each authority boundary is visible.
+It does not start the driver, IMU source, joystick, or keyboard.
 
 Verify the command chain:
 
@@ -273,7 +280,7 @@ ros2 topic echo /policy_status --once
 ros2 topic echo /safe_joint_targets --once
 ```
 
-The first live runs should use:
+First live runs use:
 
 ```text
 controller_mode=safety_only
@@ -281,15 +288,16 @@ override_imu=false
 zero command velocity
 short run duration
 mechanical fall arrest
+physical power disconnect immediately accessible
 ```
 
-Do not use `outer_pd` or `outer_pid` during the initial live-policy campaign.
+Do not use `outer_pd` or `outer_pid` during the initial v1.4.5s3 campaign.
 
-## 8. Command sources
+## 10. Command sources
 
-Without a command source, the policy node applies its configured zero-on-timeout behavior. For initial standing tests, that is preferred.
+Without a command source, timeout handling supplies a zero command. That is preferred for initial standing tests.
 
-For joystick operation after zero-command standing is accepted, use the broader launch:
+After zero-command standing is accepted, the broader joystick launch is:
 
 ```bash
 ros2 launch littlegreen_biped_pkg littlegreen_biped_launch.py \
@@ -297,45 +305,37 @@ ros2 launch littlegreen_biped_pkg littlegreen_biped_launch.py \
   policy_output_mode:=live
 ```
 
-That launch starts joystick input, teleop, the policy node, the command-file bridge, and `pd_controller_node`. It still does not start the ST3215 driver or IMU source.
+It starts joystick input, teleop, the policy node, command bridge, and `pd_controller_node`; it still does not start the ST3215 driver or IMU source.
 
-For keyboard and joystick multiplexing:
-
-```bash
-ros2 launch littlegreen_biped_pkg biped_teleop_mux.launch.py \
-  controller_mode:=safety_only \
-  policy_output_mode:=live
-```
-
-The mux launch opens the keyboard teleop process through `xterm` and should be used only on a host with a graphical session.
-
-## 9. Stop and abort behavior
+## 11. Stop and hold
 
 Normal stop sequence:
 
 1. stop the live policy launch;
-2. call the driver hold service;
-3. inspect diagnostics;
-4. stop the driver or disable torque only when the robot is safely supported.
-
-Latch the measured pose:
+2. request the driver current-pose hold if needed;
+3. verify the policy publisher has disappeared;
+4. remove servo power when physical intervention is required.
 
 ```bash
-ros2 service call \
-  /st3215_driver/hold_current_pose \
-  std_srvs/srv/Trigger '{}'
+ros2 service call /st3215_driver/hold_current_pose std_srvs/srv/Trigger '{}'
+ros2 topic info /desired_position --verbose
 ```
 
-Torque-off is not the first response while the robot is unsupported. The physical power disconnect remains the emergency action.
+The software hold is not an electrical emergency stop.
 
-## 10. Launch-file roles
+## 12. Contract-safe posture changes
 
-| Launch file | Starts | Intended use |
-|---|---|---|
-| `policy_shadow.launch.py` | policy node only, shadow output | first real-sensor policy evaluation |
-| `policy_live.launch.py` | policy node + `pd_controller_node` | guarded live policy with an externally managed driver and IMU |
-| `littlegreen_biped_launch.py` | joystick + teleop + policy + bridge + PD | live command operation after standing acceptance |
-| `biped_teleop_mux.launch.py` | joystick + keyboard + mux + policy + bridge + PD | desktop teleoperation after standing acceptance |
-| `lgh_st3215_driver.launch.py` | ST3215 runtime driver | launched separately in `runtime_safe` profile |
+The v4 target is centered on the exported `q_default`. Do not alter `joint_map.yaml`, `servo_map.yaml`, or the controller defaults to cosmetically change the policy posture.
 
-The dedicated shadow and live launch files are the recommended deployment path because they keep hardware, sensor, and policy authority explicit.
+A Track 1 posture or height change must follow this sequence:
+
+```text
+Track 1 task/default update
+  -> train or fine-tune
+  -> export paired YAML + ONNX
+  -> offline bundle audit
+  -> shadow validation
+  -> guarded live deployment
+```
+
+Servo center changes are reserved for correcting a measured physical-to-model zero error, not for changing the learned standing pose.

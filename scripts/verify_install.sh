@@ -77,6 +77,14 @@ if command -v ros2 >/dev/null 2>&1; then
       warning "old package is still visible in the environment: $old (check sourced overlays)"
     fi
   done
+  biped_execs="$(ros2 pkg executables littlegreen_biped_pkg 2>/dev/null || true)"
+  for executable in littlegreen_biped_node policy_bundle_audit policy_runtime_metrics; do
+    if grep -q "littlegreen_biped_pkg[[:space:]]\+$executable$" <<<"$biped_execs"; then
+      pass "littlegreen_biped_pkg executable $executable"
+    else
+      error "littlegreen_biped_pkg executable missing: $executable"
+    fi
+  done
 else
   error "ros2 command unavailable"
 fi

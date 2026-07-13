@@ -191,6 +191,12 @@ ros2 run lgh_st3215_tools st3215_preflight \
 
 ## Gate 10 — policy shadow
 
+Audit the paired policy bundle first:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_bundle_audit
+```
+
 Keep the driver in `runtime_safe` with writes disabled:
 
 ```bash
@@ -212,7 +218,7 @@ ros2 topic echo /policy_status --once
 - policy readiness/status is observable;
 - no servo command authority is created by shadow mode.
 
-For a deployed action-contract-v3 bundle, startup must report successful contract validation against `joint_map.yaml` and successful ONNX checksum verification. Complete the live sequence only through [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
+For a deployed action-contract-v3 or v4 bundle, startup must report successful contract validation against `joint_map.yaml` and successful ONNX checksum verification. Complete the live sequence only through [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
 ## Gate 11 — guarded write-enabled work
 

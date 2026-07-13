@@ -5,7 +5,7 @@ package_name = 'lgh_st3215_tools'
 
 setup(
     name=package_name,
-    version='0.2.1',
+    version='0.3.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),

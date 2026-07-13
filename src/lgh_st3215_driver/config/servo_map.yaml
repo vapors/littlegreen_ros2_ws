@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 robot: LittleGreen
 source: bhl_st3215_microros_pio_v6_5_8/include/servo_map.h
 joints:
@@ -33,7 +33,7 @@ joints:
   servo_id: 3
   servo_sign: -1
   joint_zero_rad: 0.0
-  training_default_rad: -0.1
+  training_default_rad: -0.24
   center_step: 2110
   min_rad: -1.9220779272207085
   max_rad: 0.6810874698212247
@@ -46,7 +46,7 @@ joints:
   servo_id: 4
   servo_sign: -1
   joint_zero_rad: 0.0
-  training_default_rad: 0.4
+  training_default_rad: 0.62
   center_step: 2051
   min_rad: 0.1349903093339364
   max_rad: 2.2350100079493793
@@ -59,7 +59,7 @@ joints:
   servo_id: 5
   servo_sign: 1
   joint_zero_rad: 0.0
-  training_default_rad: -0.3
+  training_default_rad: -0.22
   center_step: 2024
   min_rad: -0.8099418560036186
   max_rad: 0.7102331047910518
@@ -111,7 +111,7 @@ joints:
   servo_id: 9
   servo_sign: 1
   joint_zero_rad: 0.0
-  training_default_rad: -0.1
+  training_default_rad: -0.24
   center_step: 2123
   min_rad: -1.9911070626755623
   max_rad: 0.5460971604872883
@@ -124,7 +124,7 @@ joints:
   servo_id: 10
   servo_sign: 1
   joint_zero_rad: 0.0
-  training_default_rad: 0.4
+  training_default_rad: 0.62
   center_step: 2051
   min_rad: 0.1718058482431918
   max_rad: 2.2411459311009216
@@ -137,7 +137,7 @@ joints:
   servo_id: 11
   servo_sign: -1
   joint_zero_rad: 0.0
-  training_default_rad: -0.3
+  training_default_rad: -0.22
   center_step: 2077
   min_rad: -0.8452234141249882
   max_rad: 0.8191457407309324
@@ -160,3 +160,5 @@ joints:
   acceleration: 0
 hardware_limit_source: authoritative_hardware_contract.yaml
 hardware_limit_margin_steps_each_end: 10
+training_action_contract_version: 4
+training_deployment_contract_profile: v1_4_5_stabilized_vector_residual

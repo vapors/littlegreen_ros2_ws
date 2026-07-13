@@ -1,34 +1,42 @@
-# Validation Record
+# Validation
 
-Validation performed for the 2.7.0 source release.
+Validation performed for the v2.7.1 source release.
 
-## Passed
+## Completed offline checks
 
-- `scripts/validate_source_tree.py`;
-- Python AST parsing for first-party scripts, tools, controller code, and launch files;
-- XML parsing for all package manifests;
-- YAML parsing for all active YAML files;
-- Bash syntax checks for all workspace scripts;
-- local-link validation for active root and operator documentation;
-- verification that the supplied Track 1 action-contract-v3 policy YAML matches the canonical `joint_map.yaml` defaults, lower bounds, upper bounds, action indices, and joint names within the node's `1e-5 rad` tolerance;
-- confirmation that the current packaged legacy `policy_latest.yaml` and `policy.onnx` remain checksum-paired and were not replaced by an unpaired artifact;
-- confirmation that servo calibration, servo limits, driver timing, ST3215 profiles, and PD configuration are unchanged;
-- confirmation that no generated `__pycache__` or `.pyc` files remain in the release tree.
+- source-tree validator passed;
+- all active Python files parsed and compiled;
+- all active YAML and package XML files parsed;
+- shell scripts passed `bash -n`;
+- Markdown relative links were checked;
+- required package files and executable install rules were checked;
+- old active package/workspace identifiers were rejected except the documented servo-calibration provenance string;
+- the packaged policy YAML reports action contract v4, 45 observations, 12 actions, and 50 Hz timing;
+- the policy residual vector is positive and non-uniform;
+- v4 nominal residual lower/upper bounds were recomputed from defaults, scales, and physical limits;
+- exported defaults and physical bounds match `joint_map.yaml` within `1e-5 rad`;
+- driver `training_default_rad` values match the exported athletic default pose;
+- `track1_action_contract_v4.yaml` matches the paired policy export;
+- Track 1 v1.4.5s3 standing/moving COM height, COM-forward band, and projected-gravity-x targets match the source constants;
+- `configs/policy.onnx` and `checkpoints/policy.onnx` are identical;
+- packaged ONNX SHA-256 matches the YAML value:
 
-## Source changes reviewed
+```text
+c0079190bc0bf531a5eb6928541560d2402d1f711e14b641e436cad5d43e854d
+```
 
-- `littlegreen_biped_node.cpp` action-contract-v3 parser and cross-checks;
-- `policy_live.launch.py`;
-- refreshed shadow, teleop-mux, and deployment launch arguments;
-- architecture-aware ONNX Runtime path selection;
-- current operator documentation and release metadata.
+- `policy_bundle_audit` passed against the packaged source pair;
+- ZIP integrity and executable permissions were checked.
 
-## Not performed in the packaging environment
+## Hardware/runtime validation still required
 
-- ROS 2 Humble `colcon build`;
-- live ONNX Runtime session creation;
-- Orange Pi UART operation;
-- IMU transport validation;
-- policy shadow or live hardware motion.
+The Orange Pi remains the authoritative integration environment for:
 
-The Orange Pi package-only build and shadow launch remain the authoritative integration checks for the updated C++ node.
+- `colcon build --symlink-install`;
+- `ros2 run littlegreen_biped_pkg policy_bundle_audit` from the installed package;
+- driver and IMU preflight;
+- action-contract-v4 policy shadow startup;
+- runtime metrics capture from live ROS topics;
+- guarded write-enabled standing with `controller_mode:=safety_only`.
+
+No claim is made that COM height, COM-forward offset, foot-contact, gait-support, slip, or physical torque metrics are available from the current hardware interface.

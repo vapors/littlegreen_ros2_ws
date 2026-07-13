@@ -110,6 +110,6 @@ The policy must remain disconnected during servo identification, calibration mot
 
 ## Live-policy gate
 
-Passing installation, driver, and IMU checks does not by itself authorize live policy motion. Deploy a paired Track 1 YAML/ONNX bundle, confirm action-contract-v3 and checksum validation at node startup, complete shadow acceptance, and then follow [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
+Passing installation, driver, and IMU checks does not by itself authorize live policy motion. Deploy a paired Track 1 YAML/ONNX bundle, pass `policy_bundle_audit`, and confirm action-contract v3/v4 and checksum validation at node startup, complete shadow acceptance, and then follow [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
 Initial live deployment uses `controller_mode:=safety_only`. Aggressive outer-PD tuning remains deferred.

@@ -11,18 +11,18 @@ The active ROS 2 control path uses the measured 12-joint LittleGreen hardware en
    - final native-driver radian-to-step conversion and clamping
 2. `src/littlegreen_biped_pkg/src/configs/joint_map.yaml`
    - canonical action/joint ordering, default pose, and policy/controller clipping
-3. `src/lgh_st3215_tools/config/track1_action_contract_v3.yaml`
+3. `src/lgh_st3215_tools/config/track1_action_contract_v4.yaml`
    - ROS-side mirror used by standing-characterization contract auditing
 4. `src/littlegreen_biped_pkg/src/configs/joint_limits.yaml`
    - compatibility/documentation mirror; not the final runtime authority
 
 The URDF is not the final servo safety clamp.
 
-## Action-contract-v3 deployment check
+## Action-contract v3/v4 deployment check
 
-For a v3 policy bundle, `littlegreen_biped_node` compares the exported action defaults and physical target bounds against the `joints[]` section of `joint_map.yaml` before loading the ONNX session. It also checks action indices and selected simulation joint names. Any mismatch is fatal.
+For a v3 or v4 policy bundle, `littlegreen_biped_node` compares the exported action defaults and physical target bounds against the `joints[]` section of `joint_map.yaml` before loading the ONNX session. It also checks action indices, selected simulation joint names, normalized action bounds, previous-action semantics, and the ONNX checksum. For v4 it additionally validates the non-uniform residual vector, nominal residual bounds, deployment profile, and required v4 transform flag. Any mismatch is fatal.
 
-Policy timing and `action_residual_scale_rad` are supplied by the paired policy YAML; they are intentionally not duplicated as runtime authority in `joint_map.yaml`.
+Policy timing and the complete `action_residual_scale_rad` vector are supplied by the paired policy YAML. Track 2 mirrors the current export in `track1_action_contract_v4.yaml` for characterization audits, but the paired policy YAML remains the deployment source of truth.
 
 ## Canonical joint order and safe limits
 
@@ -41,13 +41,13 @@ Policy timing and `action_residual_scale_rad` are supplied by the paired policy 
 | 10 | `leg_right_ankle_pitch_joint` | -0.845223414 | 0.819145741 |
 | 11 | `leg_right_ankle_roll_joint` | -0.443320448 | 1.061514705 |
 
-## Default pose
+## Current athletic default pose
 
 Canonical default joint vector:
 
 ```text
-[0.0, 0.0, -0.1, 0.4, -0.3, 0.0,
- 0.0, 0.0, -0.1, 0.4, -0.3, 0.0]
+[0.0, 0.0, -0.24, 0.62, -0.22, 0.0,
+ 0.0, 0.0, -0.24, 0.62, -0.22, 0.0]
 ```
 
 ## Track 1 propagation
@@ -57,3 +57,14 @@ For LittleGreen training, update the hardware-limit arrays in the Track 1 hardwa
 ## Deployment caution
 
 Changing the hardware contract changes clipping behavior. Keep every exported policy paired with the exact joint order, default pose, action mapping, limits, timing, IMU transform, and ONNX model used to create it.
+
+## Action-contract v4 residual vector
+
+The packaged v1.4.5s3 policy uses the per-joint residual scale vector:
+
+```text
+[0.24, 0.16, 0.42, 0.58, 0.48, 0.26,
+ 0.24, 0.16, 0.42, 0.58, 0.48, 0.26]
+```
+
+This vector is part of the policy contract. Do not replace it with a scalar or a Track 2-only tuning offset.

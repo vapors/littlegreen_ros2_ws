@@ -54,3 +54,13 @@ bit 2 / value 4: target was above the upper physical limit
 ```
 
 A value of zero means no clipping occurred for that joint.
+
+## Runtime metrics recorder
+
+`policy_runtime_metrics` combines these debug topics with `/joint_states` to produce Track 1-aligned real-hardware metrics:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_runtime_metrics --duration-sec 30
+```
+
+It records raw-action excess, normalized saturation, physical target clipping, target residual magnitude, joint tracking error, velocity-limit use, command velocity, and projected gravity. It does not claim COM, foot-contact, swing-clearance, slip, or physical-torque metrics because those are not available from the current runtime sensors.

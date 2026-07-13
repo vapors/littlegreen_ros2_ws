@@ -1,5 +1,5 @@
 metadata:
-  exported_at: '2026-07-13T15:33:22'
+  exported_at: '2026-07-13T15:18:16'
   task: Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
   checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_5_st3215_stabilized_forward_s3/2026-07-13_12-10-53_stand_st3215_loaded_v145s3_forward_com_height460_seed42/model_3500.pt
   export_dir: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_5_st3215_stabilized_forward_s3/2026-07-13_12-10-53_stand_st3215_loaded_v145s3_forward_com_height460_seed42/exported
@@ -101,9 +101,9 @@ default_joint_positions:
 num_observations: 45
 history_length: 0
 command_velocity:
-- 0.02971133030951023
-- 0.03450619801878929
-- 0.12707573175430298
+- 0.08405344188213348
+- -0.025833124294877052
+- -0.17477333545684814
 num_actions: 12
 action_indices:
 - 0

@@ -265,11 +265,16 @@ Starts joystick and keyboard teleop, `twist_mux`, the policy node, the command-f
 
 Use the dedicated shadow and live launch files for first hardware deployment. See [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
-### Action contract v3
+### Action contracts v3 and v4
 
-When `action_contract_version: 3` is present, `littlegreen_biped_node` requires the bounded default-centered symmetric residual transform and loads `action_residual_scale_rad` directly.
+`littlegreen_biped_node` accepts the current bounded default-centered residual contracts:
 
-The node validates the following exported fields against `joint_map.yaml` before ONNX inference starts:
+| Version | Transform | Residual semantics |
+|---:|---|---|
+| `3` | `bounded_default_centered_symmetric_residual` | uniform symmetric residual scale |
+| `4` | `bounded_default_centered_vector_residual` | non-uniform per-joint residual scale vector |
+
+Both contracts validate these exported fields against `joint_map.yaml` before ONNX inference starts:
 
 ```text
 action_indices
@@ -280,13 +285,40 @@ joints[action_indices]
 default_joint_positions[action_indices]
 ```
 
-It also requires normalized action limits `[-1, 1]`, positive residual scales, and:
+Both require normalized action limits `[-1, 1]`, positive residual scales, and:
 
 ```text
 previous_action_observation: bounded_normalized_action
 ```
 
-Legacy YAML without `action_contract_version` remains readable through the older `action_scale` field, but current hardware deployment should use a paired v3 bundle.
+Contract v4 additionally requires and validates:
+
+```text
+action_nominal_residual_lower_rad
+action_nominal_residual_upper_rad
+deployment_contract_profile
+deployment_requires_action_contract_v4_transform: true
+```
+
+The packaged v1.4.5s3 policy uses contract v4 and a non-uniform 12-joint residual vector. Legacy YAML without `action_contract_version` remains readable through `action_scale`, but it is not the current deployment path.
+
+### Policy bundle audit
+
+```bash
+ros2 run littlegreen_biped_pkg policy_bundle_audit --help
+ros2 run littlegreen_biped_pkg policy_bundle_audit
+```
+
+The audit checks the YAML/ONNX checksum and the same v3/v4 hardware-map boundary used by the live policy node. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
+
+### Policy runtime metrics
+
+```bash
+ros2 run littlegreen_biped_pkg policy_runtime_metrics --help
+ros2 run littlegreen_biped_pkg policy_runtime_metrics --duration-sec 30
+```
+
+The recorder consumes existing policy debug topics and `/joint_states`; it does not publish commands. Output is written under `~/.ros/littlegreen_policy_metrics/` by default. See [`TRACK1_TRACK2_POLICY_METRICS.md`](TRACK1_TRACK2_POLICY_METRICS.md).
 
 ## 8. Policy output modes
 

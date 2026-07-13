@@ -1,0 +1,112 @@
+schema_version: 2
+robot: LittleGreen
+source_task: Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
+source_policy_sha256: c0079190bc0bf531a5eb6928541560d2402d1f711e14b641e436cad5d43e854d
+action_contract_version: 4
+action_contract_name: bounded_default_centered_vector_residual_athletic
+action_transform: bounded_default_centered_vector_residual
+deployment_contract_profile: v1_4_5_stabilized_vector_residual
+policy_rate_hz: 50.0
+desired_base_com_height_m: 0.46
+desired_moving_base_com_height_m: 0.43
+desired_com_forward_offset_m: 0.07
+desired_com_forward_band_half_width_m: 0.01
+desired_projected_gravity_x: 0.065
+joint_order:
+- leg_left_hip_roll_joint
+- leg_left_hip_yaw_joint
+- leg_left_hip_pitch_joint
+- leg_left_knee_pitch_joint
+- leg_left_ankle_pitch_joint
+- leg_left_ankle_roll_joint
+- leg_right_hip_roll_joint
+- leg_right_hip_yaw_joint
+- leg_right_hip_pitch_joint
+- leg_right_knee_pitch_joint
+- leg_right_ankle_pitch_joint
+- leg_right_ankle_roll_joint
+training_default_rad:
+- 0.0
+- 0.0
+- -0.24
+- 0.62
+- -0.22
+- 0.0
+- 0.0
+- 0.0
+- -0.24
+- 0.62
+- -0.22
+- 0.0
+residual_scale_rad:
+- 0.24
+- 0.16
+- 0.42
+- 0.58
+- 0.48
+- 0.26
+- 0.24
+- 0.16
+- 0.42
+- 0.58
+- 0.48
+- 0.26
+lower_limit_rad:
+- -0.694893296912195
+- -0.0889708856973672
+- -1.92207792722071
+- 0.134990309333936
+- -0.809941856003619
+- -0.51388356394169
+- -0.874369049094815
+- -0.0567572891517687
+- -1.99110706267556
+- 0.171805848243192
+- -0.845223414124988
+- -0.44332044769895
+upper_limit_rad:
+- 0.780796221033791
+- 0.644271930911969
+- 0.681087469821225
+- 2.23501000794938
+- 0.710233104791052
+- 0.912718568791956
+- 0.642737950124084
+- 0.701029220063738
+- 0.546097160487288
+- 2.24114593110092
+- 0.819145740730932
+- 1.06151470521686
+nominal_residual_lower_rad:
+- -0.24
+- -0.0889708856973672
+- -0.6599999999999999
+- 0.134990309333936
+- -0.7
+- -0.26
+- -0.24
+- -0.0567572891517687
+- -0.6599999999999999
+- 0.171805848243192
+- -0.7
+- -0.26
+nominal_residual_upper_rad:
+- 0.24
+- 0.16
+- 0.18
+- 1.2
+- 0.26
+- 0.26
+- 0.24
+- 0.16
+- 0.18
+- 1.2
+- 0.26
+- 0.26
+previous_action_observation: bounded_normalized_action
+hardware_limit_source: measured_physical_capture_with_10_step_inward_margin
+hardware_limit_contract_generated_at_utc: '2026-07-10T18:37:26.242967+00:00'
+hardware_limit_margin_steps_each_end: 10
+notes:
+- The COM height/forward-offset targets are Track 1 reward geometry, not direct ROS command fields.
+- Contract v4 uses a per-joint residual scale vector; do not replace it with a scalar alias.

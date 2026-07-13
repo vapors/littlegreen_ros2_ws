@@ -6,7 +6,7 @@
 # lgh_st3215_driver/config/servo_map.yaml remains authoritative for native
 # ST3215 conversion and final servo-step clamping.
 
-schema_version: 2
+schema_version: 3
 robot: LittleGreen
 policy_interface:
   onnx_input_name: obs
@@ -17,9 +17,10 @@ policy_interface:
   onnx_output_shape:
   - 1
   - 12
-  action_contract_version: 3
-  action_transform: bounded_default_centered_symmetric_residual
-  action_formula: q_target = clip(q_default + clip(a_raw, -1, 1) * action_residual_scale_rad, physical_lower, physical_upper)
+  action_contract_version: 4
+  action_transform: bounded_default_centered_vector_residual
+  action_formula: q_target = clip(q_default + clip(a_raw, -1, 1) * action_residual_scale_rad[i], physical_lower, 
+    physical_upper)
   previous_action_observation: bounded_normalized_action
   policy_timing_source: paired policy YAML
   action_residual_scale_source: paired policy YAML
@@ -80,26 +81,30 @@ policy_interface:
   sim_default_joint_positions:
   - 0.0
   - 0.0
-  - -0.1
-  - 0.4
-  - -0.3
+  - -0.24
+  - 0.62
+  - -0.22
   - 0.0
   - 0.0
   - 0.0
   - 0.0
-  - -0.1
-  - 0.4
-  - -0.3
+  - -0.24
+  - 0.62
+  - -0.22
   - 0.0
   - 0.0
-  note_command_velocity: The exported policy YAML may contain a sampled command_velocity value. Runtime always supplies obs[0:3] from /command_velocity or the configured timeout behavior.
+  note_command_velocity: The exported policy YAML may contain a sampled command_velocity value. Runtime always supplies 
+    obs[0:3] from /command_velocity or the configured timeout behavior.
 
+  action_contract_name: bounded_default_centered_vector_residual_athletic
+  deployment_contract_profile: v1_4_5_stabilized_vector_residual
 ros_interface:
   canonical_joint_state_topic: /joint_states
   canonical_policy_command_topic: /desired_position
   canonical_policy_command_units: radians
   servo_command_topic: /servo_target_radians
-  note: Keep policy and controller commands in canonical joint radians. Convert and clamp to ST3215 steps only in lgh_st3215_driver.
+  note: Keep policy and controller commands in canonical joint radians. Convert and clamp to ST3215 steps only in 
+    lgh_st3215_driver.
 servo_bus:
   model: ST3215
   protocol: Feetech STS / SCServo
@@ -119,14 +124,14 @@ omitted_sim_joints:
   default_joint_rad: 0.0
   joint_kp: 0.009999999776482582
   joint_kd: 0.05000000074505806
-  effort_limit: 9.999999747378752e-05
+  effort_limit: 9.999999747378751e-05
   reason: omitted from current 12-action policy output / not mapped to physical 12-servo leg hardware
 - sim_joint_index: 13
   name: leg_right_toe_pitch_joint
   default_joint_rad: 0.0
   joint_kp: 0.009999999776482582
   joint_kd: 0.05000000074505806
-  effort_limit: 9.999999747378752e-05
+  effort_limit: 9.999999747378751e-05
   reason: omitted from current 12-action policy output / not mapped to physical 12-servo leg hardware
 joints:
 - name: leg_left_hip_roll_joint
@@ -177,7 +182,7 @@ joints:
   ros_joint_state_index: 2
   micro_ros_array_index: 2
   servo_id: 3
-  default_joint_rad: -0.1
+  default_joint_rad: -0.24
   limit_lower_rad: -1.9220779272207085
   limit_upper_rad: 0.6810874698212247
   servo_sign: -1
@@ -197,7 +202,7 @@ joints:
   ros_joint_state_index: 3
   micro_ros_array_index: 3
   servo_id: 4
-  default_joint_rad: 0.4
+  default_joint_rad: 0.62
   limit_lower_rad: 0.1349903093339364
   limit_upper_rad: 2.2350100079493793
   servo_sign: -1
@@ -217,7 +222,7 @@ joints:
   ros_joint_state_index: 4
   micro_ros_array_index: 4
   servo_id: 5
-  default_joint_rad: -0.3
+  default_joint_rad: -0.22
   limit_lower_rad: -0.8099418560036186
   limit_upper_rad: 0.7102331047910518
   servo_sign: 1
@@ -297,7 +302,7 @@ joints:
   ros_joint_state_index: 8
   micro_ros_array_index: 8
   servo_id: 9
-  default_joint_rad: -0.1
+  default_joint_rad: -0.24
   limit_lower_rad: -1.9911070626755623
   limit_upper_rad: 0.5460971604872883
   servo_sign: 1
@@ -317,7 +322,7 @@ joints:
   ros_joint_state_index: 9
   micro_ros_array_index: 9
   servo_id: 10
-  default_joint_rad: 0.4
+  default_joint_rad: 0.62
   limit_lower_rad: 0.1718058482431918
   limit_upper_rad: 2.2411459311009216
   servo_sign: 1
@@ -337,7 +342,7 @@ joints:
   ros_joint_state_index: 10
   micro_ros_array_index: 10
   servo_id: 11
-  default_joint_rad: -0.3
+  default_joint_rad: -0.22
   limit_lower_rad: -0.8452234141249882
   limit_upper_rad: 0.8191457407309324
   servo_sign: -1

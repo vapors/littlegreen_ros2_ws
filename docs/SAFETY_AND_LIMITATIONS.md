@@ -47,7 +47,7 @@ The dedicated shadow launch starts only the policy node and publishes proposed t
 
 It does not create a policy publisher on `/desired_position`.
 
-Live policy motion requires a paired Track 1 YAML/ONNX bundle, successful action-contract-v3 validation against `joint_map.yaml`, checksum verification, driver and IMU preflight, and an accepted shadow run. Use [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
+Live policy motion requires a paired Track 1 YAML/ONNX bundle, successful action-contract-v3/v4 validation against `joint_map.yaml`, checksum verification, driver and IMU preflight, and an accepted shadow run. Use [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
 ## Use the dedicated shadow launch
 

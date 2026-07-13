@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.7.1
+
+- added direct action-contract-v4 support to `littlegreen_biped_node`;
+- loaded non-uniform `action_residual_scale_rad` vectors without converting them to a scalar;
+- validated v4 nominal residual bounds, deployment profile, and required transform flag;
+- packaged the paired Track 1 v1.4.5s3 YAML/ONNX export;
+- propagated the athletic default pose to `joint_map.yaml` and the driver training-default mirror;
+- added `track1_action_contract_v4.yaml`;
+- added `policy_bundle_audit`;
+- added read-only `policy_runtime_metrics`;
+- documented the Track 1/Track 2 metric boundary and updated live deployment instructions;
+- retained action-contract-v3 compatibility and all existing driver/IMU safety boundaries.
+
 ## 2.7.0
 
 Policy deployment and action-contract release:

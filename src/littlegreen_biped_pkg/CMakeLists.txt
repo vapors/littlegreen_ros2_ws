@@ -128,6 +128,14 @@ target_compile_features(littlegreen_biped_node PUBLIC cxx_std_17)
 install(TARGETS littlegreen_biped_node
   DESTINATION lib/${PROJECT_NAME})
 
+# Install policy deployment audit and runtime metrics tools with stable ros2 run names.
+install(PROGRAMS scripts/policy_bundle_audit.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME policy_bundle_audit)
+install(PROGRAMS scripts/policy_runtime_metrics.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME policy_runtime_metrics)
+
 # Install resources
 install(DIRECTORY src/checkpoints
   DESTINATION share/${PROJECT_NAME})

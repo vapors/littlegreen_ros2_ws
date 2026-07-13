@@ -195,19 +195,19 @@ def resolve_track1_contract(configured: str) -> Path:
         try:
             candidates.append(
                 Path(get_package_share_directory('lgh_st3215_tools'))
-                / 'config' / 'track1_action_contract_v3.yaml'
+                / 'config' / 'track1_action_contract_v4.yaml'
             )
         except Exception:
             pass
     candidates.append(
         Path.home() / 'littlegreen_ros2_ws' / 'src' /
-        'lgh_st3215_tools' / 'config' / 'track1_action_contract_v3.yaml'
+        'lgh_st3215_tools' / 'config' / 'track1_action_contract_v4.yaml'
     )
     for path in candidates:
         if path.is_file():
             return path.resolve()
     raise FileNotFoundError(
-        'track1_action_contract_v3.yaml not found; tried: ' + ', '.join(map(str, candidates))
+        'track1_action_contract_v4.yaml not found; tried: ' + ', '.join(map(str, candidates))
     )
 
 
@@ -231,6 +231,34 @@ def validate_track1_contract(
     for label, values in [('training_default_rad', defaults), ('lower_limit_rad', lower), ('upper_limit_rad', upper)]:
         if len(values) != NUM_JOINTS:
             raise ValueError(f'Track 1 contract {label} must contain 12 values')
+    version = int(contract.get('action_contract_version', 0))
+    if version not in (3, 4):
+        raise ValueError(f'unsupported Track 1 action contract version: {version}')
+
+    residual_scale = contract.get('residual_scale_rad')
+    if version == 4:
+        if not isinstance(residual_scale, list) or len(residual_scale) != NUM_JOINTS:
+            raise ValueError('Track 1 action contract v4 residual_scale_rad must contain 12 values')
+        if any(float(value) <= 0.0 for value in residual_scale):
+            raise ValueError('Track 1 action contract v4 residual_scale_rad values must be positive')
+        nominal_lower = list(contract.get('nominal_residual_lower_rad', []))
+        nominal_upper = list(contract.get('nominal_residual_upper_rad', []))
+        if len(nominal_lower) != NUM_JOINTS or len(nominal_upper) != NUM_JOINTS:
+            raise ValueError('Track 1 action contract v4 nominal residual bounds must contain 12 values')
+        for i in range(NUM_JOINTS):
+            expected_lower = max(float(lower[i]), float(defaults[i]) - float(residual_scale[i]))
+            expected_upper = min(float(upper[i]), float(defaults[i]) + float(residual_scale[i]))
+            if abs(float(nominal_lower[i]) - expected_lower) > tolerance:
+                raise ValueError(
+                    f'Track 1 v4 nominal lower mismatch at {expected_names[i]}: '
+                    f'exported={float(nominal_lower[i]):.9f} expected={expected_lower:.9f}'
+                )
+            if abs(float(nominal_upper[i]) - expected_upper) > tolerance:
+                raise ValueError(
+                    f'Track 1 v4 nominal upper mismatch at {expected_names[i]}: '
+                    f'exported={float(nominal_upper[i]):.9f} expected={expected_upper:.9f}'
+                )
+
     mismatches: List[str] = []
     for i, joint in enumerate(joints):
         checks = [
@@ -244,7 +272,10 @@ def validate_track1_contract(
                     f'{joint.name} {label}: servo_map={map_value:.9f} contract={contract_value:.9f}'
                 )
     if mismatches:
-        raise ValueError('servo_map does not match Track 1 action contract v3:\n  ' + '\n  '.join(mismatches))
+        raise ValueError(
+            f'servo_map does not match Track 1 action contract v{version}:\n  '
+            + '\n  '.join(mismatches)
+        )
 
 
 def pose_contract_audit_rows(
@@ -926,7 +957,13 @@ def capture_pose_mode(
     library = load_pose_library(library_path, joints)
     library['track1_contract'] = {
         'action_contract_version': contract.get('action_contract_version'),
+        'action_transform': contract.get('action_transform'),
+        'deployment_contract_profile': contract.get('deployment_contract_profile'),
         'desired_base_com_height_m': contract.get('desired_base_com_height_m'),
+        'desired_moving_base_com_height_m': contract.get('desired_moving_base_com_height_m'),
+        'desired_com_forward_offset_m': contract.get('desired_com_forward_offset_m'),
+        'desired_projected_gravity_x': contract.get('desired_projected_gravity_x'),
+        'residual_scale_rad': contract.get('residual_scale_rad'),
         'residual_half_range_rad': contract.get('residual_half_range_rad'),
         'track1_contract_sha256': sha256_file(contract_path),
         'servo_map_sha256': sha256_file(map_path),
