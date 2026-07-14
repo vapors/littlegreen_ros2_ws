@@ -1,0 +1,13 @@
+name,policy_index,servo_id,reference,reference_rad,expected_step,measured_median_step,measured_min_step,measured_max_step,error_steps,error_rad_equivalent,error_deg_equivalent,status
+leg_left_hip_roll_joint,0,1,policy-default,0.0,1994,1992.0,1992,1992,-2.0,0.0030679615757712823,0.17578125,PASS
+leg_left_hip_yaw_joint,1,2,policy-default,0.0,2001,2004.0,2004,2004,3.0,-0.0046019423636569235,-0.263671875,PASS
+leg_left_hip_pitch_joint,2,3,policy-default,-0.24,2367,2364.0,2364,2364,-3.0,0.0046019423636569235,0.263671875,PASS
+leg_left_knee_pitch_joint,3,4,policy-default,0.62,1358,1351.0,1351,1351,-7.0,0.010737865515199488,0.615234375,PASS
+leg_left_ankle_pitch_joint,4,5,policy-default,-0.22,1640,1636.0,1636,1636,-4.0,-0.006135923151542565,-0.3515625,PASS
+leg_left_ankle_roll_joint,5,6,policy-default,0.0,2018,2018.0,2018,2018,0.0,0.0,0.0,PASS
+leg_right_hip_roll_joint,6,7,policy-default,0.0,2061,2061.0,2061,2061,0.0,0.0,0.0,PASS
+leg_right_hip_yaw_joint,7,8,policy-default,0.0,2052,2047.0,2047,2047,-5.0,-0.007669903939428206,-0.439453125,PASS
+leg_right_hip_pitch_joint,8,9,policy-default,-0.24,1854,1860.0,1860,1860,6.0,0.009203884727313847,0.52734375,PASS
+leg_right_knee_pitch_joint,9,10,policy-default,0.62,2713,2721.0,2721,2721,8.0,0.01227184630308513,0.703125,PASS
+leg_right_ankle_pitch_joint,10,11,policy-default,-0.22,2429,2427.0,2427,2427,-2.0,0.0030679615757712823,0.17578125,PASS
+leg_right_ankle_roll_joint,11,12,policy-default,0.0,2055,2054.0,2054,2054,-1.0,0.0015339807878856412,0.087890625,PASS

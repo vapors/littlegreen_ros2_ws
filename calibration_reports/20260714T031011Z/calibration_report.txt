@@ -1,0 +1,33 @@
+ST3215 model-zero center-step calibration proposal
+================================================================
+capture: 20260714T031011Z
+source map: /home/scott/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
+source SHA-256: bcba21f0dee16572e3c4a35afb9accc20742e3dcb78e28599d71eca515105b3c
+selected joints: 12
+samples/joint: 250
+blocking flags: 4
+review flags: 3
+
+ 0 ID 1 leg_left_hip_roll_joint              meas= 2060.0 old_center=2041 new_center=2060 corr=  +19 raw=[1551,2513] span= 0 err=  -1.67deg FINE_SOFTWARE_CORRECTION
+ 1 ID 2 leg_left_hip_yaw_joint               meas= 2043.0 old_center=2027 new_center=2043 corr=  +16 raw=[1623,2101] span= 0 err=  -1.41deg FINE_SOFTWARE_CORRECTION
+ 2 ID 3 leg_left_hip_pitch_joint             meas= 2155.0 old_center=2110 new_center=2155 corr=  +45 raw=[1711,3408] span= 0 err=  -3.96deg INSPECT_MECHANICAL_ALIGNMENT
+ 3 ID 4 leg_left_knee_pitch_joint            meas= 1701.0 old_center=2051 new_center=1701 corr= -350 raw=[ 244,1613] span= 0 err= +30.76deg MECHANICAL_REINDEX_RECOMMENDED
+ 4 ID 5 leg_left_ankle_pitch_joint           meas= 1731.0 old_center=2024 new_center=1731 corr= -293 raw=[1203,2194] span= 0 err= -25.75deg MECHANICAL_REINDEX_RECOMMENDED
+ 5 ID 6 leg_left_ankle_roll_joint            meas= 1979.0 old_center=2021 new_center=1979 corr=  -42 raw=[1644,2574] span= 0 err=  -3.69deg INSPECT_MECHANICAL_ALIGNMENT
+ 6 ID 7 leg_right_hip_roll_joint             meas= 2051.0 old_center=2038 new_center=2051 corr=  +13 raw=[1481,2470] span= 0 err=  +1.14deg FINE_SOFTWARE_CORRECTION
+ 7 ID 8 leg_right_hip_yaw_joint              meas= 2051.0 old_center=2040 new_center=2051 corr=  +11 raw=[2014,2508] span= 0 err=  +0.97deg FINE_SOFTWARE_CORRECTION
+ 8 ID 9 leg_right_hip_pitch_joint            meas= 2097.0 old_center=2123 new_center=2097 corr=  -26 raw=[ 799,2453] span= 0 err=  -2.29deg INSPECT_MECHANICAL_ALIGNMENT
+ 9 ID10 leg_right_knee_pitch_joint           meas= 2356.0 old_center=2051 new_center=2356 corr= +305 raw=[2468,3817] span= 0 err= +26.81deg MECHANICAL_REINDEX_RECOMMENDED
+10 ID11 leg_right_ankle_pitch_joint          meas= 2325.0 old_center=2077 new_center=2325 corr= +248 raw=[1791,2876] span= 0 err= -21.80deg MECHANICAL_REINDEX_RECOMMENDED
+11 ID12 leg_right_ankle_roll_joint           meas= 2051.0 old_center=2058 new_center=2051 corr=   -7 raw=[1359,2340] span= 0 err=  +0.62deg FINE_SOFTWARE_CORRECTION
+
+Interpretation:
+  NO_CHANGE                       no center change required
+  FINE_SOFTWARE_CORRECTION        small center_step refinement
+  INSPECT_MECHANICAL_ALIGNMENT    review horn/fixture before applying
+  MECHANICAL_REINDEX_RECOMMENDED  large correction; re-index and recapture
+  RAW_RANGE_OUT_OF_BOUNDS         derived raw endpoint is outside 0..4095
+  UNSTABLE_CAPTURE                joint moved too much during capture
+
+min_rad/max_rad are preserved. min_step/max_step are derived from the new center.
+This proposal has NOT modified the source servo_map.yaml.

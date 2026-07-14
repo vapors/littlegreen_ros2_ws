@@ -8,11 +8,11 @@ joints:
   servo_sign: -1
   joint_zero_rad: 0.0
   training_default_rad: 0.0
-  center_step: 1994
+  center_step: 2041
   min_rad: -0.6948932969121955
   max_rad: 0.7807962210337913
-  min_step: 1485
-  max_step: 2447
+  min_step: 1532
+  max_step: 2494
   speed: 0
   acceleration: 0
 - name: leg_left_hip_yaw_joint
@@ -21,11 +21,11 @@ joints:
   servo_sign: -1
   joint_zero_rad: 0.0
   training_default_rad: 0.0
-  center_step: 2001
+  center_step: 2027
   min_rad: -0.08897088569736719
   max_rad: 0.6442719309119693
-  min_step: 1581
-  max_step: 2059
+  min_step: 1607
+  max_step: 2085
   speed: 0
   acceleration: 0
 - name: leg_left_hip_pitch_joint
@@ -34,11 +34,11 @@ joints:
   servo_sign: -1
   joint_zero_rad: 0.0
   training_default_rad: -0.24
-  center_step: 2211
+  center_step: 2110
   min_rad: -1.9220779272207085
   max_rad: 0.6810874698212247
-  min_step: 1767
-  max_step: 3464
+  min_step: 1666
+  max_step: 3363
   speed: 0
   acceleration: 0
 - name: leg_left_knee_pitch_joint
@@ -47,11 +47,11 @@ joints:
   servo_sign: -1
   joint_zero_rad: 0.0
   training_default_rad: 0.62
-  center_step: 1762
+  center_step: 2051
   min_rad: 0.1349903093339364
   max_rad: 2.2350100079493793
-  min_step: 305
-  max_step: 1674
+  min_step: 594
+  max_step: 1963
   speed: 0
   acceleration: 0
 - name: leg_left_ankle_pitch_joint
@@ -60,11 +60,11 @@ joints:
   servo_sign: 1
   joint_zero_rad: 0.0
   training_default_rad: -0.22
-  center_step: 1783
+  center_step: 2024
   min_rad: -0.8099418560036186
   max_rad: 0.7102331047910518
-  min_step: 1255
-  max_step: 2246
+  min_step: 1496
+  max_step: 2487
   speed: 0
   acceleration: 0
 - name: leg_left_ankle_roll_joint
@@ -73,11 +73,11 @@ joints:
   servo_sign: 1
   joint_zero_rad: 0.0
   training_default_rad: 0.0
-  center_step: 2018
+  center_step: 2021
   min_rad: -0.5138835639416898
   max_rad: 0.9127185687919565
-  min_step: 1683
-  max_step: 2613
+  min_step: 1686
+  max_step: 2616
   speed: 0
   acceleration: 0
 - name: leg_right_hip_roll_joint
@@ -86,11 +86,11 @@ joints:
   servo_sign: 1
   joint_zero_rad: 0.0
   training_default_rad: 0.0
-  center_step: 2061
+  center_step: 2038
   min_rad: -0.8743690490948155
   max_rad: 0.6427379501240836
-  min_step: 1491
-  max_step: 2480
+  min_step: 1468
+  max_step: 2457
   speed: 0
   acceleration: 0
 - name: leg_right_hip_yaw_joint
@@ -99,11 +99,11 @@ joints:
   servo_sign: 1
   joint_zero_rad: 0.0
   training_default_rad: 0.0
-  center_step: 2052
+  center_step: 2040
   min_rad: -0.056757289151768725
   max_rad: 0.701029220063738
-  min_step: 2015
-  max_step: 2509
+  min_step: 2003
+  max_step: 2497
   speed: 0
   acceleration: 0
 - name: leg_right_hip_pitch_joint
@@ -112,11 +112,11 @@ joints:
   servo_sign: 1
   joint_zero_rad: 0.0
   training_default_rad: -0.24
-  center_step: 2010
+  center_step: 2123
   min_rad: -1.9911070626755623
   max_rad: 0.5460971604872883
-  min_step: 712
-  max_step: 2366
+  min_step: 825
+  max_step: 2479
   speed: 0
   acceleration: 0
 - name: leg_right_knee_pitch_joint
@@ -125,11 +125,11 @@ joints:
   servo_sign: 1
   joint_zero_rad: 0.0
   training_default_rad: 0.62
-  center_step: 2309
+  center_step: 2051
   min_rad: 0.1718058482431918
   max_rad: 2.2411459311009216
-  min_step: 2421
-  max_step: 3770
+  min_step: 2163
+  max_step: 3512
   speed: 0
   acceleration: 0
 - name: leg_right_ankle_pitch_joint
@@ -138,11 +138,11 @@ joints:
   servo_sign: -1
   joint_zero_rad: 0.0
   training_default_rad: -0.22
-  center_step: 2286
+  center_step: 2077
   min_rad: -0.8452234141249882
   max_rad: 0.8191457407309324
-  min_step: 1752
-  max_step: 2837
+  min_step: 1543
+  max_step: 2628
   speed: 0
   acceleration: 0
 - name: leg_right_ankle_roll_joint
@@ -151,11 +151,11 @@ joints:
   servo_sign: -1
   joint_zero_rad: 0.0
   training_default_rad: 0.0
-  center_step: 2055
+  center_step: 2058
   min_rad: -0.4433204476989503
   max_rad: 1.0615147052168636
-  min_step: 1363
-  max_step: 2344
+  min_step: 1366
+  max_step: 2347
   speed: 0
   acceleration: 0
 hardware_limit_source: authoritative_hardware_contract.yaml
