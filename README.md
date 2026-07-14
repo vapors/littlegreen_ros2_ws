@@ -16,7 +16,7 @@ ROS 2 Humble source workspace for the LittleGreen biped hardware stack. The acti
 
 ## Current Track 1 deployment contract
 
-v2.7.2 includes the paired Track 1 v1.4.5s3 export:
+v2.7.3 retains the paired Track 1 v1.4.5s3 export from v2.7.2:
 
 ```text
 Task:      Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
@@ -72,6 +72,15 @@ ros2 run lgh_st3215_tools st3215_preflight \
   --expect-writes false
 ```
 
+For the current micro-ROS IMU source, use a dedicated terminal whenever `/imu/data` is required:
+
+```bash
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM0 \
+  -b 115200 \
+  -v0
+```
+
 Continue with [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.md).
 
 ## Policy bundle audit and shadow
@@ -124,6 +133,9 @@ Start with [`docs/README.md`](docs/README.md). Common pages:
 
 - [`docs/INSTALL_ORANGE_PI.md`](docs/INSTALL_ORANGE_PI.md)
 - [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.md)
+- [`docs/COMMAND_CHEATSHEET.md`](docs/COMMAND_CHEATSHEET.md)
+- [`docs/COMMAND_REFERENCE.md`](docs/COMMAND_REFERENCE.md)
+- [`docs/ROS_GRAPH_AND_AUTHORITY.md`](docs/ROS_GRAPH_AND_AUTHORITY.md)
 - [`docs/INTERFACES_AND_PARAMETERS.md`](docs/INTERFACES_AND_PARAMETERS.md)
 - [`docs/LIVE_POLICY_DEPLOYMENT.md`](docs/LIVE_POLICY_DEPLOYMENT.md)
 - [`docs/TRACK1_TRACK2_POLICY_METRICS.md`](docs/TRACK1_TRACK2_POLICY_METRICS.md)

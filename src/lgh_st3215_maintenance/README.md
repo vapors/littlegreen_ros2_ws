@@ -12,3 +12,5 @@ ros2 run lgh_st3215_maintenance backup_control_tables
 ```
 
 The package does not change IDs, baud rates, EEPROM values, motion profiles, or factory settings.
+
+Use `--help` on each executable for port, baud, timeout, output, address, and length overrides. The complete option list is in [`../../docs/COMMAND_REFERENCE.md`](../../docs/COMMAND_REFERENCE.md).

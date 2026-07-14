@@ -27,6 +27,13 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
+- [ ] Confirm no command publisher is active:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+```
+
+- [ ] Require `Publisher count: 0`.
 - [ ] Place the replaced joint at exact model zero (`joint_zero_rad`, currently 0 rad).
 - [ ] Use an external fixture, angle gauge, or alignment mark.
 - [ ] Capture only the replaced joint:
@@ -85,6 +92,12 @@ ros2 run lgh_st3215_tools verify_model_zero \
 - [ ] Require PASS, or investigate before continuing.
 
 ## Assume and verify policy default
+
+Stop the feedback-only driver and confirm the command graph is clean:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+```
 
 Restart commissioning with writes enabled and a slow pose ramp:
 

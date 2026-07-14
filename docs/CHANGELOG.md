@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.7.3
+
+- Added a comprehensive command and option reference for first-party executables, launch files, services, parameters, and exit codes.
+- Expanded the command cheat sheet into a task-oriented operating reference.
+- Added the current micro-ROS agent command (`/dev/ttyACM0`, 115200 baud, `-v0`) to commissioning, IMU, shadow, and live workflows.
+- Added ROS graph and command-authority documentation, including stale-publisher checks and pose-override release behavior.
+- Refreshed IMU validation, commissioning, fresh-install, calibration, servo-replacement, live-deployment, workflow, and troubleshooting documentation.
+- No runtime code, policy artifact, calibration map, action contract, or hardware configuration changes.
+
 ## 2.7.2
 
 Calibration and serviceability release:

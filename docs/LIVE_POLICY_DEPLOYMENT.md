@@ -28,7 +28,7 @@ lgh_st3215_driver
 
 The policy node owns observation construction, ONNX inference, action-contract transformation, and target generation. `pd_controller_node` owns the downstream safety envelope. `lgh_st3215_driver` remains the sole normal UART owner.
 
-## 2. Current v2.7.1 policy contract
+## 2. Current packaged Track 1 policy contract
 
 The packaged Track 1 v1.4.5s3 bundle uses:
 
@@ -162,13 +162,25 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-Start the current IMU source separately. It may be micro-ROS, direct I2C, or direct SPI, but it must publish the canonical `/imu/data` contract.
+Start the current micro-ROS IMU source in a separate terminal and keep it running:
+
+```bash
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM0 \
+  -b 115200 \
+  -v0
+```
+
+If the device number changed, inspect `/dev/ttyACM*` and `/dev/serial/by-id/` before changing `--dev`. A future direct I2C/SPI source may replace the agent, but it must publish the same canonical `/imu/data` contract.
+
+Run both preflights:
 
 ```bash
 ros2 run lgh_st3215_tools st3215_preflight \
   --mode runtime \
   --expect-writes false
 
+ros2 topic hz /imu/data
 ros2 run lgh_imu_tools imu_preflight
 ```
 
@@ -236,7 +248,14 @@ Stop shadow mode before proceeding.
 
 ## 8. Stage C — write-enabled driver hold
 
-Keep the robot supported and the physical servo-power disconnect immediately accessible. Stop the feedback-only driver, then restart it:
+Keep the robot supported and the physical servo-power disconnect immediately accessible. Stop shadow mode and the feedback-only driver first. Confirm the previous command nodes are gone:
+
+```bash
+ros2 node list
+ros2 topic info /servo_target_radians --verbose
+```
+
+Restart the driver with writes enabled:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -252,7 +271,15 @@ ros2 run lgh_st3215_tools st3215_preflight \
   --expect-writes true
 ```
 
-Do not continue if feedback is stale, diagnostics are unhealthy, the pose override is unexpected, or the command graph contains an unrecognized publisher.
+For a deliberate current-pose hold before starting the live publisher:
+
+```bash
+ros2 service call \
+  /st3215_driver/hold_current_pose \
+  std_srvs/srv/Trigger '{}'
+```
+
+Do not continue if feedback is stale, diagnostics are unhealthy, the pose override is unexpected, or the command graph contains an unrecognized publisher. See [`ROS_GRAPH_AND_AUTHORITY.md`](ROS_GRAPH_AND_AUTHORITY.md).
 
 ## 9. Stage D — live policy with safety-only shaping
 
@@ -270,7 +297,7 @@ pd_controller_node
 
 It does not start the driver, IMU source, joystick, or keyboard.
 
-Verify the command chain:
+Verify the command chain before releasing any driver pose override:
 
 ```bash
 ros2 node list
@@ -279,6 +306,16 @@ ros2 topic info /servo_target_radians --verbose
 ros2 topic echo /policy_status --once
 ros2 topic echo /safe_joint_targets --once
 ```
+
+When the policy and controller publisher are confirmed intentional, release the driver override:
+
+```bash
+ros2 service call \
+  /st3215_driver/release_pose_override \
+  std_srvs/srv/Trigger '{}'
+```
+
+The release is immediate; an active `/servo_target_radians` publisher becomes authoritative at once.
 
 First live runs use:
 
@@ -292,6 +329,19 @@ physical power disconnect immediately accessible
 ```
 
 Do not use `outer_pd` or `outer_pid` during the initial v1.4.5s3 campaign.
+
+
+## Recommended terminal layout
+
+```text
+Terminal A: micro-ROS agent (`/dev/ttyACM0`, `/imu/data`)
+Terminal B: `lgh_st3215_driver`
+Terminal C: policy shadow or policy live launch
+Terminal D: joystick/command source, when enabled
+Terminal E: preflight, diagnostics, and authority inspection
+```
+
+The live launch does not start or stop the micro-ROS agent or ST3215 driver. Treat each terminal as an independent process that must be stopped and verified separately.
 
 ## 10. Command sources
 

@@ -158,9 +158,20 @@ Confirm:
 
 ## Gate 8 — IMU boundary
 
-With the current IMU source publishing `/imu/data`:
+Start the current XIAO micro-ROS source in a dedicated terminal:
 
 ```bash
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM0 \
+  -b 115200 \
+  -v0
+```
+
+Confirm the topic and run validation:
+
+```bash
+ros2 topic hz /imu/data
+ros2 topic echo /imu/data --once
 ros2 run lgh_imu_tools imu_preflight
 ros2 run lgh_imu_tools stationary_characterization --duration-sec 20
 ```
@@ -231,6 +242,10 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
 ```
 
 Before any motion:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+```
 
 - confirm mechanical support;
 - confirm the power disconnect is reachable;

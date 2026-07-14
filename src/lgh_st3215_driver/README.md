@@ -113,3 +113,13 @@ See:
 - [`../../docs/INTERFACES_AND_PARAMETERS.md`](../../docs/INTERFACES_AND_PARAMETERS.md)
 - [`../../docs/FRESH_INSTALL_CHECKLIST.md`](../../docs/FRESH_INSTALL_CHECKLIST.md)
 - [`../lgh_st3215_tools/README.md`](../lgh_st3215_tools/README.md)
+
+## Command authority
+
+A write-enabled driver accepts `/servo_target_radians` whenever no internal pose override is active. Before calibration or before releasing an override, inspect:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+```
+
+See [`../../docs/ROS_GRAPH_AND_AUTHORITY.md`](../../docs/ROS_GRAPH_AND_AUTHORITY.md) and [`../../docs/COMMAND_REFERENCE.md`](../../docs/COMMAND_REFERENCE.md).

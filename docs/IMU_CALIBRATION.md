@@ -1,209 +1,230 @@
-# lgh_icm20948_microros_pio_v_1
+# IMU Source, Agent, and Validation
 
-PlatformIO / Arduino / micro-ROS firmware for the LittleGreen Humanoid Lite IMU controller.
-
-This release promotes the IMU track from the raw bring-up baseline to the first real orientation build. The servo ESP32 still owns `/servo_target_radians`, `/joint_states`, and `/st3215_feedback_debug`; this firmware owns `/imu/data`, `/imu/calibrate`, and optional `/imu/debug`.
-
-## v1.0.1 debug transport fix
-
-`/imu/data` remains best-effort at 100 Hz. `/imu/debug` is now a reliable publisher at 2 Hz so the rich diagnostic string can be fragmented by XRCE-DDS instead of exceeding the best-effort transport MTU. The debug payload also reports `dbg_pub` and `dbg_fail` counters.
-
-## v_1 target
-
-Publishes:
+LittleGreen consumes IMU data at the canonical ROS boundary:
 
 ```text
-/imu/data    sensor_msgs/msg/Imu    best-effort publisher, 100 Hz default
+/imu/data  sensor_msgs/msg/Imu
 ```
 
-Optional/control topics:
+The current source is the XIAO ESP32-S3 ICM-20948 micro-ROS firmware. The validation tools remain source-independent, so the same checks apply after a future move to direct Orange Pi I2C or SPI.
 
-```text
-/imu/debug       std_msgs/msg/String    enabled in *_debug environments
-/imu/calibrate   std_msgs/msg/Bool      true starts stationary gyro calibration
-```
+## 1. Start the current micro-ROS agent
 
-Default v_1 data policy:
-
-```text
-frame_id:              imu_link
-publish rate:          100 Hz
-transport:             USB serial micro-ROS
-QoS:                   best effort for /imu/data
-angular_velocity:      rad/s
-linear_acceleration:   m/s^2, accelerometer/proper acceleration including gravity
-orientation:           6-axis Madgwick gyro + accel estimate
-orientation validity:  valid in Madgwick builds, invalid in raw builds
-```
-
-The v_1 orientation estimate does **not** use the ICM-20948 magnetometer yet. Roll and pitch are the useful first-order outputs. Yaw will drift over time.
-
-## Hardware target
-
-Default board:
-
-```text
-Seeed Studio XIAO ESP32-S3
-ICM-20948 breakout over I2C
-```
-
-Default wiring:
-
-```text
-XIAO 3V3  -> ICM-20948 VIN / VCC, if breakout supports 3.3 V input
-XIAO GND  -> ICM-20948 GND
-XIAO D4   -> ICM-20948 SDA   GPIO5
-XIAO D5   -> ICM-20948 SCL   GPIO6
-```
-
-The firmware scans both common ICM-20948 I2C addresses:
-
-```text
-0x68
-0x69
-```
-
-## Build environments
-
-Recommended v_1 orientation/debug build:
+Use a dedicated terminal:
 
 ```bash
-pio run -e xiao_esp32s3_v1_orientation_debug -t upload
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM0 \
+  -b 115200 \
+  -v0
 ```
 
-Other useful builds:
+Keep this process running during IMU preflight, policy shadow, and live policy operation.
+
+The command does not launch the firmware. It creates the host-side micro-ROS serial transport used by the already-flashed XIAO.
+
+## 2. Confirm the USB serial device
+
+USB CDC numbers can change after reboots or reconnection:
 
 ```bash
-pio run -e xiao_esp32s3_v1_orientation
-pio run -e xiao_esp32s3_raw_debug
-pio run -e xiao_esp32s3_raw
-pio run -e xiao_esp32s3_madgwick_debug
-pio run -e xiao_esp32s3_fast_orientation_debug
+ls -l /dev/ttyACM*
+ls -l /dev/serial/by-id/
 ```
 
-The default PlatformIO environment is `xiao_esp32s3_v1_orientation_debug`.
-
-## Run the micro-ROS agent
+When the controller appears on a different device, change only the `--dev` value:
 
 ```bash
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 115200
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM1 \
+  -b 115200 \
+  -v0
 ```
 
-or:
+Use a stable `/dev/serial/by-id/...` path when one is available and verified.
+
+## 3. Verify the ROS boundary
 
 ```bash
-./scripts/run_agent.sh /dev/ttyACM0 115200
+ros2 topic list -t | grep imu
+ros2 topic hz /imu/data
+ros2 topic echo /imu/data --once
+ros2 topic info /imu/data --verbose
 ```
 
-## ROS 2 checks
+Expected source characteristics for the current firmware include:
 
-First checks:
+```text
+topic: /imu/data
+message: sensor_msgs/msg/Imu
+frame_id: imu_link
+rate: approximately 100 Hz
+```
+
+The policy node uses sensor-data QoS for the IMU. A best-effort sensor publisher is expected.
+
+## 4. Run IMU preflight
+
+```bash
+ros2 run lgh_imu_tools imu_preflight
+```
+
+Expanded example:
+
+```bash
+ros2 run lgh_imu_tools imu_preflight \
+  --duration-sec 5 \
+  --timeout-sec 10 \
+  --output-root ~/.ros/lgh_reports
+```
+
+The contract file is installed with `lgh_imu_tools` and can be overridden:
+
+```bash
+ros2 run lgh_imu_tools imu_preflight \
+  --contract /absolute/path/to/imu_contract.yaml
+```
+
+## 5. Stationary characterization
+
+Place the supported robot and IMU in a stable pose:
+
+```bash
+ros2 run lgh_imu_tools stationary_characterization \
+  --topic /imu/data \
+  --duration-sec 20
+```
+
+This records stationary noise and stability data under:
+
+```text
+~/.ros/lgh_imu_datasets
+```
+
+Use the same support condition and duration when comparing firmware, filters, mounts, or transport changes.
+
+## 6. Orientation audit
+
+Neutral pose:
+
+```bash
+ros2 run lgh_imu_tools orientation_audit \
+  --pose neutral
+```
+
+Known-direction example:
+
+```bash
+ros2 run lgh_imu_tools orientation_audit \
+  --pose forward_pitch \
+  --expected-axis x \
+  --expected-sign positive \
+  --minimum-magnitude 0.5
+```
+
+Options:
+
+```text
+--pose TEXT                         required operator label
+--contract PATH                     optional contract override
+--duration-sec FLOAT                default 3.0
+--expected-axis x|y|z               optional sign check axis
+--expected-sign positive|negative   optional sign check
+--minimum-magnitude FLOAT           default 0.5
+--output-root PATH                  default ~/.ros/lgh_imu_audits
+```
+
+Do not guess an axis/sign expectation. Use a controlled physical orientation and record exactly how the robot was moved.
+
+## 7. Raw recorder
+
+```bash
+ros2 run lgh_imu_tools imu_recorder \
+  --topic /imu/data \
+  --duration-sec 10
+```
+
+Use the recorder for side-by-side comparisons or when a policy readiness failure needs the original message stream preserved.
+
+## 8. Policy-frame transform
+
+The policy runtime applies `imu_to_base_matrix` from:
+
+```text
+src/littlegreen_biped_pkg/src/configs/policy_runtime.yaml
+```
+
+Current matrix semantics:
+
+```text
+x_base =  y_imu
+y_base = -x_imu
+z_base =  z_imu
+```
+
+Changing the sensor mount, firmware orientation convention, or source driver requires repeating the orientation audit before changing this matrix.
+
+## 9. Policy shadow and live requirements
+
+For real hardware, keep:
+
+```text
+override_imu:=false
+```
+
+`override_imu:=true` substitutes nominal values and is useful only for limited software inspection. It is not a valid real-hardware balance test.
+
+The policy freshness gate defaults to:
+
+```text
+imu_timeout_sec: 0.050
+```
+
+At a nominal 100 Hz IMU rate, occasional transport jitter may be tolerated, but a stopped agent or disconnected USB device should quickly make the policy unready.
+
+## 10. Troubleshooting
+
+### Agent starts but `/imu/data` is absent
+
+```bash
+ls -l /dev/ttyACM*
+ros2 node list
+ros2 topic list -t
+```
+
+Check that:
+
+- the correct XIAO device is selected;
+- no second micro-ROS agent owns the same device;
+- the firmware is running and uses the expected serial transport/baud;
+- the user has permission to open the device.
+
+### Device is busy
+
+```bash
+lsof /dev/ttyACM0
+fuser -v /dev/ttyACM0
+```
+
+Stop the stale agent or serial monitor that owns the port.
+
+### Topic rate is unstable
+
+```bash
+ros2 topic hz /imu/data
+ros2 run lgh_imu_tools stationary_characterization --duration-sec 30
+```
+
+Record whether the issue changes with USB reconnect, power sequencing, or another cable/port before changing policy freshness limits.
+
+### Policy reports stale IMU
+
+Check the source and policy process separately:
 
 ```bash
 ros2 topic hz /imu/data
 ros2 topic echo /imu/data --once
-ros2 topic echo /imu/debug --once --full-length
+ros2 node info /littlegreen_biped_node
 ```
 
-Concurrent throughput checks with the ST3215 controller:
-
-```bash
-ros2 topic hz /joint_states
-ros2 topic hz /imu/data
-ros2 topic hz /servo_target_radians
-```
-
-## Calibration
-
-Stationary gyro calibration is enabled by default. Keep the robot completely still and publish:
-
-```bash
-ros2 topic pub --once /imu/calibrate std_msgs/msg/Bool "{data: true}"
-```
-
-The firmware averages `IMU_CALIBRATION_SAMPLES` samples and stores the gyro bias in ESP32 NVS Preferences. v_1 debug makes the calibration status clearer:
-
-```text
-calib_state=idle|active|complete|disabled
-calib_progress=500/500
-calib_save_event=0|1
-calib_saves=<persistent save count>
-bias_loaded=0|1
-boot=<persistent boot count>
-```
-
-`calib_save_event` is a short one-shot flag; `calib_saves` and `bias_loaded` are the longer-lived fields to confirm persistence.
-
-Accel calibration is intentionally disabled by default because it depends on the mounted gravity direction. To enable accel bias calibration, build with:
-
-```ini
--D IMU_CALIBRATE_ACCEL=1
--D IMU_STATIC_ACCEL_X_MPS2=0.0
--D IMU_STATIC_ACCEL_Y_MPS2=0.0
--D IMU_STATIC_ACCEL_Z_MPS2=9.80665
-```
-
-## v_1 debug additions
-
-`/imu/debug` now includes:
-
-```text
-ver=...
-boot=...
-nvs_loaded=...
-bias_loaded=...
-calib_state=...
-calib_progress=current/target
-sample_age_ms=...
-sample_dt_ms=...
-sample_dt_min=...
-sample_dt_max=...
-sample_dt_avg=...
-pub_age_ms=...
-pub_dt_ms=...
-pub_dt_min=...
-pub_dt_max=...
-pub_dt_avg=...
-accel_mag=...
-orient_mode=madgwick_6axis|identity_placeholder
-orient_valid=...
-q=[w,x,y,z]
-rpy_deg=[roll,pitch,yaw]
-```
-
-This makes it easier to check whether the ROS 2 observation stack is receiving fresh IMU data and whether the orientation build is behaving sensibly.
-
-## Orientation modes
-
-Madgwick environments enable a 6-axis gyro + accel orientation estimate:
-
-```bash
-pio run -e xiao_esp32s3_v1_orientation_debug -t upload
-```
-
-Raw environments still publish an identity quaternion and mark orientation invalid:
-
-```text
-orientation_covariance[0] = -1.0
-```
-
-The raw builds remain useful for isolating policy-node plumbing if the fusion output needs to be disabled during testing.
-
-## Key files
-
-```text
-platformio.ini            Build flags and environment variants
-src/main.cpp              Fixed-rate loop, scheduler, orientation update guard
-src/icm20948_bus.cpp      Minimal ICM-20948 I2C driver, NVS calibration/boot count, sample stats
-src/microros_node.cpp     micro-ROS publishers/subscriber, timestamping, debug stats
-src/madgwick_filter.cpp   6-axis orientation fusion and quaternion-to-Euler debug helper
-include/imu_config.h      Compile-time settings
-include/imu_types.h       Sample/status/calibration structs
-config/imu_config.yaml    ROS-facing config mirror/documentation
-```
-
-## Notes
-
-- USB `Serial` is reserved for the micro-ROS transport. Do not enable serial debug while connected to the micro-ROS agent unless you intentionally move micro-ROS to another transport.
-- `/imu/data` uses best-effort publishing to avoid blocking the transport and producing stale observations.
-- The policy/controller side should reject IMU samples by timestamp age if the agent or sensor drops out. A first cutoff around 50 ms is reasonable for 100 Hz IMU data.
+Do not disable the freshness gate to hide a stopped or unreliable source.

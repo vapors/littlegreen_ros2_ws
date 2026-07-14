@@ -1,6 +1,6 @@
 # Interfaces and Parameters
 
-This page describes the active LittleGreen interfaces. Values shown are defaults from the current source tree.
+This page describes the active LittleGreen interfaces. Values shown are defaults from the current source tree. For executable-by-executable CLI options, see [`COMMAND_REFERENCE.md`](COMMAND_REFERENCE.md).
 
 ## 1. ST3215 driver profiles
 
@@ -129,6 +129,8 @@ Software position holds are not hardware E-stops.
 | `default_pose_move_duration_sec` | `4.0` |
 | `default_pose_ramp_rate_hz` | `50.0` |
 | `default_pose_hold_after_move` | `true` |
+
+`startup_hold_current_position` initializes the safe command from measured feedback; it is not a persistent authority lock. When no pose override is active, an existing `/servo_target_radians` publisher can become authoritative. Inspect the publisher graph before write-enabled work.
 
 ### Feedback and diagnostics
 
@@ -403,9 +405,18 @@ Main interface:
 | output | `/safe_joint_targets` |
 | service | `/pd_controller/reset_to_feedback` |
 
-## 11. IMU tools
+## 11. IMU source and tools
 
-The IMU tools validate the ROS boundary and are independent of whether `/imu/data` comes from micro-ROS, direct I2C, or direct SPI.
+The current XIAO/ICM-20948 source uses a separately managed micro-ROS agent:
+
+```bash
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM0 \
+  -b 115200 \
+  -v0
+```
+
+The agent is not started by the policy or driver launch files. The IMU tools validate the canonical ROS boundary and remain independent of whether `/imu/data` comes from micro-ROS, direct I2C, or direct SPI.
 
 ```bash
 ros2 run lgh_imu_tools imu_preflight --help

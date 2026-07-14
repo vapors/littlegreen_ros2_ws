@@ -54,3 +54,11 @@ The normal ROS tools operate above `lgh_st3215_driver`; they do not independentl
 ```text
 tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py
 ```
+
+## Full command options
+
+The workspace-level reference documents every tool option and example:
+
+- [`../../docs/COMMAND_REFERENCE.md`](../../docs/COMMAND_REFERENCE.md)
+- [`../../docs/COMMAND_CHEATSHEET.md`](../../docs/COMMAND_CHEATSHEET.md)
+- [`../../docs/ROS_GRAPH_AND_AUTHORITY.md`](../../docs/ROS_GRAPH_AND_AUTHORITY.md)

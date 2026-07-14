@@ -34,13 +34,17 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-Verify:
+Verify the driver and command graph:
 
 ```bash
 ros2 run lgh_st3215_tools st3215_preflight \
   --mode commissioning \
   --expect-writes false
+
+ros2 topic info /servo_target_radians --verbose
 ```
+
+For calibration, require `Publisher count: 0`. A policy, PD controller, identification tool, or standing tool must not be publishing during center capture.
 
 ## 2. Put the robot in model zero
 
@@ -123,12 +127,26 @@ It does not change the policy default or model-space radian limits.
 
 ## 5. Apply after review
 
+Normal reviewed proposal:
+
 ```bash
 ros2 run lgh_st3215_tools apply_calibration \
   calibration_reports/<timestamp>/center_step_proposal.yaml \
   --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml \
   --apply
 ```
+
+A proposal containing reviewed `MECHANICAL_REINDEX_RECOMMENDED` entries requires an explicit acknowledgement:
+
+```bash
+ros2 run lgh_st3215_tools apply_calibration \
+  calibration_reports/<timestamp>/center_step_proposal.yaml \
+  --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml \
+  --allow-large-corrections \
+  --apply
+```
+
+The flag does not prove the physical pose was correct; it records that the operator reviewed and accepted the large correction.
 
 Timestamped backups are created before both source files are modified.
 
@@ -166,7 +184,13 @@ This checks encoder steps against the calibrated centers. External physical alig
 
 ## 8. Command the policy-default stance
 
-Stop the feedback-only driver and relaunch with writes enabled:
+Stop the feedback-only driver. Confirm there is no stale command publisher:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+```
+
+Then relaunch with writes enabled:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \

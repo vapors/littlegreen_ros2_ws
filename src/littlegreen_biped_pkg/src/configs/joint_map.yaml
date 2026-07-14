@@ -147,9 +147,9 @@ joints:
   limit_upper_rad: 0.7807962210337913
   servo_sign: -1
   joint_zero_rad: 0.0
-  servo_center_step: 1994
-  servo_min_step: 1485
-  servo_max_step: 2447
+  servo_center_step: 2041
+  servo_min_step: 1532
+  servo_max_step: 2494
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -167,9 +167,9 @@ joints:
   limit_upper_rad: 0.6442719309119693
   servo_sign: -1
   joint_zero_rad: 0.0
-  servo_center_step: 2001
-  servo_min_step: 1581
-  servo_max_step: 2059
+  servo_center_step: 2027
+  servo_min_step: 1607
+  servo_max_step: 2085
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -187,9 +187,9 @@ joints:
   limit_upper_rad: 0.6810874698212247
   servo_sign: -1
   joint_zero_rad: 0.0
-  servo_center_step: 2211
-  servo_min_step: 1767
-  servo_max_step: 3464
+  servo_center_step: 2110
+  servo_min_step: 1666
+  servo_max_step: 3363
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -207,9 +207,9 @@ joints:
   limit_upper_rad: 2.2350100079493793
   servo_sign: -1
   joint_zero_rad: 0.0
-  servo_center_step: 1762
-  servo_min_step: 305
-  servo_max_step: 1674
+  servo_center_step: 2051
+  servo_min_step: 594
+  servo_max_step: 1963
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -227,9 +227,9 @@ joints:
   limit_upper_rad: 0.7102331047910518
   servo_sign: 1
   joint_zero_rad: 0.0
-  servo_center_step: 1783
-  servo_min_step: 1255
-  servo_max_step: 2246
+  servo_center_step: 2024
+  servo_min_step: 1496
+  servo_max_step: 2487
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -247,9 +247,9 @@ joints:
   limit_upper_rad: 0.9127185687919565
   servo_sign: 1
   joint_zero_rad: 0.0
-  servo_center_step: 2018
-  servo_min_step: 1683
-  servo_max_step: 2613
+  servo_center_step: 2021
+  servo_min_step: 1686
+  servo_max_step: 2616
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -267,9 +267,9 @@ joints:
   limit_upper_rad: 0.6427379501240836
   servo_sign: 1
   joint_zero_rad: 0.0
-  servo_center_step: 2061
-  servo_min_step: 1491
-  servo_max_step: 2480
+  servo_center_step: 2038
+  servo_min_step: 1468
+  servo_max_step: 2457
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -287,9 +287,9 @@ joints:
   limit_upper_rad: 0.701029220063738
   servo_sign: 1
   joint_zero_rad: 0.0
-  servo_center_step: 2052
-  servo_min_step: 2015
-  servo_max_step: 2509
+  servo_center_step: 2040
+  servo_min_step: 2003
+  servo_max_step: 2497
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -307,9 +307,9 @@ joints:
   limit_upper_rad: 0.5460971604872883
   servo_sign: 1
   joint_zero_rad: 0.0
-  servo_center_step: 2010
-  servo_min_step: 712
-  servo_max_step: 2366
+  servo_center_step: 2123
+  servo_min_step: 825
+  servo_max_step: 2479
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -327,9 +327,9 @@ joints:
   limit_upper_rad: 2.2411459311009216
   servo_sign: 1
   joint_zero_rad: 0.0
-  servo_center_step: 2309
-  servo_min_step: 2421
-  servo_max_step: 3770
+  servo_center_step: 2051
+  servo_min_step: 2163
+  servo_max_step: 3512
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -347,9 +347,9 @@ joints:
   limit_upper_rad: 0.8191457407309324
   servo_sign: -1
   joint_zero_rad: 0.0
-  servo_center_step: 2286
-  servo_min_step: 1752
-  servo_max_step: 2837
+  servo_center_step: 2077
+  servo_min_step: 1543
+  servo_max_step: 2628
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0
@@ -367,9 +367,9 @@ joints:
   limit_upper_rad: 1.0615147052168636
   servo_sign: -1
   joint_zero_rad: 0.0
-  servo_center_step: 2055
-  servo_min_step: 1363
-  servo_max_step: 2344
+  servo_center_step: 2058
+  servo_min_step: 1366
+  servo_max_step: 2347
   calibrated: true
   policy_joint_kp: 12.0
   policy_joint_kd: 2.0

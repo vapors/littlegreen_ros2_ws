@@ -1,28 +1,29 @@
-# Command Cheat Sheet
+# LittleGreen Command Cheat Sheet
 
-## Environment
+This page is the fast operating reference. For every option and parameter, use [`COMMAND_REFERENCE.md`](COMMAND_REFERENCE.md).
 
-New interactive Bash terminals load LittleGreen automatically through `~/.bashrc`.
+## 1. Environment and discovery
 
-For the current terminal after installation:
+New interactive terminals normally source the LittleGreen overlay through `~/.bashrc`.
 
 ```bash
 source ~/.bashrc
-```
-
-Direct environment sourcing is optional:
-
-```bash
-source ~/.config/littlegreen/ros2_env.sh
-```
-
-Verify the active overlay:
-
-```bash
 ros2 pkg prefix lgh_st3215_driver
 ```
 
-## Validate and build
+Useful discovery commands:
+
+```bash
+ros2 pkg executables lgh_st3215_tools
+ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py --show-args
+ros2 run lgh_st3215_tools servo_identification --help
+ros2 node list
+ros2 topic list -t
+ros2 service list -t
+ros2 param list /lgh_st3215_driver
+```
+
+## 2. Build and validate
 
 ```bash
 cd ~/littlegreen_ros2_ws
@@ -32,15 +33,44 @@ cd ~/littlegreen_ros2_ws
 ./scripts/build_workspace.sh --clean
 ```
 
-Build one package:
+Package-only rebuild:
 
 ```bash
-colcon build --symlink-install --packages-select lgh_st3215_tools
+colcon build --symlink-install --packages-select <package_name>
+source install/setup.bash
 ```
 
-## ST3215 driver profiles
+## 3. Start the micro-ROS IMU source
 
-### Commissioning, feedback only
+Use a dedicated terminal and keep it running whenever the current ICM-20948 micro-ROS firmware is the active `/imu/data` source:
+
+```bash
+ros2 run micro_ros_agent micro_ros_agent serial \
+  --dev /dev/ttyACM0 \
+  -b 115200 \
+  -v0
+```
+
+Verify:
+
+```bash
+ros2 topic hz /imu/data
+ros2 topic echo /imu/data --once
+ros2 run lgh_imu_tools imu_preflight
+```
+
+If the USB device number changed:
+
+```bash
+ls -l /dev/ttyACM*
+ls -l /dev/serial/by-id/
+```
+
+## 4. ST3215 driver launch modes
+
+### Feedback-only commissioning
+
+Use for calibration, inspection, and preflight. No physical SyncWrite commands are sent.
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -48,9 +78,9 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-### Commissioning, writes enabled
+### Write-enabled commissioning
 
-Use only for a planned guarded operation:
+Use only for a deliberate guarded operation:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -58,7 +88,7 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=true
 ```
 
-### Runtime-safe, feedback only
+### Feedback-only runtime profile
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -66,7 +96,23 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=false
 ```
 
-### Override UART port or pose-ramp duration
+### Write-enabled runtime profile
+
+```bash
+ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
+  profile:=runtime_safe \
+  enable_writes:=true
+```
+
+Before any write-enabled launch, inspect command authority:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+```
+
+For calibration or manual pose work, the expected publisher count is `0`.
+
+### Common launch overrides
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -76,71 +122,111 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   default_pose_move_duration_sec:=8.0
 ```
 
-## Preflight and snapshots
+Show all launch arguments:
 
 ```bash
-ros2 run lgh_st3215_tools st3215_preflight \
-  --mode feedback --expect-writes false
-
-ros2 run lgh_st3215_tools st3215_preflight \
-  --mode commissioning --expect-writes false
-
-ros2 run lgh_st3215_tools st3215_preflight \
-  --mode runtime --expect-writes false
-
-ros2 run lgh_st3215_tools hardware_snapshot
+ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py --show-args
 ```
 
-## Inspect driver health
+## 5. Driver preflight and health
 
 ```bash
-ros2 node list
-ros2 topic list
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode feedback \
+  --expect-writes false
+
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode commissioning \
+  --expect-writes false
+
+ros2 run lgh_st3215_tools st3215_preflight \
+  --mode runtime \
+  --expect-writes true
+```
+
+```bash
+ros2 run lgh_st3215_tools hardware_snapshot
 ros2 topic hz /joint_states
 ros2 topic hz /joint_feedback_age_ms
 ros2 topic echo /st3215_driver/diagnostics --once
-ros2 topic echo /joint_states --once
-ros2 topic echo /joint_feedback_age_ms --once
 ```
 
-Commissioning telemetry:
+Commissioning-only inspection:
 
 ```bash
+ros2 topic echo /st3215_driver/raw_position_steps --once
+ros2 topic echo /servo_target_steps_debug --once
 ros2 topic hz /st3215_driver/telemetry
-ros2 topic echo /st3215_driver/telemetry --once
 ```
 
-## Guarded driver services
+## 6. Command authority and guarded services
+
+### Hold the current measured pose
+
+Blocks external `/servo_target_radians` commands until release:
 
 ```bash
-ros2 service call \
-  /st3215_driver/move_to_default_pose \
-  std_srvs/srv/Trigger '{}'
-
-ros2 service call \
-  /st3215_driver/abort_pose_move \
-  std_srvs/srv/Trigger '{}'
-
 ros2 service call \
   /st3215_driver/hold_current_pose \
   std_srvs/srv/Trigger '{}'
+```
 
-ros2 service call \
-  /st3215_driver/release_pose_override \
-  std_srvs/srv/Trigger '{}'
+### Enable torque at the current measured pose
 
-ros2 service call \
-  /st3215_driver/disable_torque_all \
-  std_srvs/srv/Trigger '{}'
+Seeds the current pose, enables torque, and keeps the pose override active:
 
+```bash
 ros2 service call \
   /st3215_driver/enable_torque_hold_current \
   std_srvs/srv/Trigger '{}'
 ```
 
-Software holds are not electrical emergency stops.
+### Move to the policy-default stance
 
-## Calibration and servo replacement
+```bash
+ros2 run lgh_st3215_tools assume_policy_default
+```
+
+Equivalent compatibility service:
+
+```bash
+ros2 service call \
+  /st3215_driver/move_to_default_pose \
+  std_srvs/srv/Trigger '{}'
+```
+
+This means **policy default**, not model zero.
+
+### Abort a policy-default ramp
+
+```bash
+ros2 service call \
+  /st3215_driver/abort_pose_move \
+  std_srvs/srv/Trigger '{}'
+```
+
+### Release command authority
+
+Check the publisher first, because release is immediate:
+
+```bash
+ros2 topic info /servo_target_radians --verbose
+ros2 service call \
+  /st3215_driver/release_pose_override \
+  std_srvs/srv/Trigger '{}'
+```
+
+### Disable torque
+
+```bash
+ros2 service call \
+  /st3215_driver/disable_torque_all \
+  std_srvs/srv/Trigger '{}'
+```
+
+Software holds and ROS services are not electrical emergency stops.
+
+## 7. Calibration and servo replacement
 
 Print the two distinct references:
 
@@ -149,7 +235,15 @@ ros2 run lgh_st3215_tools print_model_zero
 ros2 run lgh_st3215_tools print_policy_default
 ```
 
-Capture model zero for one replacement servo:
+Capture all model-zero centers:
+
+```bash
+ros2 run lgh_st3215_tools capture_calibration \
+  --reference model-zero \
+  --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
+```
+
+Capture one replacement servo:
 
 ```bash
 ros2 run lgh_st3215_tools capture_calibration \
@@ -158,9 +252,7 @@ ros2 run lgh_st3215_tools capture_calibration \
   --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
 
-Capture all 12 model-zero centers by omitting `--joint`.
-
-Dry-run/apply:
+Dry-run and apply:
 
 ```bash
 ros2 run lgh_st3215_tools apply_calibration \
@@ -170,35 +262,50 @@ ros2 run lgh_st3215_tools apply_calibration \
 ros2 run lgh_st3215_tools apply_calibration \
   calibration_reports/<timestamp>/center_step_proposal.yaml \
   --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml \
+  --allow-large-corrections \
   --apply
 ```
 
-Verify model zero:
+Verify:
 
 ```bash
 ros2 run lgh_st3215_tools verify_model_zero
+ros2 run lgh_st3215_tools assume_policy_default
+ros2 run lgh_st3215_tools verify_policy_default --allow-writes-enabled
 ```
 
-Guarded move and policy-default verification:
+See [`SERVO_REPLACEMENT_CHECKLIST.md`](SERVO_REPLACEMENT_CHECKLIST.md).
+
+## 8. Hardware-limit tool
+
+The runtime driver must be stopped because this tool opens `/dev/ttyS3` directly.
+
+Capture physical endpoints:
 
 ```bash
-ros2 run lgh_st3215_tools assume_policy_default
-
-ros2 run lgh_st3215_tools verify_policy_default \
-  --allow-writes-enabled
+cd ~/littlegreen_ros2_ws
+python3 tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py capture \
+  --device /dev/ttyS3 \
+  --margin-steps 10 \
+  --output-dir ~/lgh_limit_capture
 ```
 
-The model-space limits remain unchanged during center calibration; raw limits are derived from the new center. See `SERVO_REPLACEMENT_CHECKLIST.md`.
+Re-render an existing radian-limit capture after center calibration:
 
-## Servo identification
+```bash
+python3 tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py render \
+  --capture ~/lgh_limit_capture/physical_limit_capture.yaml \
+  --margin-steps 10 \
+  --output-dir ~/lgh_limit_capture/rendered_after_zero_calibration
+```
 
-Show the current CLI:
+## 9. Servo identification
 
 ```bash
 ros2 run lgh_st3215_tools servo_identification --help
 ```
 
-Example:
+Example step sweep:
 
 ```bash
 ros2 run lgh_st3215_tools servo_identification \
@@ -206,20 +313,38 @@ ros2 run lgh_st3215_tools servo_identification \
   --mode step_sweep \
   --direction both \
   --amplitudes-rad 0.02,0.05,0.10 \
+  --test-center-offset-rad 0.05 \
   --support-condition securely_supported
 ```
 
-Keep the policy disconnected and use the `commissioning` profile.
+Keep the policy disconnected and run one joint at a time.
 
-## Standing characterization
+## 10. Standing characterization
 
 ```bash
 ros2 run lgh_st3215_tools standing_characterization --help
 ```
 
-## Offline maintenance
+Capture a manually established stance:
 
-Stop the runtime driver before running any maintenance command:
+```bash
+ros2 run lgh_st3215_tools standing_characterization \
+  --mode capture_pose \
+  --pose-name normal_stand \
+  --base-com-height-mean-m 0.44
+```
+
+Evaluate the pose library:
+
+```bash
+ros2 run lgh_st3215_tools standing_characterization \
+  --mode evaluate \
+  --poses normal_stand,shallow_crouch,medium_crouch
+```
+
+## 11. Offline ST3215 maintenance
+
+Stop `lgh_st3215_driver` first.
 
 ```bash
 ros2 run lgh_st3215_maintenance bus_scan --first-id 1 --last-id 12
@@ -229,7 +354,9 @@ ros2 run lgh_st3215_maintenance register_dump \
 ros2 run lgh_st3215_maintenance backup_control_tables
 ```
 
-## IMU tools
+## 12. IMU tools
+
+Start the micro-ROS agent first, then:
 
 ```bash
 ros2 run lgh_imu_tools imu_preflight
@@ -242,72 +369,42 @@ ros2 run lgh_imu_tools orientation_audit \
 ros2 run lgh_imu_tools imu_recorder --duration-sec 10
 ```
 
-## Policy deployment
+## 13. Policy bundle, shadow, and live launch
 
-Audit the paired policy bundle and hardware map:
+Audit:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-Rebuild after replacing a policy YAML/ONNX pair:
-
-```bash
-cd ~/littlegreen_ros2_ws
-colcon build --symlink-install --packages-select littlegreen_biped_pkg
-source install/setup.bash
-```
-
-Shadow mode, with the driver separately running in `runtime_safe` and writes disabled:
+Shadow:
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
-```
-
-Inspect:
-
-```bash
-ros2 topic hz /policy_shadow/desired_position
-ros2 topic echo /policy_status --once
-ros2 topic echo /policy_ready --once
-ros2 topic info /desired_position --verbose
-```
-
-Capture Track 1-aligned observable runtime metrics:
-
-```bash
 ros2 run littlegreen_biped_pkg policy_runtime_metrics --duration-sec 30
 ```
 
-Guarded live mode, only after shadow acceptance and a write-enabled runtime preflight:
+Live policy plus safety-only downstream controller:
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_live.launch.py \
   controller_mode:=safety_only
 ```
 
-Full sequence: [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
+Show launch arguments:
 
-## ROS graph inspection
+```bash
+ros2 launch littlegreen_biped_pkg policy_shadow.launch.py --show-args
+ros2 launch littlegreen_biped_pkg policy_live.launch.py --show-args
+```
+
+## 14. Stop and inspect
 
 ```bash
 ros2 node list
-ros2 topic list
 ros2 topic info /servo_target_radians --verbose
 ros2 topic info /desired_position --verbose
-ros2 service list | grep st3215
+ros2 topic info /command_velocity --verbose
 ```
 
-## Tool exit codes
-
-| Code | Meaning |
-|---:|---|
-| `0` | pass |
-| `2` | test ran but acceptance criteria failed |
-| `3` | refused safety/precondition |
-| `4` | timeout or ROS resource unavailable |
-| `5` | configuration error |
-| `6` | hardware or I/O error |
-| `7` | operator abort |
-| `70` | internal software error |
-| `130` | interrupted by `SIGINT` |
+Use `Ctrl+C` in launch terminals, then confirm the nodes and publishers actually stopped.
