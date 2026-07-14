@@ -17,6 +17,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+TOOLS = ROOT / "tools"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -78,7 +79,10 @@ missing = EXPECTED - package_names
 if missing:
     fail(f"missing expected packages: {sorted(missing)}")
 
-for path in SRC.rglob("*"):
+for scan_root in (SRC, TOOLS):
+  if not scan_root.exists():
+    continue
+  for path in scan_root.rglob("*"):
     if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
         continue
     try:
@@ -128,6 +132,8 @@ required_files = [
     SRC / "lgh_st3215_driver/launch/lgh_st3215_driver.launch.py",
     SRC / "lgh_st3215_driver/msg/ServoTelemetry.msg",
     SRC / "lgh_st3215_tools/lgh_st3215_tools/diagnostic_compat.py",
+    SRC / "lgh_st3215_tools/lgh_st3215_tools/verify_reference_pose.py",
+    SRC / "lgh_st3215_tools/test/test_calibration_semantics.py",
     SRC / "lgh_st3215_tools/config/track1_action_contract_v4.yaml",
     SRC / "littlegreen_biped_pkg/src/littlegreen_biped_node.cpp",
     SRC / "littlegreen_biped_pkg/scripts/policy_bundle_audit.py",
@@ -141,9 +147,14 @@ required_files = [
     SRC / "littlegreen_description/urdf/littlegreen.xacro",
     ROOT / "scripts/install_ubuntu_x86_64.sh",
     ROOT / "scripts/install_onnxruntime_x86_64.sh",
+    ROOT / "scripts/apply_v2_7_2_hotfix.sh",
     ROOT / "docs/LIVE_POLICY_DEPLOYMENT.md",
     ROOT / "docs/TRACK1_TRACK2_POLICY_METRICS.md",
     ROOT / "docs/INSTALL_UBUNTU_X86_64.md",
+    ROOT / "docs/CALIBRATION_WORKFLOW.md",
+    ROOT / "docs/SERVO_REPLACEMENT_CHECKLIST.md",
+    ROOT / "tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py",
+    ROOT / "tools/lgh_hardware_limit_tool/README.md",
 ]
 for path in required_files:
     if not path.is_file():
@@ -220,8 +231,21 @@ if yaml is not None:
         if len(servo_joints) != 12:
             fail("servo_map.yaml must contain 12 joints")
         else:
+            steps_per_radian = 4096.0 / (2.0 * math.pi)
             for index, joint in enumerate(servo_joints):
                 require_close(defaults[index], float(joint["training_default_rad"]), f"servo-map training default[{index}]")
+                center = int(joint["center_step"])
+                sign = int(joint["servo_sign"])
+                zero = float(joint.get("joint_zero_rad", 0.0))
+                raw_a = int(round(center + sign * (float(joint["min_rad"]) - zero) * steps_per_radian))
+                raw_b = int(round(center + sign * (float(joint["max_rad"]) - zero) * steps_per_radian))
+                expected_min_step, expected_max_step = min(raw_a, raw_b), max(raw_a, raw_b)
+                if int(joint["min_step"]) != expected_min_step or int(joint["max_step"]) != expected_max_step:
+                    fail(
+                        f"servo-map raw limits are not derived from center/radian limits for {joint['name']}: "
+                        f"stored=[{joint['min_step']}, {joint['max_step']}], "
+                        f"derived=[{expected_min_step}, {expected_max_step}]"
+                    )
 
         contract_policy_fields = {
             "action_contract_version": "action_contract_version",

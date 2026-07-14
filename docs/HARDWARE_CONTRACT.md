@@ -2,27 +2,55 @@
 
 ## Purpose
 
-The active ROS 2 control path uses the measured 12-joint LittleGreen hardware envelope. The source endpoint measurement used a physical endpoint shim and a fixed 10-step inward margin at each endpoint.
+The active ROS 2 control path uses the measured 12-joint LittleGreen hardware envelope. Physical endpoint capture and model-zero center calibration are separate operations.
+
+## Authority model
+
+| Field | Authority | Meaning |
+|---|---|---|
+| `joint_zero_rad` | robot model | model-zero angle, currently 0 rad |
+| `center_step` | model-zero calibration | raw ST3215 position at `joint_zero_rad` |
+| `training_default_rad` | paired Track 1 policy | policy-default standing stance |
+| `min_rad` / `max_rad` | measured physical-limit contract | durable model-space safety limits |
+| `min_step` / `max_step` | generated deployment values | raw endpoints derived from center + radian limits |
+
+A center calibration may change `center_step`, `min_step`, and `max_step` without changing the physical/model-space limits. A physical-limit capture changes `min_rad` / `max_rad` and must be propagated to Track 1.
 
 ## Runtime authority by layer
 
 1. `src/lgh_st3215_driver/config/servo_map.yaml`
-   - ST3215 IDs, signs, calibrated centers, safe radian limits, and raw-step limits
+   - ST3215 IDs, signs, calibrated model-zero centers, model-space safe limits, and derived raw limits
    - final native-driver radian-to-step conversion and clamping
 2. `src/littlegreen_biped_pkg/src/configs/joint_map.yaml`
-   - canonical action/joint ordering, default pose, and policy/controller clipping
+   - canonical action/joint ordering, policy-default pose, physical radian limits, and servo calibration mirror
 3. `src/lgh_st3215_tools/config/track1_action_contract_v4.yaml`
-   - ROS-side mirror used by standing-characterization contract auditing
+   - ROS-side mirror of the paired Track 1 deployment contract
 4. `src/littlegreen_biped_pkg/src/configs/joint_limits.yaml`
    - compatibility/documentation mirror; not the final runtime authority
 
 The URDF is not the final servo safety clamp.
 
-## Action-contract v3/v4 deployment check
+## Model zero and policy default
 
-For a v3 or v4 policy bundle, `littlegreen_biped_node` compares the exported action defaults and physical target bounds against the `joints[]` section of `joint_map.yaml` before loading the ONNX session. It also checks action indices, selected simulation joint names, normalized action bounds, previous-action semantics, and the ONNX checksum. For v4 it additionally validates the non-uniform residual vector, nominal residual bounds, deployment profile, and required v4 transform flag. Any mismatch is fatal.
+Model zero is the calibration pose:
 
-Policy timing and the complete `action_residual_scale_rad` vector are supplied by the paired policy YAML. Track 2 mirrors the current export in `track1_action_contract_v4.yaml` for characterization audits, but the paired policy YAML remains the deployment source of truth.
+```text
+all 12 actuated joints = joint_zero_rad = 0 rad
+```
+
+The current policy-default stance is:
+
+```text
+[0.0, 0.0, -0.24, 0.62, -0.22, 0.0,
+ 0.0, 0.0, -0.24, 0.62, -0.22, 0.0]
+```
+
+The policy-default raw target is computed from the model-zero calibration:
+
+```text
+step = center_step
+     + servo_sign * (policy_default_rad - joint_zero_rad) * 4096 / (2*pi)
+```
 
 ## Canonical joint order and safe limits
 
@@ -41,30 +69,44 @@ Policy timing and the complete `action_residual_scale_rad` vector are supplied b
 | 10 | `leg_right_ankle_pitch_joint` | -0.845223414 | 0.819145741 |
 | 11 | `leg_right_ankle_roll_joint` | -0.443320448 | 1.061514705 |
 
-## Current athletic default pose
+## LittleGreen Hardware Limit Tool
 
-Canonical default joint vector:
+The standalone tool is installed in the repository at:
 
 ```text
-[0.0, 0.0, -0.24, 0.62, -0.22, 0.0,
- 0.0, 0.0, -0.24, 0.62, -0.22, 0.0]
+tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py
 ```
+
+Capture requires the ROS driver to be stopped because the tool directly owns `/dev/ttyS3` and disables torque.
+
+```bash
+python3 tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py capture \
+  --device /dev/ttyS3 \
+  --margin-steps 10 \
+  --output-dir ~/lgh_limit_capture
+```
+
+After a center-only calibration, reuse the saved physical capture and regenerate the center-dependent raw endpoints:
+
+```bash
+python3 tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py render \
+  --capture ~/lgh_limit_capture/physical_limit_capture.yaml \
+  --margin-steps 10 \
+  --output-dir ~/lgh_limit_capture/rendered_after_zero_calibration
+```
+
+The authoritative contract stores physical and safe limits in radians. Capture-time raw endpoints remain provenance; generated raw endpoints use the current `center_step` values.
+
+## Action-contract v3/v4 deployment check
+
+For a v3 or v4 policy bundle, `littlegreen_biped_node` compares exported action defaults and physical target bounds against `joint_map.yaml` before loading ONNX. It also validates action indices, selected simulation joints, normalized action bounds, previous-action semantics, and the ONNX checksum. Contract v4 additionally validates the non-uniform residual vector and deployment profile.
 
 ## Track 1 propagation
 
-For LittleGreen training, update the hardware-limit arrays in the Track 1 hardware contract while preserving the surrounding API and constants. Hardware-aligned tasks should use the same lower/upper arrays for action processing and simulation startup limit writes.
+A model-zero center calibration does not change the Track 1 policy contract.
+
+A physical-limit change does. Update the Track 1 hardware-limit arrays while preserving the surrounding API and constants, then export a newly paired policy YAML and ONNX artifact.
 
 ## Deployment caution
 
-Changing the hardware contract changes clipping behavior. Keep every exported policy paired with the exact joint order, default pose, action mapping, limits, timing, IMU transform, and ONNX model used to create it.
-
-## Action-contract v4 residual vector
-
-The packaged v1.4.5s3 policy uses the per-joint residual scale vector:
-
-```text
-[0.24, 0.16, 0.42, 0.58, 0.48, 0.26,
- 0.24, 0.16, 0.42, 0.58, 0.48, 0.26]
-```
-
-This vector is part of the policy contract. Do not replace it with a scalar or a Track 2-only tuning offset.
+Keep every exported policy paired with the exact joint order, policy-default pose, residual mapping, physical radian limits, timing, IMU transform, and ONNX model used to create it.

@@ -1,10 +1,32 @@
-# ST3215 Calibration Workflow
+# ST3215 Model-Zero Calibration Workflow
 
-This workflow updates servo `center_step` values from a known physical reference pose while preserving the driver as the sole normal UART owner.
+This workflow calibrates the mapping between LittleGreen model joint angles and ST3215 raw encoder steps.
+
+The key distinction is:
+
+| Term | Meaning |
+|---|---|
+| **Model zero** | Physical calibration pose where each actuated joint is at `joint_zero_rad`—currently 0 rad. |
+| **Policy default** | The Track 1 standing stance stored as `training_default_rad`. It is a commanded pose, not the zero-calibration fixture. |
+| **Physical limits** | Durable safe joint range in model-space radians: `min_rad` / `max_rad`. |
+| **Raw limits** | ST3215 step endpoints derived from the calibrated center and model-space limits. |
+
+For the current robot:
+
+```text
+model zero:
+  all 12 actuated joints = 0 rad
+
+policy default:
+  hip pitch   = -0.24 rad
+  knee pitch  = +0.62 rad
+  ankle pitch = -0.22 rad
+  roll/yaw    =  0.00 rad
+```
 
 Keep the robot securely supported and keep the physical servo-power disconnect reachable.
 
-## 1. Start the commissioning driver with writes disabled
+## 1. Start the commissioning driver feedback-only
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -20,45 +42,56 @@ ros2 run lgh_st3215_tools st3215_preflight \
   --expect-writes false
 ```
 
-## 2. Place the robot in the known reference pose
+## 2. Put the robot in model zero
 
-Use the same physical reference pose represented by the calibrated default joint values. Do not capture centers from an approximate unsupported pose.
+With torque disabled and the robot supported, align the links to the straight model-zero fixture pose.
 
-Print the current default reference:
+Print the reference:
 
 ```bash
-ros2 run lgh_st3215_tools print_default_pose \
+ros2 run lgh_st3215_tools print_model_zero \
   --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
 
-## 3. Capture a center proposal
+At model zero, `center_step` is simply the measured raw servo position. It does not need to equal 2048.
+
+Use an external physical reference—fixture, digital angle gauge, or alignment marks. ROS feedback alone cannot prove horn alignment because the same center is used for command and feedback conversion.
+
+## 3. Capture model-zero centers
+
+All joints:
 
 ```bash
 ros2 run lgh_st3215_tools capture_calibration \
+  --reference model-zero \
   --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
 
-The tool requires fresh raw feedback and refuses incompatible write states unless explicitly overridden.
+One replacement servo only:
 
-Review:
-
-```text
-center_step_proposal.yaml
-capture_summary.yaml
-capture_summary.txt
+```bash
+ros2 run lgh_st3215_tools capture_calibration \
+  --reference model-zero \
+  --joint leg_left_knee_pitch_joint \
+  --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
 
-Default correction categories:
+The tool writes a review proposal and does not edit source files.
+
+Correction categories:
 
 ```text
-|correction| <= 25 steps      fine software correction
-26..100 steps                 inspect horn alignment
->100 steps                    mechanical re-index recommended
+NO_CHANGE                       no update required
+FINE_SOFTWARE_CORRECTION        <= 25 steps
+INSPECT_MECHANICAL_ALIGNMENT    26..100 steps
+MECHANICAL_REINDEX_RECOMMENDED  > 100 steps
+RAW_RANGE_OUT_OF_BOUNDS         derived endpoint falls outside 0..4095
+UNSTABLE_CAPTURE                joint moved during sampling
 ```
 
-`RANGE_CONFLICT`, `UNSTABLE_CAPTURE`, and unreviewed large corrections are blocking conditions.
+Small center changes are no longer mislabeled as physical-limit conflicts. The tool preserves `min_rad` / `max_rad` and derives new `min_step` / `max_step` values from the proposed center.
 
-## 4. Dry-run the map update
+## 4. Dry-run the update
 
 ```bash
 ros2 run lgh_st3215_tools apply_calibration \
@@ -66,7 +99,27 @@ ros2 run lgh_st3215_tools apply_calibration \
   --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
 
-Review the unified diff. The modifying path is intentionally explicit; the tool will not silently edit the installed package-share copy.
+When the standard source-tree layout is used, the tool automatically finds and synchronizes:
+
+```text
+src/littlegreen_biped_pkg/src/configs/joint_map.yaml
+```
+
+It updates only these deployment fields:
+
+```text
+servo_map.yaml:
+  center_step
+  min_step
+  max_step
+
+joint_map.yaml mirror:
+  servo_center_step
+  servo_min_step
+  servo_max_step
+```
+
+It does not change the policy default or model-space radian limits.
 
 ## 5. Apply after review
 
@@ -77,49 +130,43 @@ ros2 run lgh_st3215_tools apply_calibration \
   --apply
 ```
 
-The tool checks the captured source-map identity, creates a timestamped backup, and atomically replaces the approved `center_step` values.
+Timestamped backups are created before both source files are modified.
 
-## 6. Rebuild and relaunch feedback-only
+## 6. Rebuild the affected packages
 
 ```bash
 cd ~/littlegreen_ros2_ws
-colcon build --packages-select lgh_st3215_driver --symlink-install
+
+colcon build --symlink-install \
+  --packages-select \
+    lgh_st3215_driver \
+    littlegreen_biped_pkg
+
 source install/setup.bash
 ```
 
-Restart:
+## 7. Verify model zero
+
+Restart the commissioning driver feedback-only, leave the robot physically aligned at model zero, then run:
 
 ```bash
-ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
-  profile:=commissioning \
-  enable_writes:=false
-```
-
-Verify with the robot still in the reference pose:
-
-```bash
-ros2 run lgh_st3215_tools verify_calibration \
+ros2 run lgh_st3215_tools verify_model_zero \
   --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
 
-Default thresholds:
+Default raw-step thresholds:
 
 ```text
-PASS  |error| <= 0.02 rad
-WARN  |error| <= 0.05 rad
-FAIL  |error| >  0.05 rad
+PASS  <= 8 steps
+WARN  <= 16 steps
+FAIL  > 16 steps
 ```
 
-Expected default joint vector:
+This checks encoder steps against the calibrated centers. External physical alignment remains the proof that the pose is truly model zero.
 
-```text
-[0.0, 0.0, -0.24, 0.62, -0.22, 0.0,
- 0.0, 0.0, -0.24, 0.62, -0.22, 0.0]
-```
+## 8. Command the policy-default stance
 
-## 7. Guarded write-enabled verification
-
-Stop the feedback-only driver. With the robot still supported:
+Stop the feedback-only driver and relaunch with writes enabled:
 
 ```bash
 ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
@@ -128,37 +175,42 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   default_pose_move_duration_sec:=8.0
 ```
 
-Run the keyboard-abort console:
+Then run:
+
+```bash
+ros2 run lgh_st3215_tools assume_policy_default
+```
+
+`pose_console` remains as a compatibility alias:
 
 ```bash
 ros2 run lgh_st3215_tools pose_console
 ```
 
-During the ramp:
+The underlying service name remains `/st3215_driver/move_to_default_pose` for compatibility, but the pose it commands is the **policy-default stance**, not model zero.
 
-```text
-SPACE, q/Q, a/A, ESC   abort and hold the latest measured pose
-Ctrl+C                 request abort, then exit
-```
+## 9. Verify the policy-default stance
 
-After a successful move, the internal pose override remains active until explicitly released.
-
-## 8. Preserve the result
-
-Keep together:
-
-- the preflight report;
-- hardware snapshot;
-- calibration capture;
-- source-map backup;
-- updated `servo_map.yaml`;
-- verification report;
-- operator notes about the physical reference pose.
-
-For policy shadow after calibration, stop the write-enabled driver and return to:
+After the guarded ramp completes:
 
 ```bash
-ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
-  profile:=runtime_safe \
-  enable_writes:=false
+ros2 run lgh_st3215_tools verify_policy_default \
+  --allow-writes-enabled \
+  --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 ```
+
+This compares the measured raw steps with the expected policy-default raw targets. It does not propose new centers.
+
+## When to repeat the hardware-limit capture
+
+A replacement servo normally does **not** require a new physical-limit capture when the robot geometry and horn relationship are restored.
+
+Repeat the standalone limit tool only when:
+
+- the linkage or mechanical stops changed;
+- the replacement horn cannot be installed in the equivalent orientation;
+- the derived raw range falls outside 0..4095;
+- the joint contacts the mechanism before the known radian limit;
+- the previous limit capture is uncertain.
+
+After a center-only calibration, the saved hardware-limit capture can be re-rendered against the new centers without moving the joints through their endpoints again. See [`HARDWARE_CONTRACT.md`](HARDWARE_CONTRACT.md).

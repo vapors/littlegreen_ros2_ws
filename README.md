@@ -16,7 +16,7 @@ ROS 2 Humble source workspace for the LittleGreen biped hardware stack. The acti
 
 ## Current Track 1 deployment contract
 
-v2.7.1 includes the paired Track 1 v1.4.5s3 export:
+v2.7.2 includes the paired Track 1 v1.4.5s3 export:
 
 ```text
 Task:      Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
@@ -127,6 +127,8 @@ Start with [`docs/README.md`](docs/README.md). Common pages:
 - [`docs/INTERFACES_AND_PARAMETERS.md`](docs/INTERFACES_AND_PARAMETERS.md)
 - [`docs/LIVE_POLICY_DEPLOYMENT.md`](docs/LIVE_POLICY_DEPLOYMENT.md)
 - [`docs/TRACK1_TRACK2_POLICY_METRICS.md`](docs/TRACK1_TRACK2_POLICY_METRICS.md)
+- [`docs/CALIBRATION_WORKFLOW.md`](docs/CALIBRATION_WORKFLOW.md)
+- [`docs/SERVO_REPLACEMENT_CHECKLIST.md`](docs/SERVO_REPLACEMENT_CHECKLIST.md)
 - [`docs/HARDWARE_CONTRACT.md`](docs/HARDWARE_CONTRACT.md)
 - [`docs/SAFETY_AND_LIMITATIONS.md`](docs/SAFETY_AND_LIMITATIONS.md)
 - [`docs/VALIDATION.md`](docs/VALIDATION.md)

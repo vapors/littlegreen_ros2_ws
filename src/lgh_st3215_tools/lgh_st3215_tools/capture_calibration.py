@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Capture a read-only ST3215 center-step calibration proposal.
 
-The robot must be physically positioned in the known Isaac training-default pose.
-The tool collects raw servo step samples, computes proposed software center_step
-values, and writes review artifacts.  It never modifies servo EEPROM and never
-modifies servo_map.yaml.
+The recommended reference is model zero: physically align the robot so every
+actuated joint is at joint_zero_rad (currently 0 rad), then capture center_step.
+The older policy-default reference remains available explicitly for fixture-based
+work, but is no longer the default calibration language.
+
+The tool never writes servo EEPROM and never modifies source YAML directly.
 """
 
 from __future__ import annotations
@@ -29,14 +31,21 @@ from std_msgs.msg import Int32MultiArray, UInt32MultiArray
 
 from lgh_st3215_tools.calibration_common import (
     RADIANS_PER_STEP,
+    RAW_STEP_MAX,
+    RAW_STEP_MIN,
+    REFERENCE_CHOICES,
+    REFERENCE_MODEL_ZERO,
+    REFERENCE_POLICY_DEFAULT,
     STEPS_PER_RADIAN,
     classify_correction,
-    expected_step_for_pose,
+    derived_raw_limits,
+    expected_step_for_reference,
     format_pose_reference,
     load_servo_map,
-    mapped_range_steps,
-    patch_center_steps_text,
-    proposed_center_step,
+    patch_servo_map_calibration_text,
+    proposed_center_step_for_reference,
+    raw_limits_valid,
+    reference_angle_rad,
     sha256_file,
     steps_to_radians,
 )
@@ -51,7 +60,7 @@ class CalibrationCaptureNode(Node):
         sample_count: int,
         max_feedback_age_ms: int,
     ) -> None:
-        super().__init__("st3215_default_pose_calibration_capture")
+        super().__init__("st3215_center_step_calibration_capture")
         self.sample_count = sample_count
         self.max_feedback_age_ms = max_feedback_age_ms
         self.samples: list[list[int]] = []
@@ -99,7 +108,7 @@ class CalibrationCaptureNode(Node):
             self.rejected_stale += 1
             return
         values = [int(value) for value in msg.data]
-        if any(value < 0 or value > 4095 for value in values):
+        if any(value < RAW_STEP_MIN or value > RAW_STEP_MAX for value in values):
             self.rejected_shape += 1
             return
         self.samples.append(values)
@@ -137,7 +146,7 @@ def wait_for_preflight(
         if not node.feedback_ready:
             continue
         if node.pose_move_running:
-            raise RuntimeError("A default-pose ramp is running; calibration capture is blocked")
+            raise RuntimeError("A policy-default pose ramp is running; calibration capture is blocked")
         if node.writes_enabled and not allow_writes_enabled:
             raise RuntimeError(
                 "Driver reports writes_enabled=true. Relaunch feedback-only or pass "
@@ -166,11 +175,42 @@ def collect_samples(
             next_progress += progress_every
 
 
+def _selected_joints(all_joints, requested_names: list[str]):
+    if not requested_names:
+        return list(all_joints)
+    by_name = {joint.name: joint for joint in all_joints}
+    unknown = sorted(set(requested_names) - set(by_name))
+    if unknown:
+        raise ValueError("Unknown --joint name(s): " + ", ".join(unknown))
+    # Preserve canonical policy order and ignore accidental duplicates.
+    requested = set(requested_names)
+    return [joint for joint in all_joints if joint.name in requested]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Capture a read-only default-pose center-step calibration proposal."
+        description=(
+            "Capture a read-only ST3215 center-step calibration proposal. "
+            "The recommended reference is model-zero."
+        )
     )
     parser.add_argument("--servo-map", type=Path, default=None)
+    parser.add_argument(
+        "--reference",
+        choices=REFERENCE_CHOICES,
+        default=REFERENCE_MODEL_ZERO,
+        help=(
+            "Physical reference used to infer center_step. model-zero is the "
+            "recommended replacement-servo workflow; policy-default retains the "
+            "older fixture-based behavior."
+        ),
+    )
+    parser.add_argument(
+        "--joint",
+        action="append",
+        default=[],
+        help="Capture only this joint; may be repeated. Omit to capture all 12 joints.",
+    )
     parser.add_argument("--raw-topic", default="/st3215_driver/raw_position_steps")
     parser.add_argument("--age-topic", default="/joint_feedback_age_ms")
     parser.add_argument("--diagnostics-topic", default="/st3215_driver/diagnostics")
@@ -192,18 +232,45 @@ def main() -> int:
         parser.error("Calibration thresholds are inconsistent")
 
     map_path = args.servo_map.expanduser().resolve() if args.servo_map else default_map_path()
-    _, joints = load_servo_map(map_path)
+    _, all_joints = load_servo_map(map_path)
+    try:
+        joints = _selected_joints(all_joints, args.joint)
+    except ValueError as exc:
+        parser.error(str(exc))
     source_hash = sha256_file(map_path)
 
-    print("\nST3215 training-default pose calibration capture")
-    print("================================================")
+    reference_title = (
+        "model-zero" if args.reference == REFERENCE_MODEL_ZERO else "policy-default"
+    )
+    print(f"\nST3215 {reference_title} center-step calibration capture")
+    print("=" * (47 + len(reference_title)))
     print(f"Servo map: {map_path}")
     print(f"Map SHA-256: {source_hash}")
+    print(f"Selected joints: {len(joints)}/{len(all_joints)}")
     print()
-    print(format_pose_reference(joints))
+    print(format_pose_reference(joints, args.reference))
     print()
-    print("PRECONDITION: the physical robot must be aligned to this training-default pose.")
-    print("This tool is READ-ONLY. It does not write servo EEPROM or edit servo_map.yaml.")
+    if args.reference == REFERENCE_MODEL_ZERO:
+        print(
+            "PRECONDITION: physically align each selected joint to MODEL ZERO "
+            "(joint_zero_rad; currently 0 rad)."
+        )
+        print(
+            "At model zero, the measured raw position becomes center_step. "
+            "The policy-default stance is a separate commanded pose."
+        )
+    else:
+        print(
+            "PRECONDITION: physically align each selected joint to the exact POLICY-DEFAULT pose."
+        )
+        print(
+            "This compatibility mode infers model-zero centers from the policy-default fixture."
+        )
+    print(
+        "Existing min_rad/max_rad are preserved. New min_step/max_step values are "
+        "derived from the proposed center."
+    )
+    print("This tool is READ-ONLY. It does not write servo EEPROM or edit source YAML.")
     print()
 
     if not args.yes:
@@ -233,47 +300,65 @@ def main() -> int:
         rclpy.shutdown()
 
     columns = list(zip(*node.samples))
+    column_by_policy_index = {
+        policy_index: [int(value) for value in columns[policy_index]]
+        for policy_index in range(len(columns))
+    }
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output_dir = args.output_dir.expanduser().resolve() / timestamp
     output_dir.mkdir(parents=True, exist_ok=False)
 
     proposal_joints = []
     text_rows = []
-    centers_by_name: dict[str, int] = {}
+    updates_by_name: dict[str, dict[str, int]] = {}
     blocking_flags = 0
+    review_flags = 0
 
-    for joint, samples in zip(joints, columns):
-        sample_values = [int(value) for value in samples]
+    for joint in joints:
+        sample_values = column_by_policy_index[joint.policy_index]
         measured_median = float(statistics.median(sample_values))
         sample_min = min(sample_values)
         sample_max = max(sample_values)
         sample_span = sample_max - sample_min
         sample_stdev = statistics.pstdev(sample_values)
 
-        proposed_center = proposed_center_step(joint, measured_median)
+        proposed_center = proposed_center_step_for_reference(
+            joint, measured_median, args.reference
+        )
         correction = proposed_center - joint.center_step
-        range_lo, range_hi = mapped_range_steps(joint, proposed_center)
-        low_margin = range_lo - joint.min_step
-        high_margin = joint.max_step - range_hi
-        range_ok = low_margin >= 0.0 and high_margin >= 0.0
+        derived_min_step, derived_max_step = derived_raw_limits(joint, proposed_center)
+        derived_ok = raw_limits_valid(derived_min_step, derived_max_step)
         status = classify_correction(
             correction,
             args.fine_threshold_steps,
             args.inspect_threshold_steps,
-            range_ok,
+            derived_ok,
         )
 
         if sample_span > args.max_sample_span_steps:
             status = "UNSTABLE_CAPTURE"
-        if status in ("RANGE_CONFLICT", "MECHANICAL_REINDEX_RECOMMENDED", "UNSTABLE_CAPTURE"):
+        if status in (
+            "RAW_RANGE_OUT_OF_BOUNDS",
+            "MECHANICAL_REINDEX_RECOMMENDED",
+            "UNSTABLE_CAPTURE",
+        ):
             blocking_flags += 1
+        elif status == "INSPECT_MECHANICAL_ALIGNMENT":
+            review_flags += 1
 
+        reference_rad = reference_angle_rad(joint, args.reference)
         mapped_rad_before = steps_to_radians(joint, measured_median)
-        default_error_before = mapped_rad_before - joint.training_default_rad
-        expected_old = expected_step_for_pose(joint)
-        expected_new = expected_step_for_pose(joint, proposed_center)
+        reference_error_before = mapped_rad_before - reference_rad
+        expected_old = expected_step_for_reference(joint, args.reference)
+        expected_new = expected_step_for_reference(
+            joint, args.reference, proposed_center
+        )
 
-        centers_by_name[joint.name] = proposed_center
+        updates_by_name[joint.name] = {
+            "center_step": proposed_center,
+            "min_step": derived_min_step,
+            "max_step": derived_max_step,
+        }
         proposal_joints.append(
             {
                 "name": joint.name,
@@ -282,8 +367,12 @@ def main() -> int:
                 "servo_sign": joint.servo_sign,
                 "joint_zero_rad": joint.joint_zero_rad,
                 "training_default_rad": joint.training_default_rad,
+                "min_rad": joint.min_rad,
+                "max_rad": joint.max_rad,
+                "reference": args.reference,
+                "reference_rad": reference_rad,
                 "sample_count": len(sample_values),
-                "measured_default_step_median": measured_median,
+                "measured_reference_step_median": measured_median,
                 "measured_step_min": sample_min,
                 "measured_step_max": sample_max,
                 "measured_step_span": sample_span,
@@ -291,33 +380,39 @@ def main() -> int:
                 "old_center_step": joint.center_step,
                 "proposed_center_step": proposed_center,
                 "correction_steps": correction,
-                "expected_default_step_old_map": expected_old,
-                "expected_default_step_proposed_map": expected_new,
+                "expected_reference_step_old_map": expected_old,
+                "expected_reference_step_proposed_map": expected_new,
                 "mapped_rad_before_calibration": mapped_rad_before,
-                "default_pose_error_before_rad": default_error_before,
-                "default_pose_error_before_deg": math.degrees(default_error_before),
-                "mapped_range_low_step": range_lo,
-                "mapped_range_high_step": range_hi,
-                "range_low_margin_steps": low_margin,
-                "range_high_margin_steps": high_margin,
-                "range_ok": range_ok,
+                "reference_error_before_rad": reference_error_before,
+                "reference_error_before_deg": math.degrees(reference_error_before),
+                "old_min_step": joint.min_step,
+                "old_max_step": joint.max_step,
+                "derived_min_step": derived_min_step,
+                "derived_max_step": derived_max_step,
+                "derived_raw_range_inside_servo": derived_ok,
+                "raw_servo_step_min": RAW_STEP_MIN,
+                "raw_servo_step_max": RAW_STEP_MAX,
                 "status": status,
             }
         )
         text_rows.append(
             f"{joint.policy_index:>2} ID{joint.servo_id:>2} {joint.name:<36} "
-            f"meas={measured_median:>7.1f} old={joint.center_step:>4} "
-            f"new={proposed_center:>4} corr={correction:>+5} "
-            f"span={sample_span:>2} err={math.degrees(default_error_before):>+7.2f}deg "
+            f"meas={measured_median:>7.1f} old_center={joint.center_step:>4} "
+            f"new_center={proposed_center:>4} corr={correction:>+5} "
+            f"raw=[{derived_min_step:>4},{derived_max_step:>4}] "
+            f"span={sample_span:>2} err={math.degrees(reference_error_before):>+7.2f}deg "
             f"{status}"
         )
 
     proposal = {
-        "schema_version": 1,
-        "calibration_type": "training_default_pose_center_step",
+        "schema_version": 2,
+        "calibration_type": f"{args.reference}_center_step",
+        "reference": args.reference,
         "capture_timestamp_utc": timestamp,
         "source_servo_map": str(map_path),
         "source_servo_map_sha256": source_hash,
+        "selected_joint_count": len(joints),
+        "selected_joint_names": [joint.name for joint in joints],
         "sample_count": args.samples,
         "raw_topic": args.raw_topic,
         "feedback_age_topic": args.age_topic,
@@ -328,15 +423,22 @@ def main() -> int:
         "inspect_threshold_steps": args.inspect_threshold_steps,
         "max_sample_span_steps": args.max_sample_span_steps,
         "blocking_flag_count": blocking_flags,
+        "review_flag_count": review_flags,
         "rejected_stale_samples": node.rejected_stale,
         "rejected_shape_samples": node.rejected_shape,
+        "limit_policy": (
+            "preserve model-space min_rad/max_rad and derive raw min_step/max_step "
+            "from the proposed center_step"
+        ),
         "joints": proposal_joints,
     }
 
     proposal_path = output_dir / "center_step_proposal.yaml"
     proposal_path.write_text(yaml.safe_dump(proposal, sort_keys=False))
 
-    proposed_map_text = patch_center_steps_text(map_path.read_text(), centers_by_name)
+    proposed_map_text = patch_servo_map_calibration_text(
+        map_path.read_text(), updates_by_name
+    )
     proposed_map_path = output_dir / "servo_map.proposed.yaml"
     proposed_map_path.write_text(proposed_map_text)
 
@@ -347,23 +449,27 @@ def main() -> int:
         writer.writerows(proposal_joints)
 
     report_lines = [
-        "ST3215 training-default calibration proposal",
-        "============================================",
+        f"ST3215 {reference_title} center-step calibration proposal",
+        "=" * 64,
         f"capture: {timestamp}",
         f"source map: {map_path}",
         f"source SHA-256: {source_hash}",
+        f"selected joints: {len(joints)}",
         f"samples/joint: {args.samples}",
         f"blocking flags: {blocking_flags}",
+        f"review flags: {review_flags}",
         "",
         *text_rows,
         "",
         "Interpretation:",
-        "  FINE_SOFTWARE_CORRECTION       suitable for center_step refinement",
-        "  INSPECT_MECHANICAL_ALIGNMENT   review horn placement before applying",
-        "  MECHANICAL_REINDEX_RECOMMENDED re-index horn, then capture again",
-        "  RANGE_CONFLICT                  proposed map exceeds configured step range",
+        "  NO_CHANGE                       no center change required",
+        "  FINE_SOFTWARE_CORRECTION        small center_step refinement",
+        "  INSPECT_MECHANICAL_ALIGNMENT    review horn/fixture before applying",
+        "  MECHANICAL_REINDEX_RECOMMENDED  large correction; re-index and recapture",
+        "  RAW_RANGE_OUT_OF_BOUNDS         derived raw endpoint is outside 0..4095",
         "  UNSTABLE_CAPTURE                joint moved too much during capture",
         "",
+        "min_rad/max_rad are preserved. min_step/max_step are derived from the new center.",
         "This proposal has NOT modified the source servo_map.yaml.",
     ]
     report_path = output_dir / "calibration_report.txt"
@@ -379,11 +485,19 @@ def main() -> int:
     print(f"Text report:   {report_path}")
     if blocking_flags:
         print(
-            f"\nWARNING: {blocking_flags} joint(s) have blocking review flags. "
-            "Do not apply blindly; inspect/re-index and recapture as needed."
+            f"\nWARNING: {blocking_flags} selected joint(s) have blocking flags. "
+            "Do not apply them without resolving the stated condition."
         )
         return 2
-    print("\nNo blocking calibration flags were found. Review the proposal before applying it.")
+    if review_flags:
+        print(
+            f"\nREVIEW: {review_flags} selected joint(s) should have mechanical "
+            "alignment reviewed before applying."
+        )
+    print(
+        "\nCapture completed. Review the proposal, then use apply_calibration. "
+        "Small corrections are not treated as physical-limit conflicts."
+    )
     return 0
 
 

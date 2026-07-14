@@ -84,7 +84,7 @@ All services use `std_srvs/srv/Trigger`.
 
 | Service | Meaning |
 |---|---|
-| `/st3215_driver/move_to_default_pose` | Ramp from measured pose to the configured default pose and assert the pose override |
+| `/st3215_driver/move_to_default_pose` | Compatibility service name: ramp from measured pose to the configured **policy-default stance** and assert the pose override |
 | `/st3215_driver/abort_pose_move` | Stop the ramp and hold the best current measured pose |
 | `/st3215_driver/hold_current_pose` | Latch the current measured pose and block external targets |
 | `/st3215_driver/release_pose_override` | Return command authority to `/servo_target_radians` |
@@ -425,11 +425,16 @@ src/lgh_imu_tools/config/imu_contract.yaml
 Installed executables:
 
 ```text
-pose_console
-print_default_pose
+assume_policy_default
+pose_console                  compatibility alias
+print_model_zero
+print_policy_default
+print_default_pose             compatibility alias for policy default
 capture_calibration
 apply_calibration
-verify_calibration
+verify_model_zero
+verify_policy_default
+verify_calibration             compatibility alias for model zero
 servo_identification
 standing_characterization
 st3215_preflight

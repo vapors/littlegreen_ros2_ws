@@ -140,24 +140,55 @@ ros2 service call \
 
 Software holds are not electrical emergency stops.
 
-## Calibration
+## Calibration and servo replacement
+
+Print the two distinct references:
 
 ```bash
-ros2 run lgh_st3215_tools print_default_pose \
-  --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
+ros2 run lgh_st3215_tools print_model_zero
+ros2 run lgh_st3215_tools print_policy_default
+```
 
+Capture model zero for one replacement servo:
+
+```bash
 ros2 run lgh_st3215_tools capture_calibration \
+  --reference model-zero \
+  --joint leg_left_knee_pitch_joint \
   --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
+```
 
+Capture all 12 model-zero centers by omitting `--joint`.
+
+Dry-run/apply:
+
+```bash
 ros2 run lgh_st3215_tools apply_calibration \
   calibration_reports/<timestamp>/center_step_proposal.yaml \
   --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
 
-ros2 run lgh_st3215_tools verify_calibration \
-  --servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
+ros2 run lgh_st3215_tools apply_calibration \
+  calibration_reports/<timestamp>/center_step_proposal.yaml \
+  --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml \
+  --apply
 ```
 
-Use `--apply` only after reviewing the generated diff.
+Verify model zero:
+
+```bash
+ros2 run lgh_st3215_tools verify_model_zero
+```
+
+Guarded move and policy-default verification:
+
+```bash
+ros2 run lgh_st3215_tools assume_policy_default
+
+ros2 run lgh_st3215_tools verify_policy_default \
+  --allow-writes-enabled
+```
+
+The model-space limits remain unchanged during center calibration; raw limits are derived from the new center. See `SERVO_REPLACEMENT_CHECKLIST.md`.
 
 ## Servo identification
 

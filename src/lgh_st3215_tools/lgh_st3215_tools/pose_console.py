@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive console for the guarded ST3215 default-pose move.
+"""Interactive console for the guarded ST3215 policy-default-pose move.
 
 This helper starts /st3215_driver/move_to_default_pose and watches stdin in
 cbreak mode. SPACE, q/Q, a/A, or ESC requests /st3215_driver/abort_pose_move.
@@ -32,7 +32,7 @@ class DefaultPoseMoveConsole(Node):
         abort_service: str,
         diagnostics_topic: str,
     ) -> None:
-        super().__init__("st3215_default_pose_move_console")
+        super().__init__("st3215_policy_default_pose_move_console")
         self.move_client = self.create_client(Trigger, move_service)
         self.abort_client = self.create_client(Trigger, abort_service)
         self.create_subscription(
@@ -90,7 +90,7 @@ def read_key_nonblocking() -> Optional[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Start the guarded default-pose move with keyboard abort support."
+        description="Start the guarded policy-default-pose move with keyboard abort support."
     )
     parser.add_argument(
         "--move-service",
@@ -124,7 +124,7 @@ def main() -> int:
     move_started = False
 
     try:
-        print("\nST3215 guarded default-pose move console")
+        print("\nST3215 guarded policy-default stance console")
         print("========================================")
         print("This console sends REAL servo commands through the driver.")
         print("The robot must be securely supported and a hardware power disconnect kept ready.")
@@ -140,7 +140,7 @@ def main() -> int:
             print("Required move/abort services are not available.", file=sys.stderr)
             return 2
 
-        confirmation = input("Type MOVE exactly to start the default-pose ramp: ").strip()
+        confirmation = input("Type MOVE exactly to assume the policy-default stance: ").strip()
         if confirmation != "MOVE":
             print("Cancelled. No move request was sent.")
             return 0
@@ -186,9 +186,9 @@ def main() -> int:
 
             if saw_post_start_diagnostics and node.pose_move_running is False:
                 if node.pose_override_active:
-                    print("\nDefault-pose ramp complete. Pose override remains active and is holding the pose.")
+                    print("\nPolicy-default-pose ramp complete. Pose override remains active and is holding the pose.")
                 else:
-                    print("\nDefault-pose ramp complete. Pose override is not active.")
+                    print("\nPolicy-default-pose ramp complete. Pose override is not active.")
                 return 0
 
     except KeyboardInterrupt:

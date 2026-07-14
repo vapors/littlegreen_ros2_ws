@@ -20,14 +20,15 @@ Use the page matching the task being performed.
 
 ## Calibrate and characterize
 
-- [`CALIBRATION_WORKFLOW.md`](CALIBRATION_WORKFLOW.md) — guarded ST3215 center calibration.
-- [`HARDWARE_CONTRACT.md`](HARDWARE_CONTRACT.md) — canonical joint order, athletic default pose, physical limits, and runtime authority.
+- [`CALIBRATION_WORKFLOW.md`](CALIBRATION_WORKFLOW.md) — model-zero center calibration and policy-default verification.
+- [`SERVO_REPLACEMENT_CHECKLIST.md`](SERVO_REPLACEMENT_CHECKLIST.md) — like-for-like ST3215 replacement flow.
+- [`HARDWARE_CONTRACT.md`](HARDWARE_CONTRACT.md) — model zero, policy default, physical limits, and runtime authority.
 - [`IMU_CALIBRATION.md`](IMU_CALIBRATION.md) — canonical IMU boundary and orientation checks.
 
 ## Safety and release status
 
 - [`SAFETY_AND_LIMITATIONS.md`](SAFETY_AND_LIMITATIONS.md) — active safety boundary and deferred work.
-- [`V2_7_1_RELEASE.md`](V2_7_1_RELEASE.md) — current release changes.
+- [`V2_7_2_RELEASE.md`](V2_7_2_RELEASE.md) — current release changes.
 - [`VALIDATION.md`](VALIDATION.md) — checks performed for the current source release.
 - [`SOURCES.md`](SOURCES.md) — upstream installation references.
 

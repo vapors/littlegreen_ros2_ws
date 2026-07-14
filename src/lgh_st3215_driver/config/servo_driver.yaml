@@ -94,7 +94,7 @@ lgh_st3215_driver:
     legacy_debug_topic: /st3215_feedback_debug
     target_debug_topic: /servo_target_steps_debug
 
-    # Explicit guarded move to the Isaac training default pose from env.yaml.
+    # Explicit guarded move to the Track 1 policy-default stance from env.yaml.
     # The move service is rejected unless writes are enabled and full feedback is ready.
     # The default behavior holds an internal pose override after the ramp, so the
     # policy/PD stream cannot immediately overwrite the baseline pose.

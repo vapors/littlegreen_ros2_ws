@@ -1,33 +1,56 @@
 # lgh_st3215_tools
 
-Guarded laboratory and commissioning tools for LittleGreen. This package never opens `/dev/ttyS3`; the normal `lgh_st3215_driver` remains the sole UART owner.
+Guarded LittleGreen ST3215 calibration, characterization, preflight, auditing, and dataset tools.
 
-## Commands
+## Pose terminology
+
+- **model zero**: physical calibration fixture pose at `joint_zero_rad` (currently 0 rad)
+- **policy default**: Track 1 standing stance stored as `training_default_rad`
+- **physical limits**: durable `min_rad` / `max_rad`
+- **raw limits**: `min_step` / `max_step` derived from center + radian limits
+
+## Calibration commands
 
 ```bash
-ros2 run lgh_st3215_tools st3215_preflight --mode feedback
-ros2 run lgh_st3215_tools hardware_snapshot
-ros2 run lgh_st3215_tools print_default_pose
-ros2 run lgh_st3215_tools capture_calibration
-ros2 run lgh_st3215_tools apply_calibration proposal.yaml --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
-ros2 run lgh_st3215_tools verify_calibration
-ros2 run lgh_st3215_tools pose_console
-ros2 run lgh_st3215_tools servo_identification --help
-ros2 run lgh_st3215_tools standing_characterization --help
+ros2 run lgh_st3215_tools print_model_zero
+ros2 run lgh_st3215_tools print_policy_default
+
+ros2 run lgh_st3215_tools capture_calibration \
+  --reference model-zero
+
+ros2 run lgh_st3215_tools capture_calibration \
+  --reference model-zero \
+  --joint leg_left_knee_pitch_joint
+
+ros2 run lgh_st3215_tools apply_calibration \
+  calibration_reports/<timestamp>/center_step_proposal.yaml \
+  --source-servo-map ~/littlegreen_ros2_ws/src/lgh_st3215_driver/config/servo_map.yaml
+
+ros2 run lgh_st3215_tools verify_model_zero
+ros2 run lgh_st3215_tools assume_policy_default
+ros2 run lgh_st3215_tools verify_policy_default --allow-writes-enabled
 ```
 
-## Exit codes
+Compatibility aliases remain available:
 
-| Code | Meaning |
-|---:|---|
-| 0 | PASS |
-| 2 | test ran but acceptance criteria failed |
-| 3 | refused safety/precondition |
-| 4 | timeout or ROS resource unavailable |
-| 5 | configuration error |
-| 6 | hardware/I/O error |
-| 7 | operator abort |
-| 70 | internal software error |
-| 130 | SIGINT |
+```text
+print_default_pose     -> print_policy_default
+pose_console           -> assume_policy_default
+verify_calibration     -> verify_model_zero
+```
 
-Preflight and snapshot commands always emit a YAML report plus a text summary under `~/.ros/lgh_reports/` unless an output root is supplied.
+## Other tools
+
+```text
+servo_identification
+standing_characterization
+st3215_preflight
+hardware_snapshot
+dataset_manifest
+```
+
+The normal ROS tools operate above `lgh_st3215_driver`; they do not independently open the servo UART. The standalone physical endpoint tool lives at:
+
+```text
+tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py
+```

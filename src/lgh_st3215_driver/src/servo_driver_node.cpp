@@ -543,7 +543,7 @@ class ServoDriverNode final : public rclcpp::Node {
 
     response->success = true;
     response->message =
-        "Started smooth ramp to the training default pose. External servo targets are ignored while pose override is active.";
+        "Started smooth ramp to the policy-default stance. External servo targets are ignored while pose override is active.";
   }
 
   void releasePoseOverrideCallback(
@@ -567,7 +567,7 @@ class ServoDriverNode final : public rclcpp::Node {
         "Pose override released. Align/reset the PD controller to feedback before release so the next external target is rate-limited from the physical pose.";
     RCLCPP_WARN(
         get_logger(),
-        "Training-default pose override released; external /servo_target_radians commands are active again.");
+        "Policy-default stance override released; external /servo_target_radians commands are active again.");
   }
 
   void holdCurrentPoseCallback(
@@ -801,7 +801,7 @@ class ServoDriverNode final : public rclcpp::Node {
 
     RCLCPP_WARN(
         get_logger(),
-        "Starting guarded move to training default pose over %.2f s (%zu ramp steps).",
+        "Starting guarded move to policy-default stance over %.2f s (%zu ramp steps).",
         default_pose_move_duration_sec_, step_count);
 
     for (std::size_t step = 1; step <= step_count && !pose_stop_requested_.load(); ++step) {
@@ -822,7 +822,7 @@ class ServoDriverNode final : public rclcpp::Node {
       command_buffer_.store(goal);
       RCLCPP_WARN(
           get_logger(),
-          "Training default pose reached. Pose override hold=%s.",
+          "Policy-default stance reached. Pose override hold=%s.",
           default_pose_hold_after_move_ ? "true" : "false");
     } else {
       // The abort service will latch measured feedback after joining this thread.
@@ -830,7 +830,7 @@ class ServoDriverNode final : public rclcpp::Node {
       pose_override_active_.store(true);
       RCLCPP_ERROR(
           get_logger(),
-          "Training-default pose ramp stopped before completion; waiting for abort hold latch.");
+          "Policy-default stance ramp stopped before completion; waiting for abort hold latch.");
     }
 
     pose_move_running_.store(false);
@@ -1031,7 +1031,7 @@ class ServoDriverNode final : public rclcpp::Node {
     } else if (pose_override_active_.load()) {
       status.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
       status.message = pose_move_running_.load()
-          ? "bus healthy, guarded training-default pose ramp active"
+          ? "bus healthy, guarded policy-default stance ramp active"
           : "bus healthy, internal pose override holding";
     } else if (stats.writes_enabled && stats.command_stale) {
       status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;

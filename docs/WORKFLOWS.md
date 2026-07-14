@@ -64,21 +64,27 @@ ros2 run lgh_st3215_maintenance backup_control_tables
 
 Do not run maintenance and the driver at the same time.
 
-## 5. Calibration
+## 5. Model-zero calibration and servo replacement
 
 ```text
 commissioning profile, writes disabled
-→ physically place the robot in the known reference pose
-→ capture raw centers
-→ inspect proposal
-→ dry-run apply
-→ apply source map
-→ rebuild driver
-→ verify feedback-only
-→ perform guarded write-enabled pose test
+→ physically place selected joint(s) at model zero
+→ capture center_step
+→ preserve min_rad/max_rad
+→ derive raw min_step/max_step from the new center
+→ dry-run/apply source maps
+→ rebuild driver and biped package
+→ verify model zero
+→ guarded move to policy default
+→ verify policy-default raw targets
 ```
 
-Use [`CALIBRATION_WORKFLOW.md`](CALIBRATION_WORKFLOW.md).
+Use:
+
+- [`CALIBRATION_WORKFLOW.md`](CALIBRATION_WORKFLOW.md)
+- [`SERVO_REPLACEMENT_CHECKLIST.md`](SERVO_REPLACEMENT_CHECKLIST.md)
+
+A like-for-like replacement servo normally does not require a new physical endpoint capture.
 
 ## 6. Servo identification
 

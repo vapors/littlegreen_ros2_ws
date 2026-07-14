@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.7.2
+
+Calibration and serviceability release:
+
+- separated **model zero** from the Track 1 **policy-default stance** throughout active tools and documentation;
+- made `capture_calibration --reference model-zero` the recommended/default center-step workflow;
+- added single-joint calibration with repeatable `--joint` arguments for replacement servos;
+- preserved durable model-space `min_rad`/`max_rad` limits while deriving raw `min_step`/`max_step` from the new center;
+- removed the misleading old-endpoint `RANGE_CONFLICT` behavior for small center changes;
+- added `verify_model_zero`, `verify_policy_default`, `print_model_zero`, `print_policy_default`, and `assume_policy_default` commands;
+- retained `verify_calibration`, `print_default_pose`, and `pose_console` as compatibility aliases with clarified semantics;
+- synchronized servo-center/raw-limit mirrors in `joint_map.yaml` during approved calibration application;
+- added a like-for-like servo replacement checklist;
+- updated the standalone LittleGreen Hardware Limit Tool to v1.1.0 with current workspace paths and center-independent model-space contracts;
+- added offline tests covering model-zero capture, raw-limit derivation, partial proposals, and map synchronization.
+
+No Track 1 policy YAML, ONNX model, policy-default vector, physical radian limits, servo IDs, signs, or runtime bus timing changed.
+
 ## 2.7.1
 
 - added direct action-contract-v4 support to `littlegreen_biped_node`;

@@ -106,7 +106,7 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
   enable_writes:=true
 ```
 
-The policy must remain disconnected during servo identification, calibration motion, and standing characterization.
+The policy must remain disconnected during servo identification, model-zero calibration, policy-default pose verification, and standing characterization.
 
 ## Live-policy gate
 
