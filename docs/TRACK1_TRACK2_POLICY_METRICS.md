@@ -1,10 +1,10 @@
 # Track 1 / Track 2 Policy Metrics
 
-Track 1 v1.4.5s3 added deeper policy, posture, COM, and gait diagnostics. v2.7.1 propagates the metrics that can be observed faithfully from the current ROS hardware interface and explicitly labels the metrics that still require additional sensing or kinematic estimation.
+Track 1 v1.4.5s3 added deeper policy, posture, COM, and gait diagnostics. Track 1 v1.4.7 adds a phase-guided 47-D observation. LittleGreen v2.8.0 records the metrics that can be observed faithfully from the current ROS hardware interface while preserving the legacy 45-D recorder path. Metrics that still require contact sensing, torque calibration, or kinematic estimation remain explicitly unavailable.
 
 ## Current Track 1 reference geometry
 
-The packaged policy export identifies the deployment contract. The accompanying Track 1 task uses these standing targets for training and evaluation:
+The packaged policy export identifies the active deployment contract. The packaged default remains the 45-D v1.4.5s3 standing policy. The accompanying Track 1 task uses these standing targets for training and evaluation:
 
 ```text
 standing COM height target:       0.460 m
@@ -69,8 +69,15 @@ Exit status:
 | observable standing subconditions | observation | upright, quiet-yaw, and near-default tests matching Track 1 thresholds where sensors permit |
 | joint posture RMS/max | `/policy_debug/observation[9:21]` | deviation from the exported athletic default |
 | command velocity | `/policy_debug/observation[0:3]` | exact command used by the policy observation |
+| gait phase sine/cosine | `/policy_debug/observation[45:47]` for 47-D policies | exact phase values passed to ONNX |
+| phase tick and period ticks | `/policy_debug/gait_phase` for 47-D policies | logical tick plus expected 36-tick period; useful for wrap/freeze checks |
+| expected gait half-cycle | `/policy_debug/gait_phase` for 47-D policies | policy timing convention: left stance/right swing or right stance/left swing; not measured contact |
+| observation/debug phase agreement | observation plus gait-phase debug topic | detects an unsynchronized or inconsistent debug capture |
+| phase unit-circle error | phase sine/cosine | numerical check that `sin²+cos²` remains approximately one |
 
 The recorder produces both global means and a standing-command subset. Standing samples are selected by command-vector magnitude, not by an assumption that the robot is physically stationary. It can reproduce the Track 1 upright, quiet-yaw, and near-default subconditions, but it does not report the full stable-standing condition because root XY velocity and foot contact are unavailable.
+
+For a 47-D capture, phase fields describe the **expected policy clock**. The recorder must not reinterpret them as actual stance, swing, double support, or no-support measurements. The clock begins at phase zero, advances after successful inference, freezes while readiness is gated, and wraps after 36 successful policy ticks under the current 0.72 s / 0.02 s contract.
 
 ## Metrics not yet directly observable
 
@@ -79,7 +86,7 @@ The current runtime does not claim these Track 1 diagnostics:
 ```text
 base COM height
 COM forward offset relative to the feet
-single-support / double-support / no-support fractions
+measured single-support / double-support / no-support fractions
 foot air time
 swing clearance and lift counts
 foot slip
@@ -117,6 +124,7 @@ For each policy candidate:
 2. capture a zero-command shadow dataset;
 3. capture the same command sequence used in simulation evaluation;
 4. compare raw-action excess, normalized saturation, physical target clipping, residual demand, projected gravity, and real tracking error;
-5. keep unavailable metrics explicitly blank rather than inventing proxies.
+5. for a 47-D policy, verify the 36-tick phase cycle, unit-circle consistency, and readiness-freeze behavior while keeping contact metrics explicitly unavailable;
+6. keep unavailable metrics explicitly blank rather than inventing proxies.
 
 A policy that is stable in simulation but shows substantially higher physical target clipping or tracking error on hardware is seeing a different effective plant. Feed that evidence back into Track 1 rather than changing ROS-side defaults or scales independently.

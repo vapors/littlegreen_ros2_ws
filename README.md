@@ -10,13 +10,20 @@ ROS 2 Humble source workspace for the LittleGreen biped hardware stack. The acti
 | `lgh_st3215_tools` | Guarded calibration, characterization, preflight, hardware auditing, and datasets |
 | `lgh_st3215_maintenance` | Offline read-only direct-bus inspection; the runtime driver must be stopped |
 | `lgh_imu_tools` | Source-independent validation of the canonical `/imu/data` interface |
-| `littlegreen_biped_pkg` | Observation construction, action-contract v3/v4 validation, ONNX inference, policy auditing, runtime metrics, and live/shadow/disabled output |
+| `littlegreen_biped_pkg` | 45-D/47-D observation construction, deterministic gait phase, action-contract v3/v4 validation, ONNX inference, policy auditing, runtime metrics, and live/shadow/disabled output |
 | `pd_controller_pkg` | Safety filtering and optional outer-loop command shaping |
 | `littlegreen_description` | Robot description and visualization resources |
 
-## Current Track 1 deployment contract
+## Current Track 1 deployment status
 
-v2.7.3 retains the paired Track 1 v1.4.5s3 export from v2.7.2:
+v2.8.0 adds runtime compatibility for two independently validated observation contracts:
+
+```text
+Legacy packaged bundle: observation[45] -> action[12]
+Phase-guided bundle:    observation[47] -> action[12]
+```
+
+The **packaged default policy remains the known-good Track 1 v1.4.5s3 45-D export**:
 
 ```text
 Task:      Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
@@ -26,7 +33,14 @@ Contract:  v4 bounded default-centered vector residual
 Profile:   v1_4_5_stabilized_vector_residual
 ```
 
-Action contract v4 uses a per-joint residual vector centered on the athletic default pose. The policy node validates the exported defaults, physical bounds, nominal residual bounds, action indices, joint names, and ONNX checksum before inference begins.
+v2.8.0 does not include or claim a deployable v1.4.7 policy. A future v1.4.7 bundle must contain a genuine ONNX input tensor `[1,47]`, output `[1,12]`, matching SHA-256, action contract v4, and explicit gait-phase metadata. The runtime then appends:
+
+```text
+obs[45] = sin(2*pi*phase)
+obs[46] = cos(2*pi*phase)
+```
+
+using a deterministic 0.72-second, 36-policy-tick clock. See [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md).
 
 ## Install
 
@@ -85,7 +99,7 @@ Continue with [`docs/FRESH_INSTALL_CHECKLIST.md`](docs/FRESH_INSTALL_CHECKLIST.m
 
 ## Policy bundle audit and shadow
 
-Audit the packaged YAML/ONNX pair before launch:
+Audit the packaged YAML/ONNX pair before launch. The installed audit verifies SHA-256 and the actual ONNX input/output tensor shapes:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_bundle_audit
@@ -137,12 +151,16 @@ Start with [`docs/README.md`](docs/README.md). Common pages:
 - [`docs/COMMAND_REFERENCE.md`](docs/COMMAND_REFERENCE.md)
 - [`docs/ROS_GRAPH_AND_AUTHORITY.md`](docs/ROS_GRAPH_AND_AUTHORITY.md)
 - [`docs/INTERFACES_AND_PARAMETERS.md`](docs/INTERFACES_AND_PARAMETERS.md)
+- [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md)
+- [`docs/TRACK1_V1_4_7_INTEGRATION_REVIEW.md`](docs/TRACK1_V1_4_7_INTEGRATION_REVIEW.md)
 - [`docs/LIVE_POLICY_DEPLOYMENT.md`](docs/LIVE_POLICY_DEPLOYMENT.md)
 - [`docs/TRACK1_TRACK2_POLICY_METRICS.md`](docs/TRACK1_TRACK2_POLICY_METRICS.md)
 - [`docs/CALIBRATION_WORKFLOW.md`](docs/CALIBRATION_WORKFLOW.md)
 - [`docs/SERVO_REPLACEMENT_CHECKLIST.md`](docs/SERVO_REPLACEMENT_CHECKLIST.md)
 - [`docs/HARDWARE_CONTRACT.md`](docs/HARDWARE_CONTRACT.md)
 - [`docs/SAFETY_AND_LIMITATIONS.md`](docs/SAFETY_AND_LIMITATIONS.md)
+- [`docs/V2_8_0_RELEASE.md`](docs/V2_8_0_RELEASE.md)
+- [`docs/V2_8_0_VALIDATION.md`](docs/V2_8_0_VALIDATION.md)
 - [`docs/VALIDATION.md`](docs/VALIDATION.md)
 
 Historical records are retained under `docs/archive/` and `docs/history/` and are not active operating instructions.

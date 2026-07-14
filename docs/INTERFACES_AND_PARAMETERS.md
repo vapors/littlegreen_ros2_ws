@@ -267,6 +267,27 @@ Starts joystick and keyboard teleop, `twist_mux`, the policy node, the command-f
 
 Use the dedicated shadow and live launch files for first hardware deployment. See [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 
+### Observation contracts
+
+v2.8.0 validates the observation contract independently from the action contract.
+
+| Observation count | Contract | Compatibility |
+|---:|---|---|
+| `45` | `littlegreen_hardware_45_v1` | legacy hardware observation; older bundles may omit explicit observation metadata |
+| `47` | `littlegreen_hardware_phase_guided_47_v1` | explicit phase-guided contract; action contract v4 required |
+| any other value | unsupported | startup and offline audit fail |
+
+The 47-D layout appends:
+
+```text
+obs[45] = sin(2*pi*phase)
+obs[46] = cos(2*pi*phase)
+```
+
+to the unchanged 45-D observation. The current clock uses a 0.72 s period and 0.02 s policy interval, producing 36 successful policy ticks per cycle. It starts at `[0,1]`, advances after successful inference/output update, freezes while readiness is gated, and continues at zero command velocity.
+
+A 47-D bundle must declare the exact phase metadata documented in [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md), and its ONNX input must actually be `[1,47]`. Relabeling a 45-D model is rejected.
+
 ### Action contracts v3 and v4
 
 `littlegreen_biped_node` accepts the current bounded default-centered residual contracts:
@@ -311,7 +332,7 @@ ros2 run littlegreen_biped_pkg policy_bundle_audit --help
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-The audit checks the YAML/ONNX checksum and the same v3/v4 hardware-map boundary used by the live policy node. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
+The audit checks the YAML/ONNX checksum, ONNX input/output tensor dimensions and float32 element types, supported 45-D/47-D observation metadata, and the same v3/v4 hardware-map boundary used by the live policy node. The installed audit locates `policy_onnx_contract_probe` automatically. `--skip-onnx-shape-check` is reserved for source-development checks before the helper has been built; it is not acceptable for deployment approval. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
 
 ### Policy runtime metrics
 
@@ -351,7 +372,16 @@ Common policy status/debug outputs:
 /policy_debug/target_unclipped
 /policy_debug/target_clipped
 /policy_debug/saturation_mask
+/policy_debug/gait_phase       # 47-D policies only
 ```
+
+A phase-guided policy also exposes:
+
+```text
+/policy/reset_gait_phase       std_srvs/srv/Trigger
+```
+
+The service is available in `shadow` and `disabled` modes and refused in `live` mode. `/policy_debug/gait_phase` reports expected policy timing, not measured contact.
 
 ## 9. Policy runtime parameters
 

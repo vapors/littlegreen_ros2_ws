@@ -18,6 +18,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 TOOLS = ROOT / "tools"
+EXPECTED_WORKSPACE_VERSION = "2.8.0"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -43,6 +44,21 @@ ALLOWED_PROVENANCE_TEXT = {
 
 errors: list[str] = []
 warnings: list[str] = []
+
+for generated in ROOT.rglob("*"):
+    if generated.name == "__pycache__" or generated.suffix == ".pyc":
+        errors.append(f"generated Python cache must not be packaged: {generated.relative_to(ROOT)}")
+if (ROOT / ".pytest_cache").exists():
+    errors.append("generated pytest cache must not be packaged: .pytest_cache")
+
+version_path = ROOT / "VERSION"
+if not version_path.is_file():
+    errors.append("missing VERSION file")
+elif version_path.read_text(encoding="utf-8").strip() != EXPECTED_WORKSPACE_VERSION:
+    errors.append(
+        f"VERSION must be {EXPECTED_WORKSPACE_VERSION}, found "
+        f"{version_path.read_text(encoding='utf-8').strip()!r}"
+    )
 
 
 def fail(message: str) -> None:
@@ -78,6 +94,15 @@ for package_xml in SRC.rglob("package.xml"):
 missing = EXPECTED - package_names
 if missing:
     fail(f"missing expected packages: {sorted(missing)}")
+
+biped_package_xml = SRC / "littlegreen_biped_pkg/package.xml"
+if biped_package_xml.is_file():
+    try:
+        biped_tree = ET.parse(biped_package_xml)
+        if biped_tree.findtext("version") != "0.6.0":
+            fail("littlegreen_biped_pkg package version must be 0.6.0 for workspace v2.8.0")
+    except Exception as exc:
+        fail(f"unable to validate littlegreen_biped_pkg version: {exc}")
 
 for scan_root in (SRC, TOOLS):
   if not scan_root.exists():
@@ -136,8 +161,14 @@ required_files = [
     SRC / "lgh_st3215_tools/test/test_calibration_semantics.py",
     SRC / "lgh_st3215_tools/config/track1_action_contract_v4.yaml",
     SRC / "littlegreen_biped_pkg/src/littlegreen_biped_node.cpp",
+    SRC / "littlegreen_biped_pkg/src/policy_onnx_contract_probe.cpp",
+    SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_observation_contract.hpp",
     SRC / "littlegreen_biped_pkg/scripts/policy_bundle_audit.py",
     SRC / "littlegreen_biped_pkg/scripts/policy_runtime_metrics.py",
+    SRC / "littlegreen_biped_pkg/scripts/annotate_phase_guided_policy.py",
+    SRC / "littlegreen_biped_pkg/test/test_policy_observation_contract.cpp",
+    SRC / "littlegreen_biped_pkg/test/test_policy_bundle_audit.py",
+    SRC / "littlegreen_biped_pkg/test/test_annotate_phase_guided_policy.py",
     SRC / "littlegreen_biped_pkg/launch/littlegreen_biped_launch.py",
     SRC / "littlegreen_biped_pkg/launch/policy_shadow.launch.py",
     SRC / "littlegreen_biped_pkg/launch/policy_live.launch.py",
@@ -153,6 +184,11 @@ required_files = [
     ROOT / "docs/INSTALL_UBUNTU_X86_64.md",
     ROOT / "docs/CALIBRATION_WORKFLOW.md",
     ROOT / "docs/SERVO_REPLACEMENT_CHECKLIST.md",
+    ROOT / "docs/OBSERVATION_CONTRACT.md",
+    ROOT / "docs/TRACK1_V1_4_7_INTEGRATION_REVIEW.md",
+    ROOT / "docs/MIGRATION_V2_7_3_TO_V2_8_0.md",
+    ROOT / "docs/V2_8_0_RELEASE.md",
+    ROOT / "docs/V2_8_0_VALIDATION.md",
     ROOT / "tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py",
     ROOT / "tools/lgh_hardware_limit_tool/README.md",
 ]
@@ -175,10 +211,32 @@ if policy_node.is_file():
         "bounded_default_centered_vector_residual",
         "previous_action_observation",
         "Action contract v%d validated against joint_map.yaml",
+        "littlegreen_hardware_phase_guided_47_v1",
+        "gait_phase_period_s",
+        "gait_phase_encoding",
+        "after_previous_action",
+        "episode_step_time",
+        "environment_episode_reset",
+        "obs[45|47] -> actions[12]",
+        "/policy_debug/gait_phase",
+        "/policy/reset_gait_phase",
     ]
     for token in required_contract_tokens:
         if token not in policy_text:
-            fail(f"policy node is missing action-contract-v3/v4 token: {token}")
+            fail(f"policy node is missing v2.8.0 policy-contract token: {token}")
+
+observation_header = SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_observation_contract.hpp"
+if observation_header.is_file():
+    header_text = observation_header.read_text(encoding="utf-8")
+    for token in [
+        "kLegacyObservationCount = 45U",
+        "kPhaseGuidedObservationCount = 47U",
+        "GaitPhaseClock",
+        "build_policy_observation",
+        "expected_half_cycle",
+    ]:
+        if token not in header_text:
+            fail(f"observation contract header is missing token: {token}")
 
 # Validate the packaged Track 1 deployment bundle and hardware map.
 if yaml is not None:
@@ -202,7 +260,11 @@ if yaml is not None:
         if policy.get("previous_action_observation") != "bounded_normalized_action":
             fail("packaged policy has unexpected previous_action_observation")
         if int(policy.get("num_observations", 0)) != 45 or int(policy.get("num_actions", 0)) != 12:
-            fail("packaged policy must expose obs[45] -> actions[12]")
+            fail("packaged policy must remain the known-good obs[45] -> actions[12] bundle")
+        if policy.get("metadata", {}).get("task") != "Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3":
+            fail("packaged policy task must remain the v1.4.5s3 standing policy")
+        if policy.get("gait_phase_enabled") is True or int(policy.get("observation_contract_version", 1)) != 1:
+            fail("packaged 45-D policy must not be relabeled as phase-guided")
 
         scale = [float(v) for v in policy["action_residual_scale_rad"]]
         defaults = [float(v) for v in policy["action_default_rad"]]

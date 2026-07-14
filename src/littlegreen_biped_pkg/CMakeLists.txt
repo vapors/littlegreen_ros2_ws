@@ -15,6 +15,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -86,13 +87,22 @@ find_library(
 )
 
 
-# Add your node
+# Policy runtime and offline ONNX tensor-contract probe.
 add_executable(littlegreen_biped_node src/littlegreen_biped_node.cpp)
+add_executable(policy_onnx_contract_probe src/policy_onnx_contract_probe.cpp)
 
 
 
 target_include_directories(
   littlegreen_biped_node
+  PRIVATE
+    ${ONNXRUNTIME_INCLUDE_DIR}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_include_directories(
+  policy_onnx_contract_probe
   PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIR}
 )
@@ -111,22 +121,31 @@ target_link_libraries(
   ${ONNXRUNTIME_LIBRARY}
 )
 
+target_link_libraries(
+  policy_onnx_contract_probe
+  ${ONNXRUNTIME_LIBRARY}
+)
+
 ament_target_dependencies(littlegreen_biped_node
   rclcpp
   ament_index_cpp
   std_msgs
+  std_srvs
   sensor_msgs
   geometry_msgs
   yaml-cpp
 )
 
-# This package currently has no public headers. Keep the executable target
-# self-contained instead of exporting or installing an empty include tree.
+# Compile the runtime and tensor-contract probe with the v2.8.0 contract helpers.
 target_compile_features(littlegreen_biped_node PUBLIC cxx_std_17)
+target_compile_features(policy_onnx_contract_probe PUBLIC cxx_std_17)
 
 # Install executable
-install(TARGETS littlegreen_biped_node
+install(TARGETS littlegreen_biped_node policy_onnx_contract_probe
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY include/
+  DESTINATION include)
 
 # Install policy deployment audit and runtime metrics tools with stable ros2 run names.
 install(PROGRAMS scripts/policy_bundle_audit.py
@@ -135,6 +154,9 @@ install(PROGRAMS scripts/policy_bundle_audit.py
 install(PROGRAMS scripts/policy_runtime_metrics.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME policy_runtime_metrics)
+install(PROGRAMS scripts/annotate_phase_guided_policy.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME annotate_phase_guided_policy)
 
 # Install resources
 install(DIRECTORY src/checkpoints
@@ -145,15 +167,38 @@ install(DIRECTORY src/configs
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
-install(FILES POLICY_SHADOW.md POLICY_LIVE.md POLICY_DEBUG.md
+install(FILES POLICY_SHADOW.md POLICY_LIVE.md POLICY_DEBUG.md POLICY_DEBUG_V2.md
   DESTINATION share/${PROJECT_NAME}
 )
 # Optional testing
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_pytest REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(
+    test_policy_observation_contract
+    test/test_policy_observation_contract.cpp
+  )
+  if(TARGET test_policy_observation_contract)
+    target_include_directories(
+      test_policy_observation_contract
+      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_compile_features(test_policy_observation_contract PUBLIC cxx_std_17)
+  endif()
+
+  ament_add_pytest_test(
+    test_policy_bundle_audit
+    test/test_policy_bundle_audit.py
+  )
+  ament_add_pytest_test(
+    test_annotate_phase_guided_policy
+    test/test_annotate_phase_guided_policy.py
+  )
 endif()
 
 ament_package()

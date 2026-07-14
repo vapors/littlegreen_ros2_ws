@@ -16,8 +16,10 @@ Use the page matching the task being performed.
 - [`ROS_GRAPH_AND_AUTHORITY.md`](ROS_GRAPH_AND_AUTHORITY.md) — publisher ownership, pose overrides, terminal layout, and stale-process checks.
 - [`INTERFACES_AND_PARAMETERS.md`](INTERFACES_AND_PARAMETERS.md) — profiles, launch arguments, topics, services, parameters, and exit codes.
 - [`WORKFLOWS.md`](WORKFLOWS.md) — recommended calibration, identification, maintenance, IMU, shadow, and live workflows.
-- [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md) — paired bundle audit, action-contract v3/v4 validation, shadow gates, and guarded live launch.
-- [`TRACK1_V1_4_5S3_REVIEW.md`](TRACK1_V1_4_5S3_REVIEW.md) — deployment-critical review of the latest Track 1 source.
+- [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md) — exact 45-D and 47-D layouts, gait clock lifecycle, metadata, and compatibility rules.
+- [`TRACK1_V1_4_7_INTEGRATION_REVIEW.md`](TRACK1_V1_4_7_INTEGRATION_REVIEW.md) — source review and integration boundary for the phase-guided Track 1 task.
+- [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md) — paired bundle audit, observation/action validation, shadow gates, and guarded live launch.
+- [`TRACK1_V1_4_5S3_REVIEW.md`](TRACK1_V1_4_5S3_REVIEW.md) — deployment-critical review of the currently packaged 45-D policy source.
 - [`TRACK1_TRACK2_POLICY_METRICS.md`](TRACK1_TRACK2_POLICY_METRICS.md) — mapping between Track 1 analysis metrics and real-hardware observability.
 
 ## Calibrate and characterize
@@ -30,7 +32,10 @@ Use the page matching the task being performed.
 ## Safety and release status
 
 - [`SAFETY_AND_LIMITATIONS.md`](SAFETY_AND_LIMITATIONS.md) — active safety boundary and deferred work.
-- [`V2_7_3_RELEASE.md`](V2_7_3_RELEASE.md) — current documentation/discoverability release.
+- [`V2_8_0_RELEASE.md`](V2_8_0_RELEASE.md) — current observation-contract compatibility release.
+- [`V2_8_0_VALIDATION.md`](V2_8_0_VALIDATION.md) — validation scope and remaining hardware acceptance steps.
+- [`MIGRATION_V2_7_3_TO_V2_8_0.md`](MIGRATION_V2_7_3_TO_V2_8_0.md) — upgrade, calibration-preservation, and rollback steps.
+- [`V2_7_3_RELEASE.md`](V2_7_3_RELEASE.md) — prior documentation/discoverability release.
 - [`V2_7_2_RELEASE.md`](V2_7_2_RELEASE.md) — calibration-tool release changes.
 - [`VALIDATION.md`](VALIDATION.md) — checks performed for the current source release.
 - [`SOURCES.md`](SOURCES.md) — upstream installation references.

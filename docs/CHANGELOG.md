@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.8.0
+
+- Added independent 45-D legacy and 47-D phase-guided observation contracts.
+- Added exact v1.4.7 phase metadata validation and preserved action contract v4.
+- Added a deterministic 0.72-second, 36-tick gait clock that advances only after successful inference.
+- Added phase freeze on readiness loss, phase-zero restart behavior, `/policy_debug/gait_phase`, and a reset service refused in live mode.
+- Added strict ONNX float32 tensor shape inspection through `policy_onnx_contract_probe`.
+- Expanded `policy_bundle_audit` and `policy_runtime_metrics` for both supported observation layouts.
+- Added `annotate_phase_guided_policy`, which refuses 45-D or unexpected policy exports.
+- Added C++ and Python contract tests and refreshed deployment, migration, command, and validation documentation.
+- Retained the packaged Track 1 v1.4.5s3 45-D YAML/ONNX pair; no deployable v1.4.7 policy is included.
+- Preserved servo calibration, physical limits, driver timing, UART ownership, action mapping, and downstream safety behavior.
+
 ## 2.7.3
 
 - Added a comprehensive command and option reference for first-party executables, launch files, services, parameters, and exit codes.

@@ -44,8 +44,55 @@ class RuntimeMetricsNode(Node):
         self.standing_threshold = standing_threshold
         self.velocity_limit_rad_s = velocity_limit_rad_s
         self.policy = yaml.safe_load(policy_yaml.read_text(encoding='utf-8'))
+        if not isinstance(self.policy, dict):
+            raise ValueError('policy YAML must contain a mapping')
+        self.num_observations = int(self.policy.get('num_observations', -1))
+        if self.num_observations not in (45, 47):
+            raise ValueError(
+                f'unsupported num_observations={self.num_observations}; expected 45 or 47'
+            )
+        self.phase_enabled = self.num_observations == 47
+        if self.phase_enabled:
+            required_phase = {
+                'observation_contract_version': 2,
+                'observation_contract_name': 'littlegreen_hardware_phase_guided_47_v1',
+                'gait_phase_enabled': True,
+                'gait_phase_period_s': 0.72,
+                'gait_phase_encoding': 'sin_cos_2pi',
+                'gait_phase_append_order': 'after_previous_action',
+                'gait_phase_training_timebase': 'episode_step_time',
+                'gait_phase_training_reset_semantics': 'environment_episode_reset',
+            }
+            for key, expected in required_phase.items():
+                actual = self.policy.get(key)
+                if isinstance(expected, float):
+                    valid = isinstance(actual, (int, float)) and abs(float(actual) - expected) <= 1.0e-9
+                else:
+                    valid = actual == expected
+                if not valid:
+                    raise ValueError(f'{key}={actual!r}, expected {expected!r}')
+            expected_layout = [
+                'command_velocity_3',
+                'base_angular_velocity_3',
+                'projected_gravity_3',
+                'joint_position_relative_to_default_12',
+                'joint_velocity_12',
+                'previous_bounded_normalized_action_12',
+                'gait_phase_sin_cos_2',
+            ]
+            if self.policy.get('observation_layout') != expected_layout:
+                raise ValueError('47-D observation_layout does not match the supported contract')
+            if int(self.policy.get('action_contract_version', -1)) != 4:
+                raise ValueError('47-D policy requires action_contract_version: 4')
+            policy_dt = float(self.policy.get('policy_dt', 0.0))
+            if not math.isfinite(policy_dt) or abs(policy_dt - 0.02) > 1.0e-9:
+                raise ValueError('47-D policy requires finite policy_dt: 0.02')
         mapping = yaml.safe_load(joint_map.read_text(encoding='utf-8'))
+        if not isinstance(mapping, dict) or not isinstance(mapping.get('joints'), list):
+            raise ValueError('joint map must contain a joints sequence')
         entries = sorted(mapping['joints'], key=lambda item: int(item['policy_action_index']))
+        if len(entries) != 12:
+            raise ValueError('joint map must contain exactly 12 policy joints')
         self.joint_names = [str(item['name']) for item in entries]
         self.defaults = [float(item['default_joint_rad']) for item in entries]
 
@@ -57,6 +104,7 @@ class RuntimeMetricsNode(Node):
         self.mask = TimedValue()
         self.joint_state = TimedValue()
         self.command = TimedValue()
+        self.gait_phase = TimedValue()
         self.rows: list[dict[str, float | int | bool]] = []
 
         self.create_subscription(Float64MultiArray, '/policy_debug/observation', self._obs, qos_profile_sensor_data)
@@ -65,6 +113,13 @@ class RuntimeMetricsNode(Node):
         self.create_subscription(Float64MultiArray, '/policy_debug/target_unclipped', self._target_unclipped, qos_profile_sensor_data)
         self.create_subscription(Float64MultiArray, '/policy_debug/target_clipped', self._target, qos_profile_sensor_data)
         self.create_subscription(UInt8MultiArray, '/policy_debug/saturation_mask', self._mask, qos_profile_sensor_data)
+        if self.phase_enabled:
+            self.create_subscription(
+                Float64MultiArray,
+                '/policy_debug/gait_phase',
+                self._gait_phase,
+                qos_profile_sensor_data,
+            )
         self.create_subscription(JointState, '/joint_states', self._joint, qos_profile_sensor_data)
         self.create_subscription(Twist, '/command_velocity', self._command, 10)
 
@@ -85,6 +140,9 @@ class RuntimeMetricsNode(Node):
     def _mask(self, msg: UInt8MultiArray) -> None:
         self._set(self.mask, list(map(int, msg.data)))
         self._record_if_ready()
+
+    def _gait_phase(self, msg: Float64MultiArray) -> None:
+        self._set(self.gait_phase, list(map(float, msg.data)))
 
     def _joint(self, msg: JointState) -> None:
         by_name = {name: i for i, name in enumerate(msg.name)}
@@ -115,10 +173,12 @@ class RuntimeMetricsNode(Node):
         self._set(self.target, list(map(float, msg.data)))
 
     def _record_if_ready(self) -> None:
-        required = (
+        required = [
             self.observation, self.raw_action, self.clipped_action,
             self.target_unclipped, self.target, self.mask,
-        )
+        ]
+        if self.phase_enabled:
+            required.append(self.gait_phase)
         if not self._fresh(*required):
             return
         obs = self.observation.value
@@ -128,7 +188,7 @@ class RuntimeMetricsNode(Node):
         target = self.target.value
         mask = self.mask.value
         if not (
-            len(obs) == 45 and len(raw) == len(clipped) == len(target_unclipped)
+            len(obs) == self.num_observations and len(raw) == len(clipped) == len(target_unclipped)
             == len(target) == len(mask) == 12
         ):
             return
@@ -174,6 +234,40 @@ class RuntimeMetricsNode(Node):
             'target_residual_abs_mean_rad': statistics.fmean(residual),
             'target_residual_abs_max_rad': max(residual),
         }
+        if self.phase_enabled:
+            phase_sine = float(obs[45])
+            phase_cosine = float(obs[46])
+            phase_angle = math.atan2(phase_sine, phase_cosine)
+            phase_fraction = (phase_angle / (2.0 * math.pi)) % 1.0
+            phase_debug = self.gait_phase.value
+            if len(phase_debug) != 6:
+                return
+            debug_fraction = float(phase_debug[0])
+            debug_tick = int(round(float(phase_debug[1])))
+            debug_period_ticks = int(round(float(phase_debug[2])))
+            debug_sine = float(phase_debug[3])
+            debug_cosine = float(phase_debug[4])
+            debug_half_cycle = int(round(float(phase_debug[5])))
+            row.update({
+                'gait_phase_sine': phase_sine,
+                'gait_phase_cosine': phase_cosine,
+                'gait_phase_fraction': phase_fraction,
+                'gait_phase_tick': debug_tick,
+                'gait_phase_period_ticks': debug_period_ticks,
+                'gait_phase_debug_fraction': debug_fraction,
+                'gait_phase_debug_half_cycle': debug_half_cycle,
+                'gait_phase_observation_debug_abs_error': max(
+                    abs(phase_sine - debug_sine),
+                    abs(phase_cosine - debug_cosine),
+                ),
+                'gait_phase_fraction_debug_abs_error': abs(phase_fraction - debug_fraction),
+                'gait_phase_unit_circle_error': abs(
+                    math.sqrt(phase_sine * phase_sine + phase_cosine * phase_cosine) - 1.0
+                ),
+                'gait_phase_expected_half_cycle': 0 if phase_fraction < 0.5 else 1,
+                'gait_phase_expected_left_stance': bool(phase_fraction < 0.5),
+                'gait_phase_expected_right_stance': bool(phase_fraction >= 0.5),
+            })
         if self._fresh(self.joint_state):
             position, velocity = self.joint_state.value
             if len(position) == 12:
@@ -221,11 +315,24 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
         'base_angular_velocity_norm_rad_s', 'joint_posture_rms_rad', 'joint_posture_max_rad',
         'standing_upright_observable', 'standing_quiet_yaw_observable',
         'standing_near_default_observable',
+        'gait_phase_sine', 'gait_phase_cosine', 'gait_phase_fraction',
+        'gait_phase_tick', 'gait_phase_period_ticks', 'gait_phase_debug_fraction',
+        'gait_phase_debug_half_cycle', 'gait_phase_observation_debug_abs_error',
+        'gait_phase_fraction_debug_abs_error', 'gait_phase_unit_circle_error',
+        'gait_phase_expected_half_cycle',
+        'gait_phase_expected_left_stance', 'gait_phase_expected_right_stance',
     ]
     summary: dict[str, Any] = {
-        'schema_version': 1,
+        'schema_version': 2,
         'generated_at_utc': datetime.now(timezone.utc).isoformat(),
         'source_task': node.policy.get('metadata', {}).get('task'),
+        'num_observations': node.num_observations,
+        'observation_contract_version': node.policy.get('observation_contract_version', 1),
+        'observation_contract_name': node.policy.get(
+            'observation_contract_name', 'legacy_45_compatibility'
+        ),
+        'gait_phase_enabled': node.phase_enabled,
+        'gait_phase_period_s': node.policy.get('gait_phase_period_s') if node.phase_enabled else None,
         'action_contract_version': node.policy.get('action_contract_version'),
         'deployment_contract_profile': node.policy.get('deployment_contract_profile'),
         'action_residual_scale_rad': node.policy.get('action_residual_scale_rad'),
@@ -255,12 +362,19 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
             'physical joint torque',
             'root linear velocity and zero-command XY drift',
             'stable-standing all-conditions result because foot contact and root linear velocity are unavailable',
+            'actual foot contact timing; gait phase is an expected policy clock, not a contact sensor',
         ],
         'observable_standing_condition_notes': {
             'upright': 'projected_gravity_z < -0.97',
             'quiet_yaw': 'abs(base angular velocity z) < 0.20 rad/s',
             'near_default': 'max abs(q - q_default) < 0.20 rad',
             'not_available': ['quiet_xy', 'both_feet', 'foot_slip'],
+        },
+        'gait_phase_notes': {
+            'available': node.phase_enabled,
+            'meaning': 'expected phase supplied to the policy; not measured foot contact',
+            'half_cycle_0': 'phase [0.0,0.5): expected left stance / right swing',
+            'half_cycle_1': 'phase [0.5,1.0): expected right stance / left swing',
         },
     }
     (output_dir / 'summary.yaml').write_text(yaml.safe_dump(summary, sort_keys=False), encoding='utf-8')

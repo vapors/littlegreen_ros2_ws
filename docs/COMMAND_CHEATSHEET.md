@@ -371,10 +371,18 @@ ros2 run lgh_imu_tools imu_recorder --duration-sec 10
 
 ## 13. Policy bundle, shadow, and live launch
 
-Audit:
+Audit the paired YAML/ONNX checksum and actual tensor shapes:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_bundle_audit
+```
+
+The packaged policy remains the known-good 45-D v1.4.5s3 bundle. For a future genuine 47-D v1.4.7 export, create a separate metadata-annotated YAML and audit it before installation:
+
+```bash
+ros2 run littlegreen_biped_pkg annotate_phase_guided_policy \
+  --policy-yaml /path/to/exported/policy.yaml \
+  --output /path/to/exported/policy.phase_guided.yaml
 ```
 
 Shadow:
@@ -382,7 +390,17 @@ Shadow:
 ```bash
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 ros2 run littlegreen_biped_pkg policy_runtime_metrics --duration-sec 30
+ros2 topic echo /policy_debug/observation --once
 ```
+
+For a 47-D policy:
+
+```bash
+ros2 topic echo /policy_debug/gait_phase --once
+ros2 service call /policy/reset_gait_phase std_srvs/srv/Trigger '{}'
+```
+
+Phase reset is refused in live mode.
 
 Live policy plus safety-only downstream controller:
 

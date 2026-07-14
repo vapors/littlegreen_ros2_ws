@@ -78,7 +78,7 @@ if command -v ros2 >/dev/null 2>&1; then
     fi
   done
   biped_execs="$(ros2 pkg executables littlegreen_biped_pkg 2>/dev/null || true)"
-  for executable in littlegreen_biped_node policy_bundle_audit policy_runtime_metrics; do
+  for executable in littlegreen_biped_node policy_onnx_contract_probe policy_bundle_audit policy_runtime_metrics annotate_phase_guided_policy; do
     if grep -q "littlegreen_biped_pkg[[:space:]]\+$executable$" <<<"$biped_execs"; then
       pass "littlegreen_biped_pkg executable $executable"
     else

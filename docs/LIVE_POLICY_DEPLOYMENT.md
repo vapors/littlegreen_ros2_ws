@@ -2,7 +2,7 @@
 
 This page covers the guarded transition from a paired Track 1 export to a live LittleGreen hardware policy. Servo, IMU, and shadow commissioning must already pass.
 
-Live deployment is a staged sequence. Stop between stages and review the result before continuing.
+Live deployment is a staged sequence. Stop between stages and review the result before continuing. v2.8.0 supports 45-D and 47-D observations, but the packaged default remains the 45-D v1.4.5s3 policy; no deployable v1.4.7 pair is included.
 
 ## 1. Runtime data path
 
@@ -53,6 +53,12 @@ The previous-action observation stores the bounded normalized action, not the re
 
 The policy node also retains compatibility with action contract v3. Current v1.4.5s3 deployment must use v4; do not convert it to a scalar or uniform residual scale.
 
+### v2.8.0 phase-guided compatibility
+
+A future Track 1 v1.4.7 bundle may use `observation[47] -> action[12]`. It retains action contract v4 and appends phase sine/cosine after the previous-action block. The runtime requires the exact metadata and lifecycle defined in [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md).
+
+Do not edit the packaged 45-D YAML to say 47. The ONNX input tensor must actually be `[1,47]`.
+
 ## 3. Required paired bundle
 
 Deploy these together:
@@ -62,9 +68,11 @@ src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
 src/littlegreen_biped_pkg/src/configs/policy.onnx
 ```
 
-The v4 YAML must include:
+Every deployable YAML must identify its observation count and retain the v4 action fields. The existing 45-D pair may use the legacy observation compatibility path. A 47-D pair must additionally include the explicit phase metadata from `OBSERVATION_CONTRACT.md`.
 
 ```yaml
+num_observations: 45  # or 47 with explicit phase metadata
+num_actions: 12
 action_contract_version: 4
 action_transform: bounded_default_centered_vector_residual
 action_residual_scale_rad: [12 per-joint values]
@@ -82,7 +90,8 @@ policy_sha256: <sha256 of policy.onnx>
 
 Before loading the ONNX session, the node validates:
 
-- ONNX SHA-256 and the `45 → 12` model interface;
+- ONNX SHA-256 and the actual float32 `[1,45] -> [1,12]` or `[1,47] -> [1,12]` tensor interface;
+- the exact supported observation layout and, for 47-D, phase period, encoding, append order, and training semantics;
 - action indices and selected simulation joint names;
 - exported defaults against `joint_map.yaml`;
 - exported physical lower/upper bounds against `joint_map.yaml`;
@@ -118,22 +127,33 @@ cp /path/to/exported/policy.onnx \
   src/littlegreen_biped_pkg/src/configs/policy.onnx
 ```
 
-Run the offline bundle audit before building:
+Before building, the source script can validate YAML, checksum, and hardware-map semantics. Tensor-shape inspection is unavailable until the C++ probe is built, so the skip flag is for source development only:
 
 ```bash
 python3 src/littlegreen_biped_pkg/scripts/policy_bundle_audit.py \
   --policy-yaml src/littlegreen_biped_pkg/src/configs/policy_latest.yaml \
   --onnx src/littlegreen_biped_pkg/src/configs/policy.onnx \
-  --joint-map src/littlegreen_biped_pkg/src/configs/joint_map.yaml
+  --joint-map src/littlegreen_biped_pkg/src/configs/joint_map.yaml \
+  --skip-onnx-shape-check
 ```
 
-After installation, the equivalent command is:
+After installation, run the deployment-acceptance audit without skipping shape inspection:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-A successful audit exits `0`. A contract mismatch exits `2`; malformed configuration exits `5`.
+The installed audit automatically invokes `policy_onnx_contract_probe`. A successful audit exits `0`. A contract or tensor mismatch exits `2`; malformed configuration exits `5`.
+
+For a genuine unannotated v1.4.7 47-D export, first create a separate YAML:
+
+```bash
+ros2 run littlegreen_biped_pkg annotate_phase_guided_policy \
+  --policy-yaml /path/to/exported/policy.yaml \
+  --output /path/to/exported/policy.phase_guided.yaml
+```
+
+The annotation tool never changes ONNX bytes or `policy_sha256` and refuses 45-D exports.
 
 ## 5. Rebuild and restart
 
@@ -202,7 +222,7 @@ ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 Expected startup lines include:
 
 ```text
-Policy config loaded: ... action_contract=v4, profile=v1_4_5_stabilized_vector_residual
+Policy config loaded: num_observations=..., observation_contract=..., action_contract=v4, profile=...
 Action contract v4 validated against joint_map.yaml ... nominal residual bounds match.
 Policy artifact checksum verified ...
 ONNX model loaded ...
@@ -233,6 +253,23 @@ ros2 topic echo /policy_debug/clipped_raw_action --once
 ros2 topic echo /policy_debug/target_unclipped --once
 ros2 topic echo /policy_debug/target_clipped --once
 ros2 topic echo /policy_debug/saturation_mask --once
+```
+
+For a 47-D phase-guided bundle also verify:
+
+```bash
+ros2 topic echo /policy_debug/observation --once
+ros2 topic echo /policy_debug/gait_phase --once
+```
+
+The first successful inference after startup begins at approximately `[sin, cos] = [0, 1]`; the clock wraps every 36 successful policy ticks. A readiness outage freezes phase rather than advancing it. The debug half-cycle is expected policy timing, not measured foot contact.
+
+In shadow mode only, an explicit test reset is available:
+
+```bash
+ros2 service call \
+  /policy/reset_gait_phase \
+  std_srvs/srv/Trigger '{}'
 ```
 
 Capture Track 1-aligned real-hardware metrics:
@@ -316,6 +353,8 @@ ros2 service call \
 ```
 
 The release is immediate; an active `/servo_target_radians` publisher becomes authoritative at once.
+
+For a 47-D live policy, `/policy/reset_gait_phase` is intentionally refused. Stop and restart the guarded live policy while supported to begin a new phase-zero deployment episode.
 
 First live runs use:
 

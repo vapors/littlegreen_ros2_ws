@@ -1,6 +1,6 @@
 # LittleGreen Command and Option Reference
 
-This page exposes the available first-party commands, launch arguments, service behavior, and frequently useful ROS inspection commands in v2.7.3. It is intentionally more detailed than the command cheat sheet.
+This page exposes the available first-party commands, launch arguments, service behavior, and frequently useful ROS inspection commands in v2.8.0. It is intentionally more detailed than the command cheat sheet.
 
 ## 1. How to discover options from the installed workspace
 
@@ -660,7 +660,28 @@ Start the micro-ROS agent before using these tools when the XIAO firmware is the
 --policy-yaml PATH         default packaged policy_latest.yaml
 --joint-map PATH           default packaged joint_map.yaml
 --onnx PATH                optional explicit ONNX path
+--onnx-shape-probe PATH    optional explicit policy_onnx_contract_probe
+--skip-onnx-shape-check    source-development escape hatch; never deployment acceptance
 ```
+
+The installed command automatically locates `policy_onnx_contract_probe` beside the audit executable and verifies the actual float32 ONNX tensor shapes. Supported interfaces are `[1,45] -> [1,12]` and `[1,47] -> [1,12]`, with matching YAML metadata.
+
+### `annotate_phase_guided_policy`
+
+```text
+--policy-yaml PATH         required genuine exported v1.4.7 YAML
+--output PATH              optional; default POLICY_STEM.phase_guided.yaml
+```
+
+The tool adds only the canonical 47-D observation metadata to a separate YAML. It refuses 45-D policies, non-v4 actions, non-50-Hz timing, missing checksums, and unexpected tasks. It does not modify the ONNX model or checksum.
+
+### `policy_onnx_contract_probe`
+
+```bash
+ros2 run littlegreen_biped_pkg policy_onnx_contract_probe /path/to/policy.onnx
+```
+
+Prints a JSON object containing input/output names, shapes, and element types. Normally invoked through `policy_bundle_audit`.
 
 ### `policy_runtime_metrics`
 
@@ -748,6 +769,17 @@ The normal values are loaded from `policy_runtime.yaml`.
 | `require_joint_velocity` | `true` | policy requires qdot[12] |
 | `override_imu` | `false` | nominal IMU substitution; not recommended live |
 | `imu_to_base_matrix` | configured 3×3 transform | physical sensor frame to base frame |
+
+For a 47-D policy the following interfaces are also active:
+
+```text
+/policy_debug/gait_phase   Float64MultiArray
+/policy/reset_gait_phase   std_srvs/srv/Trigger
+```
+
+The phase debug array is `[phase, tick, period_ticks, sin, cos, expected_half_cycle]`. Reset is allowed in shadow/disabled and refused in live mode.
+
+The policy YAML, not a launch parameter, defines the supported observation contract. v2.8.0 does not provide an operator override for the gait period or append order because those values are part of the exported model contract.
 
 ## 19. Downstream controller modes and options
 

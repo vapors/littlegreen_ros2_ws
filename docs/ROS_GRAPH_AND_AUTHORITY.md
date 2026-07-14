@@ -137,3 +137,17 @@ Terminal E: diagnostics and emergency operator console
 ```
 
 The driver, policy launch, and micro-ROS agent are separate by design. Stopping one does not automatically stop the others.
+
+## Gait-phase reset authority
+
+For a future 47-D phase-guided policy, `/policy/reset_gait_phase` changes only the policy node's logical observation clock. It does not command the driver, release a pose override, change torque, or reset servo feedback.
+
+The service is intentionally limited:
+
+| Policy output mode | Phase reset |
+|---|---|
+| `disabled` | allowed |
+| `shadow` | allowed |
+| `live` | refused |
+
+A live phase reset could abruptly change the ONNX input while the policy has command authority. To start a new live deployment episode at phase zero, stop the guarded live policy and restart it after confirming the ROS graph and physical support. The phase clock freezes during readiness loss and therefore does not need an automatic reset when IMU or joint feedback recovers.

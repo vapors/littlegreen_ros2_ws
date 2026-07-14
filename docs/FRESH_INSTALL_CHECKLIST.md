@@ -208,6 +208,8 @@ Audit the paired policy bundle first:
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
+The strict installed audit checks the ONNX tensor contract. The release ships the known-good 45-D v1.4.5s3 pair; no deployable v1.4.7 pair is included.
+
 Keep the driver in `runtime_safe` with writes disabled:
 
 ```bash
@@ -227,7 +229,9 @@ ros2 topic echo /policy_status --once
 - the policy publishes `/policy_shadow/desired_position`;
 - it does not publish `/desired_position`;
 - policy readiness/status is observable;
-- no servo command authority is created by shadow mode.
+- no servo command authority is created by shadow mode;
+- the packaged 45-D observation remains exactly 45 values;
+- for a future audited 47-D policy, `/policy_debug/gait_phase` begins at `[sin,cos]≈[0,1]` and wraps after 36 successful ticks.
 
 For a deployed action-contract-v3 or v4 bundle, startup must report successful contract validation against `joint_map.yaml` and successful ONNX checksum verification. Complete the live sequence only through [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md).
 

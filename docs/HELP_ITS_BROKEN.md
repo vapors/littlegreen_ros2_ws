@@ -191,9 +191,26 @@ Common causes:
 - micro-ROS agent stopped or wrong USB device;
 - stale servo feedback;
 - policy YAML and ONNX checksum mismatch;
+- YAML observation count does not match the ONNX input tensor;
+- a 47-D YAML is missing exact gait-phase metadata;
+- unsupported observation count (anything other than 45 or 47);
 - policy/joint-map contract mismatch;
 - policy node was not restarted after replacing files;
 - `override_imu` or output mode differs from the intended launch.
+
+For a phase-guided policy, inspect:
+
+```bash
+ros2 topic echo /policy_debug/gait_phase --once
+```
+
+The phase freezes while readiness is closed. That is expected and is not a clock fault. In shadow mode only, reset explicitly with:
+
+```bash
+ros2 service call /policy/reset_gait_phase std_srvs/srv/Trigger '{}'
+```
+
+Live-mode reset refusal is intentional.
 
 ## 9. Shadow mode publishes live targets
 

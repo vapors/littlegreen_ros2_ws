@@ -114,6 +114,8 @@ ros2 run littlegreen_biped_pkg policy_bundle_audit
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 ```
 
+The installed audit must inspect ONNX tensor dimensions. The packaged default remains 45-D. Do not relabel it as 47-D. A future phase-guided bundle must report `[1,47] -> [1,12]` and include the exact phase metadata.
+
 Confirm shadow has no live desired-position authority:
 
 ```bash
@@ -128,6 +130,8 @@ Expected:
 /desired_position publisher count: 0
 /policy_shadow/desired_position publisher count: 1
 ```
+
+For a 47-D policy, inspect `/policy_debug/gait_phase` and confirm phase zero `[sin,cos]≈[0,1]`, a 36-successful-tick wrap, and phase freeze while the readiness gate is closed.
 
 ## 7. Plan write-enabled work explicitly
 
