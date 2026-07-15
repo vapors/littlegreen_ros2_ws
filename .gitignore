@@ -8,3 +8,5 @@ __pycache__/
 *.pyd
 littlegreen_ros2_ws_v2_7_0.zip
 littlegreen_ros2_ws_v2_7_3.zip
+littlegreen_ros2_ws_v2_8_0.zip
+src/berkeley_biped_pkg/src/configs/policy_policy_latest.zip
