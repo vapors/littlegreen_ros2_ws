@@ -1,10 +1,10 @@
 # Track 1 / Track 2 Policy Metrics
 
-Track 1 v1.4.5s3 added deeper policy, posture, COM, and gait diagnostics. Track 1 v1.4.7 adds a phase-guided 47-D observation. LittleGreen v2.8.0 records the metrics that can be observed faithfully from the current ROS hardware interface while preserving the legacy 45-D recorder path. Metrics that still require contact sensing, torque calibration, or kinematic estimation remain explicitly unavailable.
+LittleGreen Humanoid Lite v2.3.1 uses the shared 47-D Stand/Walk actor observation. LittleGreen ROS 2 v2.9.0 records metrics available from the current ROS hardware interface while reproducing the exported task-specific phase mode. Metrics requiring contact sensing, torque calibration, or kinematic estimation remain explicitly unavailable.
 
 ## Current Track 1 reference geometry
 
-The packaged policy export identifies the active deployment contract. The packaged default remains the 45-D v1.4.5s3 standing policy. The accompanying Track 1 task uses these standing targets for training and evaluation:
+The packaged v2.3.1 policy export identifies the active deployment contract. Its Track 1 training diagnostics may include posture and geometry targets that are not direct servo commands:
 
 ```text
 standing COM height target:       0.460 m
@@ -40,7 +40,7 @@ ros2 run littlegreen_biped_pkg policy_runtime_metrics \
   --duration-sec 60 \
   --standing-command-threshold 0.05 \
   --joint-velocity-limit-rad-s 4.72 \
-  --output-dir ~/policy_checks/v145s3_shadow
+  --output-dir ~/policy_checks/v231_stand_shadow
 ```
 
 Exit status:
@@ -70,14 +70,14 @@ Exit status:
 | joint posture RMS/max | `/policy_debug/observation[9:21]` | deviation from the exported athletic default |
 | command velocity | `/policy_debug/observation[0:3]` | exact command used by the policy observation |
 | gait phase sine/cosine | `/policy_debug/observation[45:47]` for 47-D policies | exact phase values passed to ONNX |
-| phase tick and period ticks | `/policy_debug/gait_phase` for 47-D policies | logical tick plus expected 36-tick period; useful for wrap/freeze checks |
+| Stand phase, episode, and successful tick | `/policy_debug/gait_phase` | phase/sine/cosine remain constant while the episode and diagnostic tick fields identify lifecycle |
 | expected gait half-cycle | `/policy_debug/gait_phase` for 47-D policies | policy timing convention: left stance/right swing or right stance/left swing; not measured contact |
 | observation/debug phase agreement | observation plus gait-phase debug topic | detects an unsynchronized or inconsistent debug capture |
 | phase unit-circle error | phase sine/cosine | numerical check that `sin²+cos²` remains approximately one |
 
 The recorder produces both global means and a standing-command subset. Standing samples are selected by command-vector magnitude, not by an assumption that the robot is physically stationary. It can reproduce the Track 1 upright, quiet-yaw, and near-default subconditions, but it does not report the full stable-standing condition because root XY velocity and foot contact are unavailable.
 
-For a 47-D capture, phase fields describe the **expected policy clock**. The recorder must not reinterpret them as actual stance, swing, double support, or no-support measurements. The clock begins at phase zero, advances after successful inference, freezes while readiness is gated, and wraps after 36 successful policy ticks under the current 0.72 s / 0.02 s contract.
+For the v2.3.1 Stand capture, phase fields describe a **software-generated static episode input**. The recorder must not reinterpret them as actual stance, swing, double support, or no-support measurements. Phase/sine/cosine remain constant across successful ticks and readiness loss; only an intentional new policy episode may resample them.
 
 ## Metrics not yet directly observable
 

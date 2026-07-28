@@ -9,27 +9,21 @@ ros2 launch littlegreen_biped_pkg policy_live.launch.py \
 
 ## Contract gate
 
-v2.8.0 validates observation and action contracts independently:
-
-- legacy 45-D observations with action contracts v3 or v4;
-- phase-guided 47-D observations with action contract v4;
-- all other observation dimensions are rejected.
-
-The packaged v1.4.5s3 policy remains a known-good 45-D action-contract-v4 bundle. No deployable v1.4.7 policy is included.
-
-Before inference, the node validates observation metadata, ONNX input/output tensor dimensions, exported defaults, physical bounds, joint names, action indices, normalized action limits, previous-action semantics, and the ONNX checksum against `joint_map.yaml`. Contract v4 also validates nominal residual bounds, the deployment profile, and the required v4 transform flag.
-
-Run the offline audit before launch:
+The packaged v2.3.1 canonical Stand bundle must pass:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-A future v1.4.7 bundle is deployable only when its YAML reports 47 observations, includes the exact gait-phase metadata, its ONNX input is actually `[1,47]`, and the paired checksum passes.
+The node verifies the unmodified export schema, exact 47-D layout, Stand phase mode, actual ONNX input/output shapes, action contract v4, q-default, residual scales, physical bounds, canonical joint order, previous-action semantics, and checksum pairing.
 
-## Phase lifecycle in live mode
+## Stand episode phase
 
-A 47-D policy begins at phase zero, advances only after a successful policy tick, and freezes while readiness is gated. Zero command velocity does not stop the clock. The phase-reset service is intentionally refused in live mode; stop the policy and restart the guarded live launch to begin a new deployment episode at phase zero.
+A live Stand episode samples one random phase during policy-node startup and holds it unchanged. Readiness loss does not resample. The explicit phase reset service and deterministic phase override are refused in live mode. To begin a new live episode, stop live policy output, re-check command authority and support, then intentionally restart/re-arm.
+
+## Walk gate
+
+Live Walk is blocked unless the exported bundle explicitly pins its deployment stage or exact phase period. The presence of a generic period field is not enough when checkpoint-stage provenance is ambiguous.
 
 ## Initial hardware rule
 

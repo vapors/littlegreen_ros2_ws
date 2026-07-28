@@ -2,7 +2,7 @@
 
 This page covers the guarded transition from a paired Track 1 export to a live LittleGreen hardware policy. Servo, IMU, and shadow commissioning must already pass.
 
-Live deployment is a staged sequence. Stop between stages and review the result before continuing. v2.8.0 supports 45-D and 47-D observations, but the packaged default remains the 45-D v1.4.5s3 policy; no deployable v1.4.7 pair is included.
+Live deployment is a staged sequence. Stop between stages and review the result before continuing. v2.9.0 packages the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand bundle and must consume its exported YAML unchanged.
 
 ## 1. Runtime data path
 
@@ -30,130 +30,108 @@ The policy node owns observation construction, ONNX inference, action-contract t
 
 ## 2. Current packaged Track 1 policy contract
 
-The packaged Track 1 v1.4.5s3 bundle uses:
-
 ```text
-Task:      Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
-Interface: observation[45] -> action[12]
-Rate:      50 Hz
-Contract:  action_contract_version: 4
-Transform: bounded_default_centered_vector_residual
-Profile:   v1_4_5_stabilized_vector_residual
+Task:                 Velocity-Lilgreen-Stand-ST3215-Loaded-v23
+Task role:            stand
+Interface:            observation[47] -> action[12]
+Rate:                 50 Hz
+Observation contract: littlegreen_velocity_47d_phase_v1
+Phase mode:           randomized_static_per_episode
+Action contract:      4
+Transform:            bounded_default_centered_vector_residual
 ```
 
-Contract v4 applies a per-joint residual vector:
+The shared actor layout is fixed. The Stand phase is sampled uniformly once during intentional policy-episode startup and remains unchanged. It does not advance with time, command, contact, inference count, or transient readiness loss.
+
+Action contract v4 remains:
 
 ```text
 bounded_action[i] = clip(raw_action[i], -1, 1)
 nominal_target[i] = q_default[i] + residual_scale_rad[i] * bounded_action[i]
 q_target[i]       = clip(nominal_target[i], physical_lower[i], physical_upper[i])
+previous_action_observation[i] = bounded_action[i]
 ```
 
-The previous-action observation stores the bounded normalized action, not the resulting position target.
+Future Walk uses a different phase mode. Live Walk is blocked until its exported checkpoint explicitly pins the intended deployment stage or exact period.
 
-The policy node also retains compatibility with action contract v3. Current v1.4.5s3 deployment must use v4; do not convert it to a scalar or uniform residual scale.
-
-### v2.8.0 phase-guided compatibility
-
-A future Track 1 v1.4.7 bundle may use `observation[47] -> action[12]`. It retains action contract v4 and appends phase sine/cosine after the previous-action block. The runtime requires the exact metadata and lifecycle defined in [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md).
-
-Do not edit the packaged 45-D YAML to say 47. The ONNX input tensor must actually be `[1,47]`.
-
-## 3. Required paired bundle
+## 3. Required complete bundle
 
 Deploy these together:
 
 ```text
-src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
 src/littlegreen_biped_pkg/src/configs/policy.onnx
+src/littlegreen_biped_pkg/src/configs/policy.yaml
+src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
+src/littlegreen_biped_pkg/src/configs/deployment_contract.yaml
+src/littlegreen_biped_pkg/src/configs/policy.sha256
+src/littlegreen_biped_pkg/src/configs/bundle_manifest.yaml
 ```
 
-Every deployable YAML must identify its observation count and retain the v4 action fields. The existing 45-D pair may use the legacy observation compatibility path. A 47-D pair must additionally include the explicit phase metadata from `OBSERVATION_CONTRACT.md`.
+`policy.yaml` and `policy_latest.yaml` are aliases of the same exported metadata and must remain byte-identical. The runtime and audit validate:
 
-```yaml
-num_observations: 45  # or 47 with explicit phase metadata
-num_actions: 12
-action_contract_version: 4
-action_transform: bounded_default_centered_vector_residual
-action_residual_scale_rad: [12 per-joint values]
-action_default_rad: [12 values]
-action_target_lower_rad: [12 values]
-action_target_upper_rad: [12 values]
-action_nominal_residual_lower_rad: [12 values]
-action_nominal_residual_upper_rad: [12 values]
-action_indices: [12 values]
-previous_action_observation: bounded_normalized_action
-deployment_contract_profile: v1_4_5_stabilized_vector_residual
-deployment_requires_action_contract_v4_transform: true
-policy_sha256: <sha256 of policy.onnx>
-```
+- export schema 2 and observation-contract version 1;
+- exact compact 47-D layout and explicit index ranges;
+- `randomized_static_per_episode` Stand semantics;
+- all bundle hashes and actual float32 ONNX `[1,47] -> [1,12]` tensors;
+- canonical action indices and joint names;
+- exported defaults and physical bounds against `joint_map.yaml`;
+- normalized action limits, non-uniform v4 scales, nominal residual bounds, and previous-action semantics.
 
-Before loading the ONNX session, the node validates:
-
-- ONNX SHA-256 and the actual float32 `[1,45] -> [1,12]` or `[1,47] -> [1,12]` tensor interface;
-- the exact supported observation layout and, for 47-D, phase period, encoding, append order, and training semantics;
-- action indices and selected simulation joint names;
-- exported defaults against `joint_map.yaml`;
-- exported physical lower/upper bounds against `joint_map.yaml`;
-- normalized action limits `[-1, 1]`;
-- positive, non-uniform v4 residual scales;
-- nominal residual bounds recomputed from defaults, scales, and physical limits;
-- `previous_action_observation: bounded_normalized_action`;
-- the required v4 transform flag and deployment profile.
-
-Any mismatch is fatal. Do not bypass validation by editing a single ROS-side field.
+Any mismatch is fatal. Do not edit a bundle field to make an incompatible runtime accept it.
 
 ## 4. Install and audit a Track 1 export
 
-Back up the current pair:
+Back up the current complete bundle:
 
 ```bash
 cd ~/littlegreen_ros2_ws
-
-cp src/littlegreen_biped_pkg/src/configs/policy_latest.yaml \
-  src/littlegreen_biped_pkg/src/configs/policy_latest.yaml.previous
-
-cp src/littlegreen_biped_pkg/src/configs/policy.onnx \
-  src/littlegreen_biped_pkg/src/configs/policy.onnx.previous
+mkdir -p ~/littlegreen_policy_backup
+cp -a \
+  src/littlegreen_biped_pkg/src/configs/policy.onnx \
+  src/littlegreen_biped_pkg/src/configs/policy.yaml \
+  src/littlegreen_biped_pkg/src/configs/policy_latest.yaml \
+  src/littlegreen_biped_pkg/src/configs/deployment_contract.yaml \
+  src/littlegreen_biped_pkg/src/configs/policy.sha256 \
+  src/littlegreen_biped_pkg/src/configs/bundle_manifest.yaml \
+  ~/littlegreen_policy_backup/
 ```
 
-Copy the new export:
+Copy the exported bundle without rewriting its YAML:
 
 ```bash
-cp /path/to/exported/policy.yaml \
-  src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
-
 cp /path/to/exported/policy.onnx \
   src/littlegreen_biped_pkg/src/configs/policy.onnx
+cp /path/to/exported/policy.yaml \
+  src/littlegreen_biped_pkg/src/configs/policy.yaml
+cp /path/to/exported/policy.yaml \
+  src/littlegreen_biped_pkg/src/configs/policy_latest.yaml
+cp /path/to/exported/deployment_contract.yaml \
+  src/littlegreen_biped_pkg/src/configs/deployment_contract.yaml
+cp /path/to/exported/policy.sha256 \
+  src/littlegreen_biped_pkg/src/configs/policy.sha256
+cp /path/to/exported/bundle_manifest.yaml \
+  src/littlegreen_biped_pkg/src/configs/bundle_manifest.yaml
 ```
 
-Before building, the source script can validate YAML, checksum, and hardware-map semantics. Tensor-shape inspection is unavailable until the C++ probe is built, so the skip flag is for source development only:
+Run the source audit directly:
 
 ```bash
 python3 src/littlegreen_biped_pkg/scripts/policy_bundle_audit.py \
   --policy-yaml src/littlegreen_biped_pkg/src/configs/policy_latest.yaml \
   --onnx src/littlegreen_biped_pkg/src/configs/policy.onnx \
   --joint-map src/littlegreen_biped_pkg/src/configs/joint_map.yaml \
-  --skip-onnx-shape-check
+  --deployment-contract src/littlegreen_biped_pkg/src/configs/deployment_contract.yaml \
+  --policy-sha256-file src/littlegreen_biped_pkg/src/configs/policy.sha256 \
+  --bundle-manifest src/littlegreen_biped_pkg/src/configs/bundle_manifest.yaml
 ```
 
-After installation, run the deployment-acceptance audit without skipping shape inspection:
+After installation:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-The installed audit automatically invokes `policy_onnx_contract_probe`. A successful audit exits `0`. A contract or tensor mismatch exits `2`; malformed configuration exits `5`.
-
-For a genuine unannotated v1.4.7 47-D export, first create a separate YAML:
-
-```bash
-ros2 run littlegreen_biped_pkg annotate_phase_guided_policy \
-  --policy-yaml /path/to/exported/policy.yaml \
-  --output /path/to/exported/policy.phase_guided.yaml
-```
-
-The annotation tool never changes ONNX bytes or `policy_sha256` and refuses 45-D exports.
+A successful audit exits `0`. A contract/tensor mismatch exits `2`; malformed configuration exits `5`. The old metadata annotation helper is a v2.8 legacy migration tool and must not be used on a v2.3.1 bundle.
 
 ## 5. Rebuild and restart
 
@@ -255,16 +233,16 @@ ros2 topic echo /policy_debug/target_clipped --once
 ros2 topic echo /policy_debug/saturation_mask --once
 ```
 
-For a 47-D phase-guided bundle also verify:
+For the v2.3.1 shared 47-D Stand bundle verify:
 
 ```bash
 ros2 topic echo /policy_debug/observation --once
 ros2 topic echo /policy_debug/gait_phase --once
 ```
 
-The first successful inference after startup begins at approximately `[sin, cos] = [0, 1]`; the clock wraps every 36 successful policy ticks. A readiness outage freezes phase rather than advancing it. The debug half-cycle is expected policy timing, not measured foot contact.
+The sampled Stand phase/sine/cosine must remain constant for the entire episode. A readiness outage must not resample it. The successful-tick counter may increase, but it does not evolve Stand phase.
 
-In shadow mode only, an explicit test reset is available:
+In shadow mode, an explicit intentional new-episode reset is available:
 
 ```bash
 ros2 service call \

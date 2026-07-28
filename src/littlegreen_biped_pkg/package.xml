@@ -2,8 +2,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>littlegreen_biped_pkg</name>
-  <version>0.6.0</version>
-  <description>LittleGreen 45-D/47-D policy inference, deterministic gait phase, action-contract v3/v4 validation, shadow/live launch, bundle auditing, and runtime metrics</description>
+  <version>0.7.0</version>
+  <description>LittleGreen shared 47-D Stand/Walk observation inference, exported phase modes, action-contract-v4 validation, shadow/live launch, complete bundle auditing, golden vectors, and runtime metrics</description>
 
   <maintainer email="scott.milich@me.com">scott</maintainer>
   <license>Apache-2.0</license>

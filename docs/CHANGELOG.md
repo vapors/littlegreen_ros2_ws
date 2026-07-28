@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.9.0
+
+- Packaged the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand five-file bundle.
+- Added direct export-schema-2 parsing for `littlegreen_velocity_47d_phase_v1` without editing exported YAML.
+- Replaced the active 47-D Stand clock with `randomized_static_per_episode`: uniform once per intentional episode and unchanged thereafter.
+- Added a dedicated phase-state abstraction and future command-synchronized Walk semantics.
+- Blocked live Walk unless the exported checkpoint explicitly pins its deployment stage or period.
+- Added deterministic fixed-phase/seed hooks for tests and replay; live mode refuses them.
+- Expanded bundle audit to verify manifest/deployment-contract hashes and actual ONNX `[1,47] -> [1,12]` float32 tensors.
+- Added golden-vector observation/action/q-target comparison hooks and updated runtime phase metrics.
+- Retained the prior v2.8.0 45-D pair as an isolated rollback artifact.
+- Preserved servo calibration, joint maps, physical limits, driver timing, UART authority, IMU semantics, and downstream safety behavior.
+
 ## 2.8.0
 
 - Added independent 45-D legacy and 47-D phase-guided observation contracts.

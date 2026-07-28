@@ -5,7 +5,7 @@
 //   - Load a paired deployment YAML + ONNX policy artifact.
 //   - Validate action-contract-v3/v4 defaults, bounds, residual scales, and action mapping against joint_map.yaml.
 //   - Build either the legacy 45-D observation or the phase-guided 47-D observation.
-//   - Reproduce the deterministic Track 1 gait phase clock for 47-D policies.
+//   - Reproduce the exported task-specific Stand/Walk phase semantics for 47-D policies.
 //   - Apply the physical IMU-frame -> base-frame extrinsic transform.
 //   - Gate inference on complete, fresh, finite sensor data.
 //   - Reject non-finite observations and ONNX outputs.
@@ -50,14 +50,19 @@
 #include <yaml-cpp/yaml.h>
 
 #include "littlegreen_biped_pkg/policy_observation_contract.hpp"
+#include "littlegreen_biped_pkg/policy_phase_state.hpp"
 
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
 namespace
 {
 using SteadyClock = std::chrono::steady_clock;
-using littlegreen_biped::GaitPhaseClock;
-using littlegreen_biped::GaitPhaseSample;
+using littlegreen_biped::CommandVelocity;
+using littlegreen_biped::PhasePair;
+using littlegreen_biped::PolicyPhaseConfig;
+using littlegreen_biped::PolicyPhaseMode;
+using littlegreen_biped::PolicyPhaseSample;
+using littlegreen_biped::PolicyPhaseState;
 
 bool is_finite(float value)
 {
@@ -436,7 +441,14 @@ public:
         if (gait_phase_enabled_) {
             RCLCPP_INFO(
                 this->get_logger(),
-                "Gait phase lifecycle: starts at [sin,cos]=[0,1], advances only after successful inference, freezes while readiness is gated, and resets on node restart.");
+                "Policy phase lifecycle: role=%s mode=%s. Stand samples once and remains static; Walk uses the exported command-synchronized clock.",
+                task_role_.c_str(), phase_mode_name_.c_str());
+            if (enable_phase_test_override_) {
+                RCLCPP_WARN(
+                    this->get_logger(),
+                    "Deterministic phase test override is active in %s mode; this is not a live deployment configuration.",
+                    policy_output_mode_.c_str());
+            }
         }
         RCLCPP_INFO(
             this->get_logger(),
@@ -481,8 +493,8 @@ private:
 
     struct PhaseSnapshot
     {
-        GaitPhaseSample sample;
-        std::uint64_t generation = 0U;
+        PolicyPhaseSample sample;
+        std::uint64_t episode = 0U;
     };
 
     void declare_parameters(const std::string& package_share_dir)
@@ -498,6 +510,10 @@ private:
         this->declare_parameter<std::string>("policy_output_mode", "live");
         this->declare_parameter<std::string>(
             "shadow_desired_position_topic", "/policy_shadow/desired_position");
+        // Deterministic phase injection is a test/replay hook only. It is rejected in live mode.
+        this->declare_parameter<bool>("enable_phase_test_override", false);
+        this->declare_parameter<double>("phase_test_fixed_value", -1.0);
+        this->declare_parameter<int64_t>("phase_test_seed", -1);
 
         this->declare_parameter<double>("imu_timeout_sec", 0.050);
         // Transport freshness for the cached /joint_states message stream.
@@ -533,11 +549,23 @@ private:
         this->get_parameter("publish_policy_debug", publish_policy_debug_);
         this->get_parameter("policy_output_mode", policy_output_mode_);
         this->get_parameter("shadow_desired_position_topic", shadow_desired_position_topic_);
+        this->get_parameter("enable_phase_test_override", enable_phase_test_override_);
+        this->get_parameter("phase_test_fixed_value", phase_test_fixed_value_);
+        this->get_parameter("phase_test_seed", phase_test_seed_);
         if (policy_output_mode_ != "live" &&
             policy_output_mode_ != "shadow" &&
             policy_output_mode_ != "disabled") {
             throw std::runtime_error(
                 "policy_output_mode must be one of: live, shadow, disabled");
+        }
+        if (enable_phase_test_override_ && policy_output_mode_ == "live") {
+            throw std::runtime_error(
+                "enable_phase_test_override is refused in live mode");
+        }
+        if (enable_phase_test_override_ &&
+            phase_test_fixed_value_ >= 0.0 &&
+            (!std::isfinite(phase_test_fixed_value_) || phase_test_fixed_value_ >= 1.0)) {
+            throw std::runtime_error("phase_test_fixed_value must be in [0,1) or negative to disable");
         }
         this->get_parameter("imu_timeout_sec", imu_timeout_sec_);
         this->get_parameter("joint_state_timeout_sec", joint_state_timeout_sec_);
@@ -659,14 +687,67 @@ private:
         return values;
     }
 
+    static std::array<int, 2> load_layout_range(
+        const YAML::Node& ranges,
+        const std::string& key,
+        int expected_first,
+        int expected_last)
+    {
+        if (!ranges || !ranges.IsMap() || !ranges[key] || !ranges[key].IsSequence() ||
+            ranges[key].size() != 2U) {
+            throw std::runtime_error(
+                "observation_layout_ranges." + key + " must contain [first,last]");
+        }
+        const std::array<int, 2> value{
+            ranges[key][0].as<int>(), ranges[key][1].as<int>()};
+        if (value[0] != expected_first || value[1] != expected_last) {
+            throw std::runtime_error(
+                "observation_layout_ranges." + key + " is [" +
+                std::to_string(value[0]) + "," + std::to_string(value[1]) +
+                "], expected [" + std::to_string(expected_first) + "," +
+                std::to_string(expected_last) + "]");
+        }
+        return value;
+    }
+
+    std::string load_task_role() const
+    {
+        if (policy_config_["metadata"] && policy_config_["metadata"]["task_role"]) {
+            return policy_config_["metadata"]["task_role"].as<std::string>();
+        }
+        if (policy_config_["task_role"]) {
+            return policy_config_["task_role"].as<std::string>();
+        }
+        return {};
+    }
+
+    void begin_policy_phase_episode()
+    {
+        if (!gait_phase_enabled_) {
+            return;
+        }
+        std::optional<std::uint64_t> seed;
+        std::optional<double> fixed_phase;
+        if (enable_phase_test_override_) {
+            if (phase_test_seed_ >= 0) {
+                seed = static_cast<std::uint64_t>(phase_test_seed_);
+            }
+            if (phase_test_fixed_value_ >= 0.0) {
+                fixed_phase = phase_test_fixed_value_;
+            }
+        }
+        policy_phase_state_.begin_episode(seed, fixed_phase);
+    }
+
     void load_observation_contract()
     {
         using littlegreen_biped::kLegacyObservationCount;
+        using littlegreen_biped::kSharedPhaseObservationCount;
 
         if (!littlegreen_biped::is_supported_observation_count(num_observations_)) {
             throw std::runtime_error(
                 "Unsupported policy observation count " + std::to_string(num_observations_) +
-                ". Supported deployment contracts are 45-D legacy and 47-D phase-guided.");
+                ". Supported deployment contracts are 45-D legacy and 47-D shared phase.");
         }
 
         observation_contract_version_ = policy_config_["observation_contract_version"]
@@ -677,11 +758,12 @@ private:
             : (num_observations_ == kLegacyObservationCount
                 ? "littlegreen_hardware_45_legacy"
                 : std::string{});
+        task_role_ = load_task_role();
 
         if (num_observations_ == kLegacyObservationCount) {
             if (observation_contract_version_ != 1) {
                 throw std::runtime_error(
-                    "45-D policy requires observation_contract_version 1 when the field is present");
+                    "45-D policy requires observation_contract_version 1 when present");
             }
             if (policy_config_["observation_contract_name"] &&
                 observation_contract_name_ != "littlegreen_hardware_45_v1" &&
@@ -692,101 +774,206 @@ private:
             }
             if (policy_config_["gait_phase_enabled"] &&
                 policy_config_["gait_phase_enabled"].as<bool>()) {
-                throw std::runtime_error("45-D policy cannot enable gait-phase observations");
+                throw std::runtime_error("45-D policy cannot enable phase observations");
             }
             gait_phase_enabled_ = false;
+            phase_mode_ = PolicyPhaseMode::disabled;
             if (!policy_config_["observation_contract_version"] ||
                 !policy_config_["observation_contract_name"]) {
                 RCLCPP_WARN(
                     this->get_logger(),
                     "Legacy 45-D policy bundle has no explicit observation-contract metadata. "
-                    "Accepted for legacy compatibility; new exports should declare contract v1.");
+                    "Accepted only for legacy compatibility.");
             }
             return;
         }
 
-        if (observation_contract_version_ != 2) {
-            throw std::runtime_error(
-                "47-D policy requires observation_contract_version: 2");
+        if (num_observations_ != kSharedPhaseObservationCount) {
+            throw std::runtime_error("internal 47-D contract selection error");
         }
-        if (observation_contract_name_ != "littlegreen_hardware_phase_guided_47_v1") {
-            throw std::runtime_error(
-                "47-D policy requires observation_contract_name: "
-                "littlegreen_hardware_phase_guided_47_v1");
+        if (int(policy_config_["action_contract_version"].as<int>()) != 4) {
+            throw std::runtime_error("47-D shared observation contract requires action_contract_version: 4");
         }
 
-        const std::vector<std::string> expected_layout{
-            "command_velocity_3",
-            "base_angular_velocity_3",
-            "projected_gravity_3",
-            "joint_position_relative_to_default_12",
-            "joint_velocity_12",
-            "previous_bounded_normalized_action_12",
-            "gait_phase_sin_cos_2"};
-        const auto exported_layout = load_string_vector(
-            policy_config_["observation_layout"],
-            expected_layout.size(),
-            "observation_layout");
-        if (exported_layout != expected_layout) {
-            throw std::runtime_error(
-                "47-D observation_layout does not match the supported append-only phase contract");
+        PolicyPhaseConfig phase_config;
+        phase_config.policy_dt_s = policy_dt_;
+
+        if (observation_contract_name_ == littlegreen_biped::kV231ObservationContractName) {
+            if (policy_config_["schema_version"].as<int>(0) != 2) {
+                throw std::runtime_error("v2.3.1 policy bundle requires schema_version: 2");
+            }
+            if (observation_contract_version_ != 1) {
+                throw std::runtime_error(
+                    "littlegreen_velocity_47d_phase_v1 requires observation_contract_version: 1");
+            }
+            if (policy_config_["observation_layout"].as<std::string>("") !=
+                littlegreen_biped::kV231CompactObservationLayout) {
+                throw std::runtime_error(
+                    "v2.3.1 observation_layout compact string does not match the shared 47-D contract");
+            }
+
+            const YAML::Node ranges = policy_config_["observation_layout_ranges"];
+            load_layout_range(ranges, "command_velocity", 0, 2);
+            load_layout_range(ranges, "base_angular_velocity", 3, 5);
+            load_layout_range(ranges, "projected_gravity", 6, 8);
+            load_layout_range(ranges, "joint_position_relative_default", 9, 20);
+            load_layout_range(ranges, "joint_velocity", 21, 32);
+            load_layout_range(ranges, "previous_bounded_action", 33, 44);
+            load_layout_range(ranges, "phase_sin_cos", 45, 46);
+
+            const auto phase_indices = load_int_vector(
+                policy_config_["phase_indices"], 2U, "phase_indices");
+            if (phase_indices != std::vector<int>{45, 46}) {
+                throw std::runtime_error("phase_indices must be [45,46]");
+            }
+            gait_phase_encoding_ = policy_config_["phase_encoding"].as<std::string>("");
+            if (gait_phase_encoding_ != "sin_cos_2pi") {
+                throw std::runtime_error("phase_encoding must be sin_cos_2pi");
+            }
+            if (policy_config_["shared_47d_stand_walk_contract"].as<bool>(false) != true) {
+                throw std::runtime_error("shared_47d_stand_walk_contract must be true");
+            }
+            if (!policy_config_["deployment_requires_shared_47d_observation_builder"].as<bool>(false)) {
+                throw std::runtime_error(
+                    "deployment_requires_shared_47d_observation_builder must be true");
+            }
+            if (policy_config_["legacy_45d_checkpoint_support"].as<bool>(true) != false) {
+                throw std::runtime_error("v2.3.1 shared contract requires legacy_45d_checkpoint_support: false");
+            }
+            if (policy_config_["observation_count"].as<int>(-1) != 47 ||
+                policy_config_["critic_num_observations"].as<int>(-1) != 50 ||
+                policy_config_["critic_observation_count"].as<int>(50) != 50) {
+                throw std::runtime_error(
+                    "v2.3.1 actor/critic observation counts must be 47/50");
+            }
+            if (std::fabs(policy_dt_ - 0.02) > 1.0e-9) {
+                throw std::runtime_error("v2.3.1 shared 47-D contract requires policy_dt: 0.02");
+            }
+
+            phase_mode_name_ = policy_config_["phase_mode"].as<std::string>("");
+            gait_phase_period_s_ = policy_config_["phase_period_s"].as<double>(0.0);
+            phase_transition_fraction_ =
+                policy_config_["phase_transition_fraction"].as<double>(0.0);
+            phase_linear_command_threshold_ =
+                policy_config_["phase_linear_command_threshold"].as<double>(0.20);
+            phase_yaw_command_threshold_ =
+                policy_config_["phase_yaw_command_threshold"].as<double>(0.08);
+            phase_reset_semantics_ =
+                policy_config_["phase_reset_semantics"].as<std::string>("");
+            if (!std::isfinite(gait_phase_period_s_) || gait_phase_period_s_ <= 0.0 ||
+                !std::isfinite(phase_transition_fraction_) ||
+                phase_transition_fraction_ < 0.0 || phase_transition_fraction_ > 0.5 ||
+                !std::isfinite(phase_linear_command_threshold_) ||
+                phase_linear_command_threshold_ < 0.0 ||
+                !std::isfinite(phase_yaw_command_threshold_) ||
+                phase_yaw_command_threshold_ < 0.0) {
+                throw std::runtime_error(
+                    "v2.3.1 phase period, transition fraction, and command thresholds are invalid");
+            }
+
+            if (task_role_ == "stand") {
+                if (phase_mode_name_ != "randomized_static_per_episode") {
+                    throw std::runtime_error(
+                        "Stand task requires phase_mode: randomized_static_per_episode");
+                }
+                if (phase_reset_semantics_ !=
+                    "sample_uniform_once_for_each_reset_environment_and_hold") {
+                    throw std::runtime_error(
+                        "Stand phase_reset_semantics does not match the exported v2.3.1 contract");
+                }
+                if (!policy_config_["deployment_requires_random_static_phase_for_stand"].as<bool>(false)) {
+                    throw std::runtime_error(
+                        "Stand bundle must require random-static deployment phase");
+                }
+                if (policy_config_["deployment_requires_command_synchronized_phase_for_walk"].as<bool>(true)) {
+                    throw std::runtime_error(
+                        "Stand bundle must not require the Walk phase generator");
+                }
+                phase_mode_ = PolicyPhaseMode::randomized_static_per_episode;
+            } else if (task_role_ == "walk") {
+                if (phase_mode_name_ != "command_synchronized_continuous_nonblocking") {
+                    throw std::runtime_error(
+                        "Walk task requires phase_mode: command_synchronized_continuous_nonblocking");
+                }
+                if (!policy_config_["deployment_requires_command_synchronized_phase_for_walk"].as<bool>(false)) {
+                    throw std::runtime_error(
+                        "Walk bundle must require command-synchronized phase deployment");
+                }
+                const bool stage_explicit =
+                    policy_config_["phase_deployment_stage"] ||
+                    policy_config_["deployment_stage"] ||
+                    policy_config_["phase_period_pinned_for_deployment"].as<bool>(false);
+                walk_deployment_stage_explicit_ = stage_explicit;
+                if (!stage_explicit && policy_output_mode_ == "live") {
+                    throw std::runtime_error(
+                        "live Walk is blocked: bundle does not explicitly pin its deployment stage/period");
+                }
+                if (!stage_explicit) {
+                    RCLCPP_WARN(
+                        this->get_logger(),
+                        "Walk bundle has no explicit deployment stage. Shadow-only inspection is allowed; live output remains blocked.");
+                }
+                phase_mode_ = PolicyPhaseMode::command_synchronized_continuous_nonblocking;
+            } else {
+                throw std::runtime_error("v2.3.1 47-D bundle task_role must be stand or walk");
+            }
+
+            phase_config.mode = phase_mode_;
+            phase_config.period_s = gait_phase_period_s_;
+            phase_config.linear_command_threshold = phase_linear_command_threshold_;
+            phase_config.yaw_command_threshold = phase_yaw_command_threshold_;
+            gait_phase_enabled_ = true;
+            policy_phase_state_.configure(phase_config);
+            begin_policy_phase_episode();
+            RCLCPP_INFO(
+                this->get_logger(),
+                "v2.3.1 shared observation contract accepted unchanged: role=%s, phase_mode=%s.",
+                task_role_.c_str(), phase_mode_name_.c_str());
+            return;
         }
 
-        if (!policy_config_["gait_phase_enabled"] ||
-            !policy_config_["gait_phase_enabled"].as<bool>()) {
-            throw std::runtime_error("47-D policy requires gait_phase_enabled: true");
-        }
-        gait_phase_enabled_ = true;
-        gait_phase_period_s_ = policy_config_["gait_phase_period_s"]
-            ? policy_config_["gait_phase_period_s"].as<double>()
-            : 0.0;
-        gait_phase_encoding_ = policy_config_["gait_phase_encoding"]
-            ? policy_config_["gait_phase_encoding"].as<std::string>()
-            : std::string{};
-        gait_phase_append_order_ = policy_config_["gait_phase_append_order"]
-            ? policy_config_["gait_phase_append_order"].as<std::string>()
-            : std::string{};
-        gait_phase_training_timebase_ = policy_config_["gait_phase_training_timebase"]
-            ? policy_config_["gait_phase_training_timebase"].as<std::string>()
-            : std::string{};
-        gait_phase_training_reset_semantics_ =
-            policy_config_["gait_phase_training_reset_semantics"]
-            ? policy_config_["gait_phase_training_reset_semantics"].as<std::string>()
-            : std::string{};
-
-        if (std::fabs(policy_dt_ - 0.02) > 1.0e-9) {
-            throw std::runtime_error(
-                "phase-guided observation contract v1 requires policy_dt: 0.02");
-        }
-        if (std::fabs(gait_phase_period_s_ - 0.72) > 1.0e-9) {
-            throw std::runtime_error(
-                "phase-guided observation contract v1 requires gait_phase_period_s: 0.72");
-        }
-        if (gait_phase_encoding_ != "sin_cos_2pi") {
-            throw std::runtime_error(
-                "phase-guided observation contract v1 requires gait_phase_encoding: sin_cos_2pi");
-        }
-        if (gait_phase_append_order_ != "after_previous_action") {
-            throw std::runtime_error(
-                "phase-guided observation contract v1 requires "
-                "gait_phase_append_order: after_previous_action");
-        }
-        if (gait_phase_training_timebase_ != "episode_step_time") {
-            throw std::runtime_error(
-                "phase-guided observation contract v1 requires "
-                "gait_phase_training_timebase: episode_step_time");
-        }
-        if (gait_phase_training_reset_semantics_ != "environment_episode_reset") {
-            throw std::runtime_error(
-                "phase-guided observation contract v1 requires "
-                "gait_phase_training_reset_semantics: environment_episode_reset");
+        // v2.8.0 legacy 47-D compatibility path. It is intentionally separate from
+        // the active v2.3.1 Stand/Walk schema and cannot reinterpret a new export.
+        if (observation_contract_name_ == littlegreen_biped::kV280LegacyPhaseContractName) {
+            if (observation_contract_version_ != 2) {
+                throw std::runtime_error("legacy v2.8.0 47-D contract requires version 2");
+            }
+            const std::vector<std::string> expected_layout{
+                "command_velocity_3",
+                "base_angular_velocity_3",
+                "projected_gravity_3",
+                "joint_position_relative_to_default_12",
+                "joint_velocity_12",
+                "previous_bounded_normalized_action_12",
+                "gait_phase_sin_cos_2"};
+            if (load_string_vector(
+                    policy_config_["observation_layout"], expected_layout.size(),
+                    "observation_layout") != expected_layout) {
+                throw std::runtime_error("legacy v2.8.0 observation_layout mismatch");
+            }
+            if (!policy_config_["gait_phase_enabled"].as<bool>(false)) {
+                throw std::runtime_error("legacy v2.8.0 47-D policy requires gait_phase_enabled: true");
+            }
+            gait_phase_period_s_ = policy_config_["gait_phase_period_s"].as<double>(0.0);
+            if (std::fabs(gait_phase_period_s_ - 0.72) > 1.0e-9 ||
+                policy_config_["gait_phase_encoding"].as<std::string>("") != "sin_cos_2pi") {
+                throw std::runtime_error("legacy v2.8.0 gait phase metadata mismatch");
+            }
+            phase_mode_ = PolicyPhaseMode::legacy_successful_tick_clock;
+            phase_mode_name_ = littlegreen_biped::phase_mode_name(phase_mode_);
+            phase_config.mode = phase_mode_;
+            phase_config.period_s = gait_phase_period_s_;
+            gait_phase_enabled_ = true;
+            policy_phase_state_.configure(phase_config);
+            begin_policy_phase_episode();
+            RCLCPP_WARN(
+                this->get_logger(),
+                "Using legacy v2.8.0 47-D successful-tick clock compatibility path.");
+            return;
         }
 
-        gait_phase_clock_.configure(gait_phase_period_s_, policy_dt_);
-        RCLCPP_INFO(
-            this->get_logger(),
-            "Observation contract v2 validated: 47-D phase-guided layout, %.3fs period, %zu policy ticks.",
-            gait_phase_period_s_, gait_phase_clock_.period_ticks());
+        throw std::runtime_error(
+            "Unsupported 47-D observation_contract_name: " + observation_contract_name_);
     }
 
     void load_policy_config(const std::string& config_path)
@@ -1053,7 +1240,7 @@ private:
                 std::to_string(num_observations_) + "] -> actions[" +
                 std::to_string(num_actions_) + "]");
         }
-        if (num_observations_ == littlegreen_biped::kPhaseGuidedObservationCount &&
+        if (num_observations_ == littlegreen_biped::kSharedPhaseObservationCount &&
             action_contract_version_ != 4) {
             throw std::runtime_error(
                 "47-D phase-guided policies require action_contract_version: 4");
@@ -1852,16 +2039,23 @@ private:
             "obs[" + std::to_string(observation.size()) + "]");
     }
 
-    PhaseSnapshot capture_gait_phase() const
+    PhaseSnapshot capture_policy_phase(const std::vector<float>& command) const
     {
+        if (command.size() != 3U) {
+            throw std::invalid_argument("phase command vector must contain three values");
+        }
+        const CommandVelocity command_value{
+            static_cast<double>(command[0]),
+            static_cast<double>(command[1]),
+            static_cast<double>(command[2])};
         std::lock_guard<std::mutex> lock(gait_phase_mutex_);
         PhaseSnapshot snapshot;
-        snapshot.sample = gait_phase_clock_.sample();
-        snapshot.generation = gait_phase_generation_;
+        snapshot.sample = policy_phase_state_.sample(command_value);
+        snapshot.episode = snapshot.sample.episode;
         return snapshot;
     }
 
-    void publish_policy_debug_gait_phase(const GaitPhaseSample& phase) const
+    void publish_policy_debug_gait_phase(const PolicyPhaseSample& phase) const
     {
         if (!publish_policy_debug_ || !policy_debug_gait_phase_pub_) {
             return;
@@ -1869,29 +2063,39 @@ private:
         std_msgs::msg::Float64MultiArray message;
         std_msgs::msg::MultiArrayDimension dimension;
         dimension.label =
-            "phase,tick,period_ticks,sin,cos,expected_half_cycle(0=Lstance,1=Rstance)";
-        dimension.size = 6U;
-        dimension.stride = 6U;
+            "phase,episode,successful_tick,sin,cos,mode(1=stand,2=walk,3=legacy),moving,first_swing_left";
+        dimension.size = 8U;
+        dimension.stride = 8U;
         message.layout.dim.push_back(dimension);
         message.data = {
-            static_cast<double>(phase.phase),
-            static_cast<double>(phase.tick),
-            static_cast<double>(phase.period_ticks),
-            static_cast<double>(phase.sine),
-            static_cast<double>(phase.cosine),
-            static_cast<double>(phase.expected_half_cycle)};
+            phase.pair.phase,
+            static_cast<double>(phase.episode),
+            static_cast<double>(phase.successful_tick),
+            static_cast<double>(phase.pair.sine),
+            static_cast<double>(phase.pair.cosine),
+            static_cast<double>(static_cast<std::uint8_t>(phase.mode)),
+            phase.moving ? 1.0 : 0.0,
+            phase.first_swing_left ? 1.0 : 0.0};
         policy_debug_gait_phase_pub_->publish(message);
     }
 
-    void advance_gait_phase_if_unchanged(const PhaseSnapshot& snapshot)
+    void commit_policy_phase_if_same_episode(
+        const PhaseSnapshot& snapshot,
+        const std::vector<float>& command)
     {
         if (!gait_phase_enabled_) {
             return;
         }
+        if (command.size() != 3U) {
+            throw std::invalid_argument("phase command vector must contain three values");
+        }
+        const CommandVelocity command_value{
+            static_cast<double>(command[0]),
+            static_cast<double>(command[1]),
+            static_cast<double>(command[2])};
         std::lock_guard<std::mutex> lock(gait_phase_mutex_);
-        if (gait_phase_generation_ == snapshot.generation &&
-            gait_phase_clock_.tick() == snapshot.sample.tick) {
-            gait_phase_clock_.advance();
+        if (policy_phase_state_.episode() == snapshot.episode) {
+            policy_phase_state_.on_successful_policy_tick(command_value);
         }
     }
 
@@ -1904,27 +2108,32 @@ private:
         }
         if (!gait_phase_enabled_) {
             response->success = false;
-            response->message = "active policy does not use the 47-D gait-phase contract";
+            response->message = "active policy does not use the 47-D phase contract";
             return;
         }
         if (policy_output_mode_ == "live") {
             response->success = false;
             response->message =
-                "gait phase reset is refused in live mode; stop and restart the guarded live policy";
+                "phase episode reset is refused in live mode; stop live output and intentionally re-arm";
             return;
         }
 
         {
             std::lock_guard<std::mutex> lock(gait_phase_mutex_);
-            gait_phase_clock_.reset();
-            ++gait_phase_generation_;
+            begin_policy_phase_episode();
         }
+        const auto phase = capture_policy_phase(std::vector<float>{0.0F, 0.0F, 0.0F});
         response->success = true;
-        response->message = "gait phase reset to phase zero [sin,cos]=[0,1]";
+        std::ostringstream message;
+        message << "new policy episode " << phase.sample.episode
+                << " phase=" << std::fixed << std::setprecision(6)
+                << phase.sample.pair.phase << " [sin,cos]=["
+                << phase.sample.pair.sine << "," << phase.sample.pair.cosine << "]";
+        response->message = message.str();
         RCLCPP_WARN(
             this->get_logger(),
-            "Gait phase explicitly reset in %s mode.",
-            policy_output_mode_.c_str());
+            "Policy phase episode explicitly reset in %s mode: %s",
+            policy_output_mode_.c_str(), response->message.c_str());
     }
 
     void publish_policy_debug_actions(
@@ -2004,10 +2213,10 @@ private:
         }
 
         PhaseSnapshot phase_snapshot;
-        const GaitPhaseSample* gait_phase = nullptr;
+        const PhasePair* phase_pair = nullptr;
         if (gait_phase_enabled_) {
-            phase_snapshot = capture_gait_phase();
-            gait_phase = &phase_snapshot.sample;
+            phase_snapshot = capture_policy_phase(snapshot.cmd_vel);
+            phase_pair = &phase_snapshot.sample.pair;
         }
 
         std::array<float, 3> projected_gravity{0.0f, 0.0f, -1.0f};
@@ -2031,7 +2240,7 @@ private:
                 relative_joint_positions,
                 snapshot.joint_velocities,
                 snapshot.prev_actions,
-                gait_phase);
+                phase_pair);
         } catch (const std::exception& error) {
             publish_policy_status(false, "observation construction error");
             RCLCPP_ERROR(
@@ -2143,9 +2352,9 @@ private:
                 prev_actions_ = action_result.clipped_raw_actions;
             }
             if (gait_phase_enabled_) {
-                // Advance only after a complete successful inference and output-path update.
-                // Readiness loss and inference failures therefore freeze phase deterministically.
-                advance_gait_phase_if_unchanged(phase_snapshot);
+                // Commit phase state only after a complete successful inference and output-path
+                // update. Stand is a no-op; Walk advances continuously while commanded moving.
+                commit_policy_phase_if_same_episode(phase_snapshot, snapshot.cmd_vel);
             }
 
             publish_policy_status(
@@ -2170,15 +2379,19 @@ private:
 
     int observation_contract_version_ = 1;
     std::string observation_contract_name_{"littlegreen_hardware_45_legacy"};
+    std::string task_role_;
     bool gait_phase_enabled_ = false;
+    PolicyPhaseMode phase_mode_ = PolicyPhaseMode::disabled;
+    std::string phase_mode_name_{"disabled"};
     double gait_phase_period_s_ = 0.0;
+    double phase_transition_fraction_ = 0.0;
+    double phase_linear_command_threshold_ = 0.20;
+    double phase_yaw_command_threshold_ = 0.08;
     std::string gait_phase_encoding_;
-    std::string gait_phase_append_order_;
-    std::string gait_phase_training_timebase_;
-    std::string gait_phase_training_reset_semantics_;
+    std::string phase_reset_semantics_;
+    bool walk_deployment_stage_explicit_ = false;
     mutable std::mutex gait_phase_mutex_;
-    GaitPhaseClock gait_phase_clock_;
-    std::uint64_t gait_phase_generation_ = 0U;
+    PolicyPhaseState policy_phase_state_;
 
     YAML::Node policy_config_;
 
@@ -2256,6 +2469,9 @@ private:
     bool publish_policy_debug_ = true;
     std::string policy_output_mode_{"live"};
     std::string shadow_desired_position_topic_{"/policy_shadow/desired_position"};
+    bool enable_phase_test_override_ = false;
+    double phase_test_fixed_value_ = -1.0;
+    int64_t phase_test_seed_ = -1;
 
     bool status_initialized_ = false;
     bool last_ready_state_ = false;

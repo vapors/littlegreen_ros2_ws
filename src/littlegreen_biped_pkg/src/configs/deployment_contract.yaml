@@ -1,0 +1,54 @@
+release: Littlegreen-Humanoid-Lite v2.3.1
+schema_version: 2
+task: Velocity-Lilgreen-Stand-ST3215-Loaded-v23
+task_role: stand
+artifact:
+  policy_filename: policy.onnx
+  policy_sha256: 66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
+  onnx_input_name: obs
+  onnx_input_shape:
+  - 1
+  - 47
+  onnx_output_name: actions
+  onnx_output_shape:
+  - 1
+  - 12
+observation_contract:
+  name: littlegreen_velocity_47d_phase_v1
+  actor_count: 47
+  critic_count: 50
+  layout: command3,base_ang_vel3,projected_gravity3,joint_pos_rel12,joint_vel12,previous_bounded_action12,phase_sin1,phase_cos1
+  phase_indices:
+  - 45
+  - 46
+  phase_encoding: sin_cos_2pi
+  phase_mode: randomized_static_per_episode
+  legacy_45d_checkpoint_support: false
+action_contract:
+  version: 4
+  count: 12
+  joint_names:
+  - leg_left_hip_roll_joint
+  - leg_left_hip_yaw_joint
+  - leg_left_hip_pitch_joint
+  - leg_left_knee_pitch_joint
+  - leg_left_ankle_pitch_joint
+  - leg_left_ankle_roll_joint
+  - leg_right_hip_roll_joint
+  - leg_right_hip_yaw_joint
+  - leg_right_hip_pitch_joint
+  - leg_right_knee_pitch_joint
+  - leg_right_ankle_pitch_joint
+  - leg_right_ankle_roll_joint
+  transform: bounded_default_centered_vector_residual
+  previous_action_observation: bounded_normalized_action
+timing:
+  physics_dt: 0.005
+  policy_dt: 0.02
+  decimation: 4
+deployment_requirements:
+  shared_47d_observation_builder: true
+  phase_mode_must_match_training: true
+  action_contract_v4_transform: true
+  canonical_joint_order: true
+  paired_yaml_onnx_sha256: true

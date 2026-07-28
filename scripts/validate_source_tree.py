@@ -18,7 +18,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 TOOLS = ROOT / "tools"
-EXPECTED_WORKSPACE_VERSION = "2.8.0"
+EXPECTED_WORKSPACE_VERSION = "2.9.0"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -99,8 +99,8 @@ biped_package_xml = SRC / "littlegreen_biped_pkg/package.xml"
 if biped_package_xml.is_file():
     try:
         biped_tree = ET.parse(biped_package_xml)
-        if biped_tree.findtext("version") != "0.6.0":
-            fail("littlegreen_biped_pkg package version must be 0.6.0 for workspace v2.8.0")
+        if biped_tree.findtext("version") != "0.7.0":
+            fail("littlegreen_biped_pkg package version must be 0.7.0 for workspace v2.9.0")
     except Exception as exc:
         fail(f"unable to validate littlegreen_biped_pkg version: {exc}")
 
@@ -163,17 +163,25 @@ required_files = [
     SRC / "littlegreen_biped_pkg/src/littlegreen_biped_node.cpp",
     SRC / "littlegreen_biped_pkg/src/policy_onnx_contract_probe.cpp",
     SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_observation_contract.hpp",
+    SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_phase_state.hpp",
     SRC / "littlegreen_biped_pkg/scripts/policy_bundle_audit.py",
     SRC / "littlegreen_biped_pkg/scripts/policy_runtime_metrics.py",
     SRC / "littlegreen_biped_pkg/scripts/annotate_phase_guided_policy.py",
+    SRC / "littlegreen_biped_pkg/scripts/policy_golden_vector_compare.py",
     SRC / "littlegreen_biped_pkg/test/test_policy_observation_contract.cpp",
     SRC / "littlegreen_biped_pkg/test/test_policy_bundle_audit.py",
     SRC / "littlegreen_biped_pkg/test/test_annotate_phase_guided_policy.py",
+    SRC / "littlegreen_biped_pkg/test/test_policy_golden_vector_compare.py",
+    SRC / "littlegreen_biped_pkg/test/golden/v231_stand_observation_vectors.yaml",
     SRC / "littlegreen_biped_pkg/launch/littlegreen_biped_launch.py",
     SRC / "littlegreen_biped_pkg/launch/policy_shadow.launch.py",
     SRC / "littlegreen_biped_pkg/launch/policy_live.launch.py",
     SRC / "littlegreen_biped_pkg/src/configs/policy_latest.yaml",
+    SRC / "littlegreen_biped_pkg/src/configs/policy.yaml",
     SRC / "littlegreen_biped_pkg/src/configs/policy.onnx",
+    SRC / "littlegreen_biped_pkg/src/configs/deployment_contract.yaml",
+    SRC / "littlegreen_biped_pkg/src/configs/policy.sha256",
+    SRC / "littlegreen_biped_pkg/src/configs/bundle_manifest.yaml",
     SRC / "littlegreen_biped_pkg/src/configs/joint_map.yaml",
     SRC / "littlegreen_description/urdf/littlegreen.xacro",
     ROOT / "scripts/install_ubuntu_x86_64.sh",
@@ -189,6 +197,10 @@ required_files = [
     ROOT / "docs/MIGRATION_V2_7_3_TO_V2_8_0.md",
     ROOT / "docs/V2_8_0_RELEASE.md",
     ROOT / "docs/V2_8_0_VALIDATION.md",
+    ROOT / "docs/TRACK1_V2_3_1_INTEGRATION_AUDIT.md",
+    ROOT / "docs/MIGRATION_V2_8_0_TO_V2_9_0.md",
+    ROOT / "docs/V2_9_0_RELEASE.md",
+    ROOT / "docs/V2_9_0_VALIDATION.md",
     ROOT / "tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py",
     ROOT / "tools/lgh_hardware_limit_tool/README.md",
 ]
@@ -205,38 +217,47 @@ if policy_node.is_file():
         "action_default_rad",
         "action_target_lower_rad",
         "action_target_upper_rad",
-        "action_nominal_residual_lower_rad",
-        "action_nominal_residual_upper_rad",
-        "deployment_contract_profile",
         "bounded_default_centered_vector_residual",
         "previous_action_observation",
-        "Action contract v%d validated against joint_map.yaml",
-        "littlegreen_hardware_phase_guided_47_v1",
-        "gait_phase_period_s",
-        "gait_phase_encoding",
-        "after_previous_action",
-        "episode_step_time",
-        "environment_episode_reset",
-        "obs[45|47] -> actions[12]",
+        "littlegreen_velocity_47d_phase_v1",
+        "randomized_static_per_episode",
+        "command_synchronized_continuous_nonblocking",
+        "phase_indices",
+        "observation_layout_ranges",
+        "live Walk is blocked",
         "/policy_debug/gait_phase",
         "/policy/reset_gait_phase",
     ]
     for token in required_contract_tokens:
         if token not in policy_text:
-            fail(f"policy node is missing v2.8.0 policy-contract token: {token}")
+            fail(f"policy node is missing v2.9.0 policy-contract token: {token}")
 
 observation_header = SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_observation_contract.hpp"
+phase_header = SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_phase_state.hpp"
 if observation_header.is_file():
     header_text = observation_header.read_text(encoding="utf-8")
     for token in [
         "kLegacyObservationCount = 45U",
-        "kPhaseGuidedObservationCount = 47U",
-        "GaitPhaseClock",
+        "kSharedPhaseObservationCount = 47U",
+        "littlegreen_velocity_47d_phase_v1",
+        "kV231CompactObservationLayout",
         "build_policy_observation",
-        "expected_half_cycle",
+        "phase_pair_from_fraction",
     ]:
         if token not in header_text:
             fail(f"observation contract header is missing token: {token}")
+if phase_header.is_file():
+    phase_text = phase_header.read_text(encoding="utf-8")
+    for token in [
+        "PolicyPhaseState",
+        "randomized_static_per_episode",
+        "command_synchronized_continuous_nonblocking",
+        "begin_episode",
+        "on_successful_policy_tick",
+        "initial_first_swing_left",
+    ]:
+        if token not in phase_text:
+            fail(f"phase-state header is missing token: {token}")
 
 # Validate the packaged Track 1 deployment bundle and hardware map.
 if yaml is not None:
@@ -259,12 +280,29 @@ if yaml is not None:
             fail("packaged policy must require the v4 deployment transform")
         if policy.get("previous_action_observation") != "bounded_normalized_action":
             fail("packaged policy has unexpected previous_action_observation")
-        if int(policy.get("num_observations", 0)) != 45 or int(policy.get("num_actions", 0)) != 12:
-            fail("packaged policy must remain the known-good obs[45] -> actions[12] bundle")
-        if policy.get("metadata", {}).get("task") != "Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3":
-            fail("packaged policy task must remain the v1.4.5s3 standing policy")
-        if policy.get("gait_phase_enabled") is True or int(policy.get("observation_contract_version", 1)) != 1:
-            fail("packaged 45-D policy must not be relabeled as phase-guided")
+        if int(policy.get("schema_version", 0)) != 2:
+            fail("packaged v2.3.1 policy must use export schema 2")
+        if int(policy.get("num_observations", 0)) != 47 or int(policy.get("num_actions", 0)) != 12:
+            fail("packaged policy must expose obs[47] -> actions[12]")
+        if policy.get("metadata", {}).get("task") != "Velocity-Lilgreen-Stand-ST3215-Loaded-v23":
+            fail("packaged policy task must be the v2.3.1 canonical Stand policy")
+        if policy.get("metadata", {}).get("task_role") != "stand":
+            fail("packaged policy task_role must be stand")
+        if int(policy.get("observation_contract_version", 0)) != 1:
+            fail("packaged v2.3.1 observation contract version must be 1")
+        if policy.get("observation_contract_name") != "littlegreen_velocity_47d_phase_v1":
+            fail("packaged policy has unexpected observation_contract_name")
+        if policy.get("phase_mode") != "randomized_static_per_episode":
+            fail("packaged Stand phase_mode must be randomized_static_per_episode")
+        if policy.get("phase_indices") != [45, 46] or policy.get("phase_encoding") != "sin_cos_2pi":
+            fail("packaged policy has unexpected phase indices or encoding")
+        if policy.get("observation_layout") != (
+            "command3,base_ang_vel3,projected_gravity3,joint_pos_rel12,joint_vel12,"
+            "previous_bounded_action12,phase_sin1,phase_cos1"
+        ):
+            fail("packaged policy has unexpected compact observation layout")
+        if policy.get("legacy_45d_checkpoint_support") is not False:
+            fail("packaged v2.3.1 policy must disable legacy 45-D checkpoint support")
 
         scale = [float(v) for v in policy["action_residual_scale_rad"]]
         defaults = [float(v) for v in policy["action_default_rad"]]
@@ -332,6 +370,35 @@ if yaml is not None:
         actual_sha = hashlib.sha256(onnx_path.read_bytes()).hexdigest()
         if expected_sha != actual_sha:
             fail(f"policy ONNX checksum mismatch: YAML={expected_sha}, actual={actual_sha}")
+        policy_yaml_sha = hashlib.sha256(policy_path.read_bytes()).hexdigest()
+        policy_alias_path = SRC / "littlegreen_biped_pkg/src/configs/policy.yaml"
+        if policy_alias_path.read_bytes() != policy_path.read_bytes():
+            fail("policy.yaml and policy_latest.yaml must be byte-identical")
+        checksum_tokens = (SRC / "littlegreen_biped_pkg/src/configs/policy.sha256").read_text(
+            encoding="utf-8"
+        ).split()
+        if not checksum_tokens or checksum_tokens[0] != actual_sha:
+            fail("policy.sha256 does not match packaged ONNX")
+        manifest = yaml.safe_load(
+            (SRC / "littlegreen_biped_pkg/src/configs/bundle_manifest.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        if manifest.get("files", {}).get("onnx", {}).get("sha256") != actual_sha:
+            fail("bundle manifest ONNX hash mismatch")
+        if manifest.get("files", {}).get("yaml", {}).get("sha256") != policy_yaml_sha:
+            fail("bundle manifest policy YAML hash mismatch")
+        deployment = yaml.safe_load(
+            (SRC / "littlegreen_biped_pkg/src/configs/deployment_contract.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        if deployment.get("observation_contract", {}).get("name") != policy.get("observation_contract_name"):
+            fail("deployment contract observation name mismatch")
+        if deployment.get("observation_contract", {}).get("phase_mode") != policy.get("phase_mode"):
+            fail("deployment contract phase mode mismatch")
+        if deployment.get("artifact", {}).get("policy_sha256") != actual_sha:
+            fail("deployment contract ONNX hash mismatch")
         checkpoint_sha = hashlib.sha256(
             (SRC / "littlegreen_biped_pkg/src/checkpoints/policy.onnx").read_bytes()
         ).hexdigest()

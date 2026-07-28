@@ -1,37 +1,15 @@
-schema_version: 2
 metadata:
-  project_name: Littlegreen-Humanoid-Lite
-  project_version: 2.3.1
-  training_package: littlegreen_humanoid_lite
-  asset_package: littlegreen_humanoid_lite_assets
-  source_lineage: Berkeley-Humanoid-Lite v1.4.8 renamed and evolved
-  exported_at_utc: '2026-07-26T19:56:01Z'
-  task: Velocity-Lilgreen-Stand-ST3215-Loaded-v23
-  task_role: stand
-  experiment_name: littlegreen_v2_3_1_st3215_stand
-  load_run: 2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42
-  checkpoint: model_2000.pt
-  checkpoint_path: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v2_3_1_st3215_stand/2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42/model_2000.pt
-  export_dir: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v2_3_1_st3215_stand/2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42/exported
+  exported_at: '2026-07-13T15:18:16'
+  task: Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
+  checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_5_st3215_stabilized_forward_s3/2026-07-13_12-10-53_stand_st3215_loaded_v145s3_forward_com_height460_seed42/model_3500.pt
+  export_dir: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_5_st3215_stabilized_forward_s3/2026-07-13_12-10-53_stand_st3215_loaded_v145s3_forward_com_height460_seed42/exported
   policy_filename: policy.onnx
   policy_format: onnx
-  policy_sha256: 66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
-policy_checkpoint_path: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v2_3_1_st3215_stand/2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42/exported/policy.onnx
+  policy_sha256: c0079190bc0bf531a5eb6928541560d2402d1f711e14b641e436cad5d43e854d
+policy_checkpoint_path: /home/scott/Berkeley-Humanoid-Lite/logs/rsl_rl/lilgreen_v1_4_5_st3215_stabilized_forward_s3/2026-07-13_12-10-53_stand_st3215_loaded_v145s3_forward_com_height460_seed42/exported/policy.onnx
 policy_checkpoint_relative_path: policy.onnx
 policy_checkpoint_filename: policy.onnx
-policy_sha256: 66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
-onnx_input_name: obs
-onnx_input_shape:
-- 1
-- 47
-onnx_input_type: tensor(float)
-onnx_output_name: actions
-onnx_output_shape:
-- 1
-- 12
-onnx_output_type: tensor(float)
-onnx_validator: onnx
-onnx_validator_version: 1.18.0
+policy_sha256: c0079190bc0bf531a5eb6928541560d2402d1f711e14b641e436cad5d43e854d
 ip_robot_addr: 127.0.0.1
 ip_policy_obs_port: 10000
 ip_host_addr: 127.0.0.1
@@ -40,8 +18,6 @@ control_dt: 0.02
 policy_dt: 0.02
 physics_dt: 0.005
 decimation: 4
-physics_hz: 200
-policy_hz: 50
 num_joints: 14
 joints:
 - leg_left_hip_roll_joint
@@ -122,6 +98,12 @@ default_joint_positions:
 - -0.22
 - 0.0
 - 0.0
+num_observations: 45
+history_length: 0
+command_velocity:
+- 0.08405344188213348
+- -0.025833124294877052
+- -0.17477333545684814
 num_actions: 12
 action_indices:
 - 0
@@ -136,71 +118,6 @@ action_indices:
 - 10
 - 11
 - 12
-action_joint_names:
-- leg_left_hip_roll_joint
-- leg_left_hip_yaw_joint
-- leg_left_hip_pitch_joint
-- leg_left_knee_pitch_joint
-- leg_left_ankle_pitch_joint
-- leg_left_ankle_roll_joint
-- leg_right_hip_roll_joint
-- leg_right_hip_yaw_joint
-- leg_right_hip_pitch_joint
-- leg_right_knee_pitch_joint
-- leg_right_ankle_pitch_joint
-- leg_right_ankle_roll_joint
-num_observations: 47
-critic_num_observations: 50
-history_length: 0
-observation_contract_version: 1
-observation_contract_name: littlegreen_velocity_47d_phase_v1
-observation_layout: command3,base_ang_vel3,projected_gravity3,joint_pos_rel12,joint_vel12,previous_bounded_action12,phase_sin1,phase_cos1
-observation_layout_ranges:
-  command_velocity:
-  - 0
-  - 2
-  base_angular_velocity:
-  - 3
-  - 5
-  projected_gravity:
-  - 6
-  - 8
-  joint_position_relative_default:
-  - 9
-  - 20
-  joint_velocity:
-  - 21
-  - 32
-  previous_bounded_action:
-  - 33
-  - 44
-  phase_sin_cos:
-  - 45
-  - 46
-observation_count: 47
-critic_observation_count: 50
-phase_indices:
-- 45
-- 46
-phase_encoding: sin_cos_2pi
-phase_mode: randomized_static_per_episode
-phase_source_function: littlegreen_phase_sin_cos_v23
-phase_period_s: 0.84
-phase_transition_fraction: 0.05
-phase_linear_command_threshold: 0.2
-phase_yaw_command_threshold: 0.08
-phase_reset_semantics: sample_uniform_once_for_each_reset_environment_and_hold
-stand_walk_observation_difference: phase_evolution_only
-shared_47d_stand_walk_contract: true
-legacy_45d_checkpoint_support: false
-deployment_requires_shared_47d_observation_builder: true
-deployment_requires_random_static_phase_for_stand: true
-deployment_requires_command_synchronized_phase_for_walk: false
-command_velocity:
-- 0.0
-- 0.0
-- 0.0
-command_velocity_source: runtime_command_input
 action_contract_version: 4
 action_contract_name: bounded_default_centered_vector_residual_athletic
 action_transform: bounded_default_centered_vector_residual
@@ -288,11 +205,10 @@ action_default_rad:
 - 0.0
 previous_action_observation: bounded_normalized_action
 deployment_requires_action_contract_transform: true
+deployment_requires_action_contract_v3_transform: false
 deployment_requires_action_contract_v4_transform: true
 deployment_contract_profile: v1_4_5_stabilized_vector_residual
-training_release_profile: v2_3_1_shared47_balanced_stand_walk
-training_actuator_model_name: littlegreen_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_athletic_stabilized+track1_loaded_actuator_extension_v2:stage_b_loaded_athletic_stabilized
-training_actuator_model_source_name: berkeley_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_athletic_stabilized+track1_loaded_actuator_extension_v2:stage_b_loaded_athletic_stabilized
+training_actuator_model_name: berkeley_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_athletic_stabilized+track1_loaded_actuator_extension_v2:stage_b_loaded_athletic_stabilized
 training_actuator_model_stage: stage_b_loaded_v145_stabilized_vector_residual
 training_actuator_bus_phase_delay_s_range:
 - 0.0

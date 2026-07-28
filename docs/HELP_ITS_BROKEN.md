@@ -192,19 +192,20 @@ Common causes:
 - stale servo feedback;
 - policy YAML and ONNX checksum mismatch;
 - YAML observation count does not match the ONNX input tensor;
-- a 47-D YAML is missing exact gait-phase metadata;
-- unsupported observation count (anything other than 45 or 47);
+- the five-file v2.3.1 bundle is incomplete or has mismatched hashes;
+- the compact layout/ranges or Stand phase mode do not match the export;
+- unsupported observation count;
 - policy/joint-map contract mismatch;
 - policy node was not restarted after replacing files;
 - `override_imu` or output mode differs from the intended launch.
 
-For a phase-guided policy, inspect:
+For the v2.3.1 Stand policy, inspect:
 
 ```bash
 ros2 topic echo /policy_debug/gait_phase --once
 ```
 
-The phase freezes while readiness is closed. That is expected and is not a clock fault. In shadow mode only, reset explicitly with:
+Phase/sine/cosine must remain unchanged while readiness is closed. In shadow mode, intentionally start a new episode with:
 
 ```bash
 ros2 service call /policy/reset_gait_phase std_srvs/srv/Trigger '{}'

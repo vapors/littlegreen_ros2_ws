@@ -45,6 +45,21 @@ def generate_launch_description():
             default_value='/policy_shadow/desired_position',
             description='Shadow-only policy target topic.',
         ),
+        DeclareLaunchArgument(
+            'enable_phase_test_override',
+            default_value='false',
+            description='Test/replay only. Enable deterministic Stand phase injection in shadow mode.',
+        ),
+        DeclareLaunchArgument(
+            'phase_test_fixed_value',
+            default_value='-1.0',
+            description='Fixed phase in [0,1) when the test override is enabled; negative disables it.',
+        ),
+        DeclareLaunchArgument(
+            'phase_test_seed',
+            default_value='-1',
+            description='Deterministic phase seed when the test override is enabled; negative disables it.',
+        ),
         Node(
             package='littlegreen_biped_pkg',
             executable='littlegreen_biped_node',
@@ -63,6 +78,15 @@ def generate_launch_description():
                     'policy_output_mode': 'shadow',
                     'shadow_desired_position_topic': LaunchConfiguration(
                         'shadow_desired_position_topic'
+                    ),
+                    'enable_phase_test_override': ParameterValue(
+                        LaunchConfiguration('enable_phase_test_override'), value_type=bool
+                    ),
+                    'phase_test_fixed_value': ParameterValue(
+                        LaunchConfiguration('phase_test_fixed_value'), value_type=float
+                    ),
+                    'phase_test_seed': ParameterValue(
+                        LaunchConfiguration('phase_test_seed'), value_type=int
                     ),
                 },
             ],

@@ -10,37 +10,27 @@ ROS 2 Humble source workspace for the LittleGreen biped hardware stack. The acti
 | `lgh_st3215_tools` | Guarded calibration, characterization, preflight, hardware auditing, and datasets |
 | `lgh_st3215_maintenance` | Offline read-only direct-bus inspection; the runtime driver must be stopped |
 | `lgh_imu_tools` | Source-independent validation of the canonical `/imu/data` interface |
-| `littlegreen_biped_pkg` | 45-D/47-D observation construction, deterministic gait phase, action-contract v3/v4 validation, ONNX inference, policy auditing, runtime metrics, and live/shadow/disabled output |
+| `littlegreen_biped_pkg` | Shared 47-D Stand/Walk observation construction, task-specific phase state, action-contract v3/v4 validation, ONNX inference, policy auditing, golden-vector hooks, runtime metrics, and live/shadow/disabled output |
 | `pd_controller_pkg` | Safety filtering and optional outer-loop command shaping |
 | `littlegreen_description` | Robot description and visualization resources |
 
 ## Current Track 1 deployment status
 
-v2.8.0 adds runtime compatibility for two independently validated observation contracts:
+v2.9.0 packages the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand bundle:
 
 ```text
-Legacy packaged bundle: observation[45] -> action[12]
-Phase-guided bundle:    observation[47] -> action[12]
+Task:                 Velocity-Lilgreen-Stand-ST3215-Loaded-v23
+Interface:            observation[47] -> action[12]
+Rate:                 50 Hz
+Observation contract: littlegreen_velocity_47d_phase_v1
+Phase mode:           randomized_static_per_episode
+Action contract:      v4 bounded default-centered vector residual
+ONNX SHA-256:          66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
 ```
 
-The **packaged default policy remains the known-good Track 1 v1.4.5s3 45-D export**:
+The Stand policy receives the exact shared actor observation exported by Track 1. Its phase is sampled uniformly once at the beginning of an intentional policy episode and the sine/cosine pair remains unchanged for the episode. It does not advance with time, command, contact, inference count, or transient readiness loss.
 
-```text
-Task:      Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
-Interface: observation[45] -> action[12]
-Rate:      50 Hz
-Contract:  v4 bounded default-centered vector residual
-Profile:   v1_4_5_stabilized_vector_residual
-```
-
-v2.8.0 does not include or claim a deployable v1.4.7 policy. A future v1.4.7 bundle must contain a genuine ONNX input tensor `[1,47]`, output `[1,12]`, matching SHA-256, action contract v4, and explicit gait-phase metadata. The runtime then appends:
-
-```text
-obs[45] = sin(2*pi*phase)
-obs[46] = cos(2*pi*phase)
-```
-
-using a deterministic 0.72-second, 36-policy-tick clock. See [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md).
+The former 45-D v2.8.0 policy is retained as a paired rollback artifact under `configs/legacy_v280_45d/`; it is not the active default. Future Walk construction is present for contract testing and shadow inspection, but live Walk remains blocked until the exported checkpoint explicitly pins its deployment stage or period. See [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md).
 
 ## Install
 
@@ -152,15 +142,15 @@ Start with [`docs/README.md`](docs/README.md). Common pages:
 - [`docs/ROS_GRAPH_AND_AUTHORITY.md`](docs/ROS_GRAPH_AND_AUTHORITY.md)
 - [`docs/INTERFACES_AND_PARAMETERS.md`](docs/INTERFACES_AND_PARAMETERS.md)
 - [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md)
-- [`docs/TRACK1_V1_4_7_INTEGRATION_REVIEW.md`](docs/TRACK1_V1_4_7_INTEGRATION_REVIEW.md)
+- [`docs/TRACK1_V2_3_1_INTEGRATION_AUDIT.md`](docs/TRACK1_V2_3_1_INTEGRATION_AUDIT.md)
 - [`docs/LIVE_POLICY_DEPLOYMENT.md`](docs/LIVE_POLICY_DEPLOYMENT.md)
 - [`docs/TRACK1_TRACK2_POLICY_METRICS.md`](docs/TRACK1_TRACK2_POLICY_METRICS.md)
 - [`docs/CALIBRATION_WORKFLOW.md`](docs/CALIBRATION_WORKFLOW.md)
 - [`docs/SERVO_REPLACEMENT_CHECKLIST.md`](docs/SERVO_REPLACEMENT_CHECKLIST.md)
 - [`docs/HARDWARE_CONTRACT.md`](docs/HARDWARE_CONTRACT.md)
 - [`docs/SAFETY_AND_LIMITATIONS.md`](docs/SAFETY_AND_LIMITATIONS.md)
-- [`docs/V2_8_0_RELEASE.md`](docs/V2_8_0_RELEASE.md)
-- [`docs/V2_8_0_VALIDATION.md`](docs/V2_8_0_VALIDATION.md)
+- [`docs/V2_9_0_RELEASE.md`](docs/V2_9_0_RELEASE.md)
+- [`docs/V2_9_0_VALIDATION.md`](docs/V2_9_0_VALIDATION.md)
 - [`docs/VALIDATION.md`](docs/VALIDATION.md)
 
 Historical records are retained under `docs/archive/` and `docs/history/` and are not active operating instructions.

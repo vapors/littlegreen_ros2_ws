@@ -228,6 +228,9 @@ Starts only `littlegreen_biped_node` with `policy_output_mode=shadow`.
 | `use_sim` | `false` |
 | `override_imu` | `false` |
 | `shadow_desired_position_topic` | `/policy_shadow/desired_position` |
+| `enable_phase_test_override` | `false` |
+| `phase_test_fixed_value` | `-1.0` |
+| `phase_test_seed` | `-1` |
 
 ### `policy_live.launch.py`
 
@@ -269,24 +272,24 @@ Use the dedicated shadow and live launch files for first hardware deployment. Se
 
 ### Observation contracts
 
-v2.8.0 validates the observation contract independently from the action contract.
+v2.9.0 consumes the Track 1 v2.3.1 export schema directly. The active contract is:
 
-| Observation count | Contract | Compatibility |
+| Observation count | Contract | Phase mode |
 |---:|---|---|
-| `45` | `littlegreen_hardware_45_v1` | legacy hardware observation; older bundles may omit explicit observation metadata |
-| `47` | `littlegreen_hardware_phase_guided_47_v1` | explicit phase-guided contract; action contract v4 required |
+| `47` | `littlegreen_velocity_47d_phase_v1` | task-specific; packaged Stand uses `randomized_static_per_episode` |
+| `45` | isolated legacy compatibility | no phase |
 | any other value | unsupported | startup and offline audit fail |
 
-The 47-D layout appends:
+The shared 47-D layout appends:
 
 ```text
 obs[45] = sin(2*pi*phase)
 obs[46] = cos(2*pi*phase)
 ```
 
-to the unchanged 45-D observation. The current clock uses a 0.72 s period and 0.02 s policy interval, producing 36 successful policy ticks per cycle. It starts at `[0,1]`, advances after successful inference/output update, freezes while readiness is gated, and continues at zero command velocity.
+For the packaged Stand policy, phase is sampled uniformly once at intentional episode start and remains static. It does not advance with time, command, contact, inference count, or transient readiness loss. The exported compact layout and all explicit index ranges are validated.
 
-A 47-D bundle must declare the exact phase metadata documented in [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md), and its ONNX input must actually be `[1,47]`. Relabeling a 45-D model is rejected.
+Future Walk uses the exported command thresholds and period in a command-synchronized non-blocking phase state. Live Walk is rejected unless checkpoint stage/period provenance is explicit. See [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md).
 
 ### Action contracts v3 and v4
 
@@ -323,7 +326,7 @@ deployment_contract_profile
 deployment_requires_action_contract_v4_transform: true
 ```
 
-The packaged v1.4.5s3 policy uses contract v4 and a non-uniform 12-joint residual vector. Legacy YAML without `action_contract_version` remains readable through `action_scale`, but it is not the current deployment path.
+The packaged v2.3.1 Stand policy uses contract v4 and a non-uniform 12-joint residual vector. Legacy YAML without `action_contract_version` remains readable through `action_scale`, but it is not the current deployment path.
 
 ### Policy bundle audit
 
@@ -332,7 +335,7 @@ ros2 run littlegreen_biped_pkg policy_bundle_audit --help
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-The audit checks the YAML/ONNX checksum, ONNX input/output tensor dimensions and float32 element types, supported 45-D/47-D observation metadata, and the same v3/v4 hardware-map boundary used by the live policy node. The installed audit locates `policy_onnx_contract_probe` automatically. `--skip-onnx-shape-check` is reserved for source-development checks before the helper has been built; it is not acceptable for deployment approval. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
+The audit checks all five bundle files, YAML/manifest/deployment-contract checksums, actual ONNX input/output tensor dimensions and float32 element types, the v2.3.1 observation schema, and the same v3/v4 hardware-map boundary used by the live policy node. The installed audit locates `policy_onnx_contract_probe` automatically. `--skip-onnx-shape-check` is reserved for source-development checks before the helper has been built; it is not acceptable for deployment approval. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
 
 ### Policy runtime metrics
 
@@ -375,13 +378,13 @@ Common policy status/debug outputs:
 /policy_debug/gait_phase       # 47-D policies only
 ```
 
-A phase-guided policy also exposes:
+A shared 47-D policy also exposes:
 
 ```text
 /policy/reset_gait_phase       std_srvs/srv/Trigger
 ```
 
-The service is available in `shadow` and `disabled` modes and refused in `live` mode. `/policy_debug/gait_phase` reports expected policy timing, not measured contact.
+The service begins a new policy episode in `shadow` and `disabled` modes and is refused in `live` mode. For Stand, `/policy_debug/gait_phase` reports a static software phase input, not measured contact.
 
 ## 9. Policy runtime parameters
 
@@ -392,6 +395,9 @@ The service is available in `shadow` and `disabled` modes and refused in `live` 
 | `publish_policy_debug` | `true` |
 | `policy_output_mode` | `live` |
 | `shadow_desired_position_topic` | `/policy_shadow/desired_position` |
+| `enable_phase_test_override` | `false` |
+| `phase_test_fixed_value` | `-1.0` |
+| `phase_test_seed` | `-1` |
 | `imu_timeout_sec` | `0.050` |
 | `joint_state_timeout_sec` | `0.150` |
 | `require_joint_feedback_age` | `true` |

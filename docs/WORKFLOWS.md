@@ -226,7 +226,7 @@ ros2 launch lgh_st3215_driver lgh_st3215_driver.launch.py \
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py
 ```
 
-The packaged default remains the 45-D v1.4.5s3 pair. A future 47-D v1.4.7 pair must pass strict YAML/ONNX tensor-shape audit before it is selected.
+The packaged default is the v2.3.1 canonical Stand five-file bundle. It must pass strict checksum, schema, layout, phase-mode, and `[1,47] -> [1,12]` tensor audit before shadow launch.
 
 Verify:
 
@@ -236,13 +236,13 @@ ros2 topic info /policy_shadow/desired_position --verbose
 ros2 run littlegreen_biped_pkg policy_runtime_metrics --duration-sec 30
 ```
 
-For a 47-D policy also verify the 36-tick expected phase clock:
+For the Stand policy verify the static episode phase:
 
 ```bash
 ros2 topic echo /policy_debug/gait_phase
 ```
 
-This is expected policy timing, not measured foot contact. The phase reset service may be used only in shadow/disabled mode.
+Phase/sine/cosine must remain constant for the Stand episode. The reset service starts a new episode only in shadow/disabled mode.
 
 ## 11. Guarded live policy
 

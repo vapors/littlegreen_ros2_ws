@@ -1,7 +1,11 @@
 schema_version: 2
 robot: LittleGreen
-source_task: Velocity-Lilgreen-Stand-ST3215-Loaded-v5s3
-source_policy_sha256: c0079190bc0bf531a5eb6928541560d2402d1f711e14b641e436cad5d43e854d
+source_task: Velocity-Lilgreen-Stand-ST3215-Loaded-v23
+source_policy_sha256: 66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
+source_policy_project_version: 2.3.1
+source_observation_contract: littlegreen_velocity_47d_phase_v1
+source_phase_mode: randomized_static_per_episode
+prior_source_policy_sha256: c0079190bc0bf531a5eb6928541560d2402d1f711e14b641e436cad5d43e854d
 action_contract_version: 4
 action_contract_name: bounded_default_centered_vector_residual_athletic
 action_transform: bounded_default_centered_vector_residual

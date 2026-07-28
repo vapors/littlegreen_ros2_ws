@@ -140,7 +140,7 @@ The driver, policy launch, and micro-ROS agent are separate by design. Stopping 
 
 ## Gait-phase reset authority
 
-For a future 47-D phase-guided policy, `/policy/reset_gait_phase` changes only the policy node's logical observation clock. It does not command the driver, release a pose override, change torque, or reset servo feedback.
+For the shared 47-D policy, `/policy/reset_gait_phase` changes only the policy node's software episode phase state. It does not command the driver, release a pose override, change torque, or reset servo feedback.
 
 The service is intentionally limited:
 
@@ -150,4 +150,4 @@ The service is intentionally limited:
 | `shadow` | allowed |
 | `live` | refused |
 
-A live phase reset could abruptly change the ONNX input while the policy has command authority. To start a new live deployment episode at phase zero, stop the guarded live policy and restart it after confirming the ROS graph and physical support. The phase clock freezes during readiness loss and therefore does not need an automatic reset when IMU or joint feedback recovers.
+A live phase reset could abruptly change the ONNX input while the policy has command authority. To start a new live Stand episode, stop guarded live output and intentionally restart/re-arm after confirming the ROS graph and physical support. Transient readiness loss preserves the static Stand pair and does not begin a new episode.

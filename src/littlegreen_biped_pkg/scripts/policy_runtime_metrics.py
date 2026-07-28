@@ -52,41 +52,44 @@ class RuntimeMetricsNode(Node):
                 f'unsupported num_observations={self.num_observations}; expected 45 or 47'
             )
         self.phase_enabled = self.num_observations == 47
+        self.phase_mode = str(self.policy.get('phase_mode', 'none'))
+        self.observation_contract_name = str(
+            self.policy.get('observation_contract_name', 'legacy_45_compatibility')
+        )
         if self.phase_enabled:
-            required_phase = {
-                'observation_contract_version': 2,
-                'observation_contract_name': 'littlegreen_hardware_phase_guided_47_v1',
-                'gait_phase_enabled': True,
-                'gait_phase_period_s': 0.72,
-                'gait_phase_encoding': 'sin_cos_2pi',
-                'gait_phase_append_order': 'after_previous_action',
-                'gait_phase_training_timebase': 'episode_step_time',
-                'gait_phase_training_reset_semantics': 'environment_episode_reset',
-            }
-            for key, expected in required_phase.items():
-                actual = self.policy.get(key)
-                if isinstance(expected, float):
-                    valid = isinstance(actual, (int, float)) and abs(float(actual) - expected) <= 1.0e-9
-                else:
-                    valid = actual == expected
-                if not valid:
-                    raise ValueError(f'{key}={actual!r}, expected {expected!r}')
-            expected_layout = [
-                'command_velocity_3',
-                'base_angular_velocity_3',
-                'projected_gravity_3',
-                'joint_position_relative_to_default_12',
-                'joint_velocity_12',
-                'previous_bounded_normalized_action_12',
-                'gait_phase_sin_cos_2',
-            ]
-            if self.policy.get('observation_layout') != expected_layout:
-                raise ValueError('47-D observation_layout does not match the supported contract')
             if int(self.policy.get('action_contract_version', -1)) != 4:
                 raise ValueError('47-D policy requires action_contract_version: 4')
             policy_dt = float(self.policy.get('policy_dt', 0.0))
             if not math.isfinite(policy_dt) or abs(policy_dt - 0.02) > 1.0e-9:
                 raise ValueError('47-D policy requires finite policy_dt: 0.02')
+            if self.observation_contract_name == 'littlegreen_velocity_47d_phase_v1':
+                if int(self.policy.get('schema_version', -1)) != 2:
+                    raise ValueError('v2.3.1 policy requires schema_version: 2')
+                if int(self.policy.get('observation_contract_version', -1)) != 1:
+                    raise ValueError('v2.3.1 observation contract version must be 1')
+                expected_layout = (
+                    'command3,base_ang_vel3,projected_gravity3,joint_pos_rel12,'
+                    'joint_vel12,previous_bounded_action12,phase_sin1,phase_cos1'
+                )
+                if self.policy.get('observation_layout') != expected_layout:
+                    raise ValueError('v2.3.1 compact observation layout mismatch')
+                if self.policy.get('phase_indices') != [45, 46]:
+                    raise ValueError('phase_indices must be [45,46]')
+                if self.policy.get('phase_encoding') != 'sin_cos_2pi':
+                    raise ValueError('phase_encoding must be sin_cos_2pi')
+                role = str(self.policy.get('metadata', {}).get('task_role', ''))
+                if role == 'stand' and self.phase_mode != 'randomized_static_per_episode':
+                    raise ValueError('Stand phase_mode mismatch')
+                if role == 'walk' and self.phase_mode != 'command_synchronized_continuous_nonblocking':
+                    raise ValueError('Walk phase_mode mismatch')
+            elif self.observation_contract_name == 'littlegreen_hardware_phase_guided_47_v1':
+                if int(self.policy.get('observation_contract_version', -1)) != 2:
+                    raise ValueError('legacy v2.8.0 phase contract version must be 2')
+                self.phase_mode = 'legacy_successful_tick_clock'
+            else:
+                raise ValueError(
+                    f'unsupported 47-D observation contract: {self.observation_contract_name}'
+                )
         mapping = yaml.safe_load(joint_map.read_text(encoding='utf-8'))
         if not isinstance(mapping, dict) or not isinstance(mapping.get('joints'), list):
             raise ValueError('joint map must contain a joints sequence')
@@ -240,33 +243,43 @@ class RuntimeMetricsNode(Node):
             phase_angle = math.atan2(phase_sine, phase_cosine)
             phase_fraction = (phase_angle / (2.0 * math.pi)) % 1.0
             phase_debug = self.gait_phase.value
-            if len(phase_debug) != 6:
+            if len(phase_debug) == 8:
+                debug_fraction = float(phase_debug[0])
+                debug_episode = int(round(float(phase_debug[1])))
+                debug_tick = int(round(float(phase_debug[2])))
+                debug_sine = float(phase_debug[3])
+                debug_cosine = float(phase_debug[4])
+                debug_mode = int(round(float(phase_debug[5])))
+                debug_moving = bool(round(float(phase_debug[6])))
+                debug_first_swing_left = bool(round(float(phase_debug[7])))
+            elif len(phase_debug) == 6:  # v2.8.0 compatibility
+                debug_fraction = float(phase_debug[0])
+                debug_episode = 0
+                debug_tick = int(round(float(phase_debug[1])))
+                debug_sine = float(phase_debug[3])
+                debug_cosine = float(phase_debug[4])
+                debug_mode = 3
+                debug_moving = True
+                debug_first_swing_left = False
+            else:
                 return
-            debug_fraction = float(phase_debug[0])
-            debug_tick = int(round(float(phase_debug[1])))
-            debug_period_ticks = int(round(float(phase_debug[2])))
-            debug_sine = float(phase_debug[3])
-            debug_cosine = float(phase_debug[4])
-            debug_half_cycle = int(round(float(phase_debug[5])))
             row.update({
-                'gait_phase_sine': phase_sine,
-                'gait_phase_cosine': phase_cosine,
-                'gait_phase_fraction': phase_fraction,
-                'gait_phase_tick': debug_tick,
-                'gait_phase_period_ticks': debug_period_ticks,
-                'gait_phase_debug_fraction': debug_fraction,
-                'gait_phase_debug_half_cycle': debug_half_cycle,
-                'gait_phase_observation_debug_abs_error': max(
-                    abs(phase_sine - debug_sine),
-                    abs(phase_cosine - debug_cosine),
+                'policy_phase_sine': phase_sine,
+                'policy_phase_cosine': phase_cosine,
+                'policy_phase_fraction': phase_fraction,
+                'policy_phase_episode': debug_episode,
+                'policy_phase_successful_tick': debug_tick,
+                'policy_phase_mode_code': debug_mode,
+                'policy_phase_moving': debug_moving,
+                'policy_phase_first_swing_left': debug_first_swing_left,
+                'policy_phase_debug_fraction': debug_fraction,
+                'policy_phase_observation_debug_abs_error': max(
+                    abs(phase_sine - debug_sine), abs(phase_cosine - debug_cosine)
                 ),
-                'gait_phase_fraction_debug_abs_error': abs(phase_fraction - debug_fraction),
-                'gait_phase_unit_circle_error': abs(
+                'policy_phase_fraction_debug_abs_error': abs(phase_fraction - debug_fraction),
+                'policy_phase_unit_circle_error': abs(
                     math.sqrt(phase_sine * phase_sine + phase_cosine * phase_cosine) - 1.0
                 ),
-                'gait_phase_expected_half_cycle': 0 if phase_fraction < 0.5 else 1,
-                'gait_phase_expected_left_stance': bool(phase_fraction < 0.5),
-                'gait_phase_expected_right_stance': bool(phase_fraction >= 0.5),
             })
         if self._fresh(self.joint_state):
             position, velocity = self.joint_state.value
@@ -315,12 +328,11 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
         'base_angular_velocity_norm_rad_s', 'joint_posture_rms_rad', 'joint_posture_max_rad',
         'standing_upright_observable', 'standing_quiet_yaw_observable',
         'standing_near_default_observable',
-        'gait_phase_sine', 'gait_phase_cosine', 'gait_phase_fraction',
-        'gait_phase_tick', 'gait_phase_period_ticks', 'gait_phase_debug_fraction',
-        'gait_phase_debug_half_cycle', 'gait_phase_observation_debug_abs_error',
-        'gait_phase_fraction_debug_abs_error', 'gait_phase_unit_circle_error',
-        'gait_phase_expected_half_cycle',
-        'gait_phase_expected_left_stance', 'gait_phase_expected_right_stance',
+        'policy_phase_sine', 'policy_phase_cosine', 'policy_phase_fraction',
+        'policy_phase_episode', 'policy_phase_successful_tick', 'policy_phase_mode_code',
+        'policy_phase_moving', 'policy_phase_first_swing_left', 'policy_phase_debug_fraction',
+        'policy_phase_observation_debug_abs_error',
+        'policy_phase_fraction_debug_abs_error', 'policy_phase_unit_circle_error',
     ]
     summary: dict[str, Any] = {
         'schema_version': 2,
@@ -331,8 +343,9 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
         'observation_contract_name': node.policy.get(
             'observation_contract_name', 'legacy_45_compatibility'
         ),
-        'gait_phase_enabled': node.phase_enabled,
-        'gait_phase_period_s': node.policy.get('gait_phase_period_s') if node.phase_enabled else None,
+        'policy_phase_enabled': node.phase_enabled,
+        'policy_phase_mode': node.phase_mode if node.phase_enabled else None,
+        'policy_phase_period_s': node.policy.get('phase_period_s', node.policy.get('gait_phase_period_s')) if node.phase_enabled else None,
         'action_contract_version': node.policy.get('action_contract_version'),
         'deployment_contract_profile': node.policy.get('deployment_contract_profile'),
         'action_residual_scale_rad': node.policy.get('action_residual_scale_rad'),

@@ -1,7 +1,5 @@
-# Policy observability topics — v2.8
+# Policy Debug v2
 
-The canonical policy-debug reference is [`POLICY_DEBUG.md`](POLICY_DEBUG.md).
+v2.9.0 retains all action and target debug topics and adds task-specific phase lifecycle reporting for the shared 47-D contract. The packaged Stand policy publishes `/policy_debug/gait_phase`; its phase/sine/cosine remain static for an episode. `/policy/reset_gait_phase` begins a new episode in shadow/disabled modes and is refused in live mode.
 
-v2.8.0 retains all existing action and target debug topics while allowing either the legacy 45-D observation or the phase-guided 47-D observation. A 47-D policy additionally publishes `/policy_debug/gait_phase` and exposes `/policy/reset_gait_phase` in non-live modes.
-
-All numeric debug topics use best-effort keep-last-1 QoS so a slow echo or logger cannot back-pressure the 50 Hz policy timer.
+See `POLICY_DEBUG.md` for the current array layout and command examples.

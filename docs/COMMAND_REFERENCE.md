@@ -1,6 +1,6 @@
 # LittleGreen Command and Option Reference
 
-This page exposes the available first-party commands, launch arguments, service behavior, and frequently useful ROS inspection commands in v2.8.0. It is intentionally more detailed than the command cheat sheet.
+This page exposes the available first-party commands, launch arguments, service behavior, and frequently useful ROS inspection commands in v2.9.0. It is intentionally more detailed than the command cheat sheet.
 
 ## 1. How to discover options from the installed workspace
 
@@ -657,23 +657,21 @@ Start the micro-ROS agent before using these tools when the XIAO firmware is the
 ### `policy_bundle_audit`
 
 ```text
---policy-yaml PATH         default packaged policy_latest.yaml
---joint-map PATH           default packaged joint_map.yaml
---onnx PATH                optional explicit ONNX path
---onnx-shape-probe PATH    optional explicit policy_onnx_contract_probe
---skip-onnx-shape-check    source-development escape hatch; never deployment acceptance
+--policy-yaml PATH              default packaged policy_latest.yaml
+--joint-map PATH                default packaged joint_map.yaml
+--onnx PATH                     optional explicit ONNX path
+--deployment-contract PATH      default companion deployment_contract.yaml
+--policy-sha256-file PATH       default companion policy.sha256
+--bundle-manifest PATH          default companion bundle_manifest.yaml
+--onnx-shape-probe PATH         optional explicit policy_onnx_contract_probe
+--skip-onnx-shape-check         source-development escape hatch; never deployment acceptance
 ```
 
-The installed command automatically locates `policy_onnx_contract_probe` beside the audit executable and verifies the actual float32 ONNX tensor shapes. Supported interfaces are `[1,45] -> [1,12]` and `[1,47] -> [1,12]`, with matching YAML metadata.
+The installed command verifies all five exported bundle files, actual float32 `[1,47] -> [1,12]` ONNX tensors, the exact v2.3.1 observation layout/phase mode, and action contract v4 against the hardware map.
 
-### `annotate_phase_guided_policy`
+### `annotate_phase_guided_policy` — legacy v2.8 helper
 
-```text
---policy-yaml PATH         required genuine exported v1.4.7 YAML
---output PATH              optional; default POLICY_STEM.phase_guided.yaml
-```
-
-The tool adds only the canonical 47-D observation metadata to a separate YAML. It refuses 45-D policies, non-v4 actions, non-50-Hz timing, missing checksums, and unexpected tasks. It does not modify the ONNX model or checksum.
+This old v1.4.7 migration helper is retained only for historical rollback workflows. Do not run it on a v2.3.1 bundle; v2.9.0 consumes the exported schema unchanged.
 
 ### `policy_onnx_contract_probe`
 
@@ -712,6 +710,9 @@ ros2 launch littlegreen_biped_pkg policy_shadow.launch.py --show-args
 | `use_sim` | `false` |
 | `override_imu` | `false`; nominal IMU substitution is not a live-hardware validation |
 | `shadow_desired_position_topic` | `/policy_shadow/desired_position` |
+| `enable_phase_test_override` | `false`; test/replay only |
+| `phase_test_fixed_value` | `-1.0`; fixed phase in `[0,1)` when enabled |
+| `phase_test_seed` | `-1`; deterministic seed when enabled |
 
 ### Live
 
@@ -759,6 +760,9 @@ The normal values are loaded from `policy_runtime.yaml`.
 |---|---:|---|
 | `policy_output_mode` | `live` | `live`, `shadow`, or `disabled` |
 | `publish_policy_debug` | `true` | publish observation/action diagnostics |
+| `enable_phase_test_override` | `false` | deterministic phase hook; refused live |
+| `phase_test_fixed_value` | `-1.0` | fixed phase when enabled |
+| `phase_test_seed` | `-1` | deterministic seed when enabled |
 | `imu_timeout_sec` | `0.050` | `/imu/data` transport freshness gate |
 | `joint_state_timeout_sec` | `0.150` | `/joint_states` transport freshness gate |
 | `require_joint_feedback_age` | `true` | require the physical-age topic |
@@ -777,9 +781,9 @@ For a 47-D policy the following interfaces are also active:
 /policy/reset_gait_phase   std_srvs/srv/Trigger
 ```
 
-The phase debug array is `[phase, tick, period_ticks, sin, cos, expected_half_cycle]`. Reset is allowed in shadow/disabled and refused in live mode.
+The phase debug array is `[phase, episode, successful_tick, sin, cos, mode, moving, first_swing_left]`. For Stand, phase/sine/cosine remain static. Reset starts a new episode in shadow/disabled and is refused in live mode.
 
-The policy YAML, not a launch parameter, defines the supported observation contract. v2.8.0 does not provide an operator override for the gait period or append order because those values are part of the exported model contract.
+The policy YAML defines the supported observation contract. The only phase override is a guarded shadow/test hook; live semantics come entirely from the exported bundle.
 
 ## 19. Downstream controller modes and options
 
