@@ -80,7 +80,10 @@ class RuntimeMetricsNode(Node):
                 role = str(self.policy.get('metadata', {}).get('task_role', ''))
                 if role == 'stand' and self.phase_mode != 'randomized_static_per_episode':
                     raise ValueError('Stand phase_mode mismatch')
-                if role == 'walk' and self.phase_mode != 'command_synchronized_continuous_nonblocking':
+                if (
+                    role == 'walk' and
+                    self.phase_mode != 'command_synchronized_continuous_nonblocking'
+                ):
                     raise ValueError('Walk phase_mode mismatch')
             elif self.observation_contract_name == 'littlegreen_hardware_phase_guided_47_v1':
                 if int(self.policy.get('observation_contract_version', -1)) != 2:
@@ -110,12 +113,42 @@ class RuntimeMetricsNode(Node):
         self.gait_phase = TimedValue()
         self.rows: list[dict[str, float | int | bool]] = []
 
-        self.create_subscription(Float64MultiArray, '/policy_debug/observation', self._obs, qos_profile_sensor_data)
-        self.create_subscription(Float64MultiArray, '/policy_debug/raw_action', self._raw, qos_profile_sensor_data)
-        self.create_subscription(Float64MultiArray, '/policy_debug/clipped_raw_action', self._clipped, qos_profile_sensor_data)
-        self.create_subscription(Float64MultiArray, '/policy_debug/target_unclipped', self._target_unclipped, qos_profile_sensor_data)
-        self.create_subscription(Float64MultiArray, '/policy_debug/target_clipped', self._target, qos_profile_sensor_data)
-        self.create_subscription(UInt8MultiArray, '/policy_debug/saturation_mask', self._mask, qos_profile_sensor_data)
+        self.create_subscription(
+            Float64MultiArray,
+            '/policy_debug/observation',
+            self._obs,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            Float64MultiArray,
+            '/policy_debug/raw_action',
+            self._raw,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            Float64MultiArray,
+            '/policy_debug/clipped_raw_action',
+            self._clipped,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            Float64MultiArray,
+            '/policy_debug/target_unclipped',
+            self._target_unclipped,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            Float64MultiArray,
+            '/policy_debug/target_clipped',
+            self._target,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            UInt8MultiArray,
+            '/policy_debug/saturation_mask',
+            self._mask,
+            qos_profile_sensor_data,
+        )
         if self.phase_enabled:
             self.create_subscription(
                 Float64MultiArray,
@@ -152,12 +185,20 @@ class RuntimeMetricsNode(Node):
         if all(name in by_name for name in self.joint_names):
             position = [float(msg.position[by_name[name]]) for name in self.joint_names]
             velocity = [
-                float(msg.velocity[by_name[name]]) if by_name[name] < len(msg.velocity) else float('nan')
+                (
+                    float(msg.velocity[by_name[name]])
+                    if by_name[name] < len(msg.velocity)
+                    else float('nan')
+                )
                 for name in self.joint_names
             ]
         elif len(msg.position) >= 12:
             position = list(map(float, msg.position[:12]))
-            velocity = list(map(float, msg.velocity[:12])) if len(msg.velocity) >= 12 else [float('nan')] * 12
+            velocity = (
+                list(map(float, msg.velocity[:12]))
+                if len(msg.velocity) >= 12
+                else [float('nan')] * 12
+            )
         else:
             return
         self._set(self.joint_state, (position, velocity))
@@ -167,7 +208,11 @@ class RuntimeMetricsNode(Node):
 
     def _fresh(self, *slots: TimedValue) -> bool:
         now = time.monotonic()
-        return all(slot.value is not None and now - slot.monotonic_s <= self.freshness_sec for slot in slots)
+        return all(
+            slot.value is not None and
+            now - slot.monotonic_s <= self.freshness_sec
+            for slot in slots
+        )
 
     def _target_unclipped(self, msg: Float64MultiArray) -> None:
         self._set(self.target_unclipped, list(map(float, msg.data)))
@@ -214,7 +259,9 @@ class RuntimeMetricsNode(Node):
             'projected_gravity_x': obs[6],
             'projected_gravity_y': obs[7],
             'projected_gravity_z': obs[8],
-            'base_angular_velocity_norm_rad_s': math.sqrt(sum(value * value for value in base_ang_vel)),
+            'base_angular_velocity_norm_rad_s': math.sqrt(
+                sum(value * value for value in base_ang_vel)
+            ),
             'standing_upright_observable': bool(obs[8] < -0.97),
             'standing_quiet_yaw_observable': bool(abs(obs[5]) < 0.20),
             'standing_near_default_observable': bool(q_max < 0.20),
@@ -302,7 +349,11 @@ def mean(rows: list[dict[str, Any]], key: str) -> float:
 
 
 def percentile(rows: list[dict[str, Any]], key: str, fraction: float) -> float:
-    values = sorted(float(row[key]) for row in rows if key in row and math.isfinite(float(row[key])))
+    values = sorted(
+        float(row[key])
+        for row in rows
+        if key in row and math.isfinite(float(row[key]))
+    )
     if not values:
         return float('nan')
     index = min(len(values) - 1, max(0, round((len(values) - 1) * fraction)))
@@ -345,16 +396,28 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
         ),
         'policy_phase_enabled': node.phase_enabled,
         'policy_phase_mode': node.phase_mode if node.phase_enabled else None,
-        'policy_phase_period_s': node.policy.get('phase_period_s', node.policy.get('gait_phase_period_s')) if node.phase_enabled else None,
+        'policy_phase_period_s': (
+            node.policy.get(
+                'phase_period_s',
+                node.policy.get('gait_phase_period_s'),
+            )
+            if node.phase_enabled else None
+        ),
         'action_contract_version': node.policy.get('action_contract_version'),
         'deployment_contract_profile': node.policy.get('deployment_contract_profile'),
         'action_residual_scale_rad': node.policy.get('action_residual_scale_rad'),
         'action_default_rad': node.policy.get('action_default_rad'),
         'training_actuator_model_name': node.policy.get('training_actuator_model_name'),
         'training_actuator_model_stage': node.policy.get('training_actuator_model_stage'),
-        'training_actuator_response_delay_scale': node.policy.get('training_actuator_response_delay_scale'),
-        'training_actuator_velocity_scale_range': node.policy.get('training_actuator_velocity_scale_range'),
-        'training_loaded_velocity_scale_range': node.policy.get('training_loaded_velocity_scale_range'),
+        'training_actuator_response_delay_scale': node.policy.get(
+            'training_actuator_response_delay_scale'
+        ),
+        'training_actuator_velocity_scale_range': node.policy.get(
+            'training_actuator_velocity_scale_range'
+        ),
+        'training_loaded_velocity_scale_range': node.policy.get(
+            'training_loaded_velocity_scale_range'
+        ),
         'duration_sec': elapsed,
         'sample_count': len(node.rows),
         'sample_rate_hz': len(node.rows) / elapsed if elapsed > 0 else 0.0,
@@ -374,8 +437,10 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
             'foot slip',
             'physical joint torque',
             'root linear velocity and zero-command XY drift',
-            'stable-standing all-conditions result because foot contact and root linear velocity are unavailable',
-            'actual foot contact timing; gait phase is an expected policy clock, not a contact sensor',
+            'stable-standing all-conditions result because foot contact and root '
+            'linear velocity are unavailable',
+            'actual foot contact timing; gait phase is an expected policy clock, '
+            'not a contact sensor',
         ],
         'observable_standing_condition_notes': {
             'upright': 'projected_gravity_z < -0.97',
@@ -390,7 +455,10 @@ def write_results(output_dir: Path, node: RuntimeMetricsNode, elapsed: float) ->
             'half_cycle_1': 'phase [0.5,1.0): expected right stance / left swing',
         },
     }
-    (output_dir / 'summary.yaml').write_text(yaml.safe_dump(summary, sort_keys=False), encoding='utf-8')
+    (output_dir / 'summary.yaml').write_text(
+        yaml.safe_dump(summary, sort_keys=False),
+        encoding='utf-8',
+    )
 
 
 def default_paths() -> tuple[Path, Path]:
@@ -411,7 +479,11 @@ def main() -> int:
     args, ros_args = parser.parse_known_args()
 
     if args.duration_sec <= 0 or args.freshness_sec <= 0 or args.joint_velocity_limit_rad_s <= 0:
-        print('POLICY RUNTIME METRICS: REFUSED — duration, freshness, and velocity limit must be positive', file=sys.stderr)
+        print(
+            'POLICY RUNTIME METRICS: REFUSED — duration, freshness, and velocity '
+            'limit must be positive',
+            file=sys.stderr,
+        )
         return REFUSED_PRECONDITION
 
     output_dir = args.output_dir
@@ -450,13 +522,17 @@ def main() -> int:
 
     if node is None or not node.rows:
         print(
-            'POLICY RUNTIME METRICS: UNAVAILABLE — no synchronized policy debug samples were received.\n'
+            'POLICY RUNTIME METRICS: UNAVAILABLE — no synchronized policy debug '
+            'samples were received.\n'
             'Confirm publish_policy_debug:=true and that shadow/live policy inference is running.',
             file=sys.stderr,
         )
         return TIMEOUT_OR_UNAVAILABLE
 
-    print('POLICY RUNTIME METRICS: COMPLETE' if not interrupted else 'POLICY RUNTIME METRICS: OPERATOR ABORT')
+    print(
+        'POLICY RUNTIME METRICS: COMPLETE'
+        if not interrupted else 'POLICY RUNTIME METRICS: OPERATOR ABORT'
+    )
     print(f'samples: {len(node.rows)}')
     print(f'output: {output_dir}')
     return OPERATOR_ABORT if interrupted else PASS

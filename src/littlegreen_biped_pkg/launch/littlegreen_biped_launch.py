@@ -25,7 +25,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'onnx_model_path',
             default_value='',
-            description='Optional explicit ONNX override. Empty uses the model paired with policy_config.'
+            description=(
+                'Optional explicit ONNX override. Empty uses the model paired with '
+                'policy_config.'
+            )
         ),
         DeclareLaunchArgument(
             'joint_map',
@@ -88,7 +91,9 @@ def generate_launch_description():
                 LaunchConfiguration('policy_runtime_config'),
                 {
                     'use_sim': ParameterValue(LaunchConfiguration('use_sim'), value_type=bool),
-                    'override_imu': ParameterValue(LaunchConfiguration('override_imu'), value_type=bool),
+                    'override_imu': ParameterValue(
+                        LaunchConfiguration('override_imu'), value_type=bool
+                    ),
                     'policy_config_path': LaunchConfiguration('policy_config'),
                     'joint_map_path': LaunchConfiguration('joint_map'),
                     'onnx_model_path': LaunchConfiguration('onnx_model_path'),

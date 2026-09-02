@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Offline audit of a complete LittleGreen policy deployment bundle.
+"""
+Offline audit of a complete LittleGreen policy deployment bundle.
 
 The v2.9.0 audit consumes the exported Track 1 schema unchanged.  It validates the
 policy YAML, ONNX hash and tensor interface, deployment contract, checksum file,
@@ -73,7 +74,10 @@ def default_paths() -> tuple[Path, Path]:
             return share / 'configs/policy_latest.yaml', share / 'configs/joint_map.yaml'
         except Exception:
             pass
-    root = Path.home() / 'littlegreen_ros2_ws' / 'src' / 'littlegreen_biped_pkg' / 'src' / 'configs'
+    root = (
+        Path.home() / 'littlegreen_ros2_ws' / 'src' /
+        'littlegreen_biped_pkg' / 'src' / 'configs'
+    )
     return root / 'policy_latest.yaml', root / 'joint_map.yaml'
 
 
@@ -132,7 +136,13 @@ def validate_v231_observation_contract(
         errors.append('legacy_45d_checkpoint_support must be false for the v2.3.1 contract')
     if int(policy.get('observation_count', -1)) != PHASE_OBSERVATIONS:
         errors.append('observation_count must be 47')
-    if int(policy.get('critic_num_observations', policy.get('critic_observation_count', -1))) != 50:
+    critic_observations = int(
+        policy.get(
+            'critic_num_observations',
+            policy.get('critic_observation_count', -1),
+        )
+    )
+    if critic_observations != 50:
         errors.append('critic_num_observations must be 50')
     if int(policy.get('critic_observation_count', 50)) != 50:
         errors.append('critic_observation_count must be 50 when present')
@@ -145,7 +155,11 @@ def validate_v231_observation_contract(
             raise ValueError
     except (TypeError, ValueError):
         errors.append('phase_period_s must be finite and positive')
-    for key in ('phase_transition_fraction', 'phase_linear_command_threshold', 'phase_yaw_command_threshold'):
+    for key in (
+        'phase_transition_fraction',
+        'phase_linear_command_threshold',
+        'phase_yaw_command_threshold',
+    ):
         try:
             value = float(policy.get(key))
             if not math.isfinite(value) or value < 0.0:
@@ -156,7 +170,8 @@ def validate_v231_observation_contract(
     if role == 'stand':
         if mode != 'randomized_static_per_episode':
             errors.append('Stand bundle requires phase_mode: randomized_static_per_episode')
-        if policy.get('phase_reset_semantics') != 'sample_uniform_once_for_each_reset_environment_and_hold':
+        expected_reset = 'sample_uniform_once_for_each_reset_environment_and_hold'
+        if policy.get('phase_reset_semantics') != expected_reset:
             errors.append('Stand phase_reset_semantics does not match training')
         if policy.get('deployment_requires_random_static_phase_for_stand') is not True:
             errors.append('Stand bundle must require random-static phase deployment')
@@ -164,13 +179,17 @@ def validate_v231_observation_contract(
             errors.append('Stand bundle must not require the Walk phase generator')
     elif role == 'walk':
         if mode != 'command_synchronized_continuous_nonblocking':
-            errors.append('Walk bundle requires phase_mode: command_synchronized_continuous_nonblocking')
+            errors.append(
+                'Walk bundle requires phase_mode: '
+                'command_synchronized_continuous_nonblocking'
+            )
         stage_explicit = any(
             key in policy for key in ('phase_deployment_stage', 'deployment_stage')
         ) or policy.get('phase_period_pinned_for_deployment') is True
         if not stage_explicit:
             errors.append(
-                'Walk live deployment is blocked: export must explicitly pin checkpoint stage or period'
+                'Walk live deployment is blocked: export must explicitly pin '
+                'checkpoint stage or period'
             )
         if policy.get('deployment_requires_command_synchronized_phase_for_walk') is not True:
             errors.append('Walk bundle must require command-synchronized phase deployment')
@@ -191,7 +210,8 @@ def validate_observation_contract(
         return -1
     if count not in (LEGACY_OBSERVATIONS, PHASE_OBSERVATIONS):
         errors.append(
-            f'num_observations is {count}; supported contracts are 45-D legacy and 47-D shared phase'
+            f'num_observations is {count}; supported contracts are 45-D legacy '
+            'and 47-D shared phase'
         )
         return count
     if count == LEGACY_OBSERVATIONS:
@@ -278,7 +298,11 @@ def _protobuf_fields(buffer: bytes) -> Iterator[tuple[int, int, Any]]:
 
 
 def _length_fields(buffer: bytes, number: int) -> list[bytes]:
-    return [value for field, wire, value in _protobuf_fields(buffer) if field == number and wire == 2]
+    return [
+        value
+        for field, wire, value in _protobuf_fields(buffer)
+        if field == number and wire == 2
+    ]
 
 
 def _value_info(value_info: bytes) -> dict[str, Any]:
@@ -344,7 +368,11 @@ def resolve_probe(explicit: Path | None) -> Path | None:
 
 def probe_onnx_contract(onnx_path: Path, probe_path: Path) -> dict[str, Any]:
     completed = subprocess.run(
-        [str(probe_path), str(onnx_path)], check=False, capture_output=True, text=True, timeout=30.0
+        [str(probe_path), str(onnx_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30.0,
     )
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip() or 'no diagnostic output'
@@ -446,7 +474,9 @@ def validate_companion_bundle(
                 errors.append('deployment contract action joint order mismatch')
             if action.get('transform') != policy.get('action_transform'):
                 errors.append('deployment contract action transform mismatch')
-            if action.get('previous_action_observation') != policy.get('previous_action_observation'):
+            action_previous = action.get('previous_action_observation')
+            policy_previous = policy.get('previous_action_observation')
+            if action_previous != policy_previous:
                 errors.append('deployment contract previous-action semantics mismatch')
             for key in ('physics_dt', 'policy_dt', 'decimation'):
                 if timing.get(key) != policy.get(key):
@@ -474,7 +504,8 @@ def audit(
     if int(policy.get('num_actions', -1)) != NUM_ACTIONS:
         errors.append(f"num_actions is {policy.get('num_actions')}, expected {NUM_ACTIONS}")
     try:
-        if not math.isfinite(float(policy.get('policy_dt'))) or float(policy.get('policy_dt')) <= 0.0:
+        policy_dt = float(policy.get('policy_dt'))
+        if not math.isfinite(policy_dt) or policy_dt <= 0.0:
             raise ValueError
     except (TypeError, ValueError):
         errors.append('policy_dt must be finite and positive')
@@ -487,9 +518,15 @@ def audit(
         4: 'bounded_default_centered_vector_residual',
     }.get(version)
     if expected_transform and policy.get('action_transform') != expected_transform:
-        errors.append(f"action_transform is {policy.get('action_transform')!r}, expected {expected_transform!r}")
+        errors.append(
+            f"action_transform is {policy.get('action_transform')!r}, "
+            f"expected {expected_transform!r}"
+        )
 
-    entries = sorted(joint_map.get('joints', []), key=lambda item: int(item['policy_action_index']))
+    entries = sorted(
+        joint_map.get('joints', []),
+        key=lambda item: int(item['policy_action_index']),
+    )
     if len(entries) != NUM_ACTIONS:
         errors.append(f'joint_map has {len(entries)} action joints, expected {NUM_ACTIONS}')
         return errors, warnings, None
@@ -505,7 +542,11 @@ def audit(
     action_upper = require_scalar_or_sequence(policy, 'action_limit_upper', NUM_ACTIONS)
     indices = require_sequence(policy, 'action_indices', NUM_ACTIONS)
     sim_names = require_sequence(policy, 'joints', int(policy.get('num_joints', 0)))
-    sim_defaults = require_sequence(policy, 'default_joint_positions', int(policy.get('num_joints', 0)))
+    sim_defaults = require_sequence(
+        policy,
+        'default_joint_positions',
+        int(policy.get('num_joints', 0)),
+    )
 
     for i, entry in enumerate(entries):
         sim_index = int(indices[i])
@@ -519,14 +560,19 @@ def audit(
             errors.append(f'action[{i}] joint name mismatch')
         checks = (
             ('action_default_rad', float(defaults[i]), float(entry['default_joint_rad'])),
-            ('default_joint_positions[action_indices]', float(sim_defaults[sim_index]), float(entry['default_joint_rad'])),
+            (
+                'default_joint_positions[action_indices]',
+                float(sim_defaults[sim_index]),
+                float(entry['default_joint_rad']),
+            ),
             ('action_target_lower_rad', float(lower[i]), float(entry['limit_lower_rad'])),
             ('action_target_upper_rad', float(upper[i]), float(entry['limit_upper_rad'])),
         )
         for label, exported, mapped in checks:
             if not close(exported, mapped):
                 errors.append(
-                    f'action[{i}] {names[i]} {label} mismatch: policy={exported:.10f}, joint_map={mapped:.10f}'
+                    f'action[{i}] {names[i]} {label} mismatch: '
+                    f'policy={exported:.10f}, joint_map={mapped:.10f}'
                 )
         if float(scales[i]) <= 0.0:
             errors.append(f'action[{i}] {names[i]} residual scale must be positive')
@@ -537,7 +583,10 @@ def audit(
         errors.append('deployment_requires_action_contract_transform must be true')
     nonuniform = max(map(float, scales)) - min(map(float, scales)) > TOLERANCE_RAD
     if version == 3 and policy.get('deployment_requires_action_contract_v3_transform') is not True:
-        errors.append('contract v3 requires deployment_requires_action_contract_v3_transform: true')
+        errors.append(
+            'contract v3 requires '
+            'deployment_requires_action_contract_v3_transform: true'
+        )
     if version == 3 and nonuniform:
         errors.append('contract v3 requires a uniform residual scale')
     if version == 4 and not nonuniform:
@@ -546,7 +595,10 @@ def audit(
         nominal_lower = require_sequence(policy, 'action_nominal_residual_lower_rad', NUM_ACTIONS)
         nominal_upper = require_sequence(policy, 'action_nominal_residual_upper_rad', NUM_ACTIONS)
         if policy.get('deployment_requires_action_contract_v4_transform') is not True:
-            errors.append('contract v4 requires deployment_requires_action_contract_v4_transform: true')
+            errors.append(
+                'contract v4 requires '
+                'deployment_requires_action_contract_v4_transform: true'
+            )
         for i in range(NUM_ACTIONS):
             expected_lower = max(float(lower[i]), float(defaults[i]) - float(scales[i]))
             expected_upper = min(float(upper[i]), float(defaults[i]) + float(scales[i]))
@@ -560,7 +612,10 @@ def audit(
     if onnx_override is not None:
         onnx_path = onnx_override
     else:
-        relative = policy.get('policy_checkpoint_relative_path') or policy.get('policy_checkpoint_filename')
+        relative = (
+            policy.get('policy_checkpoint_relative_path') or
+            policy.get('policy_checkpoint_filename')
+        )
         if not relative:
             raise ValueError('policy YAML has no relative ONNX path or filename')
         onnx_path = (policy_path.parent / str(relative)).resolve()
@@ -585,7 +640,10 @@ def audit(
             except (OSError, ValueError, json.JSONDecodeError, subprocess.TimeoutExpired) as exc:
                 errors.append(f'ONNX tensor-interface inspection failed: {exc}')
 
-        require_complete = observations == PHASE_OBSERVATIONS and policy.get('observation_contract_name') == V231_CONTRACT_NAME
+        require_complete = (
+            observations == PHASE_OBSERVATIONS and
+            policy.get('observation_contract_name') == V231_CONTRACT_NAME
+        )
         directory = policy_path.parent
         validate_companion_bundle(
             policy, policy_path, onnx_path,
@@ -612,7 +670,11 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        probe = resolve_probe(args.onnx_shape_probe.expanduser().resolve() if args.onnx_shape_probe else None)
+        explicit_probe = (
+            args.onnx_shape_probe.expanduser().resolve()
+            if args.onnx_shape_probe else None
+        )
+        probe = resolve_probe(explicit_probe)
         errors, warnings, shape_info = audit(
             args.policy_yaml.expanduser().resolve(),
             args.joint_map.expanduser().resolve(),
@@ -646,8 +708,14 @@ def main() -> int:
         f"{policy.get('observation_contract_name', 'legacy_45_compatibility')}"
     )
     print(f"phase_mode: {policy.get('phase_mode', 'none')}")
-    print(f"interface: obs[{policy.get('num_observations')}] -> actions[{policy.get('num_actions')}]")
-    print(f"action_contract: v{policy['action_contract_version']} {policy.get('deployment_contract_profile', '')}")
+    print(
+        f"interface: obs[{policy.get('num_observations')}] -> "
+        f"actions[{policy.get('num_actions')}]"
+    )
+    print(
+        f"action_contract: v{policy['action_contract_version']} "
+        f"{policy.get('deployment_contract_profile', '')}"
+    )
     print(f"policy_dt: {policy.get('policy_dt')} s")
     print(f"policy_sha256: {policy.get('policy_sha256')}")
     if shape_info is not None:

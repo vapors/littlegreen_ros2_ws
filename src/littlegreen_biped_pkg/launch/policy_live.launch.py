@@ -29,7 +29,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'onnx_model_path',
             default_value='',
-            description='Optional explicit ONNX override. Empty uses the model paired with policy_config.',
+            description=(
+                'Optional explicit ONNX override. Empty uses the model paired with '
+                'policy_config.'
+            ),
         ),
         DeclareLaunchArgument(
             'pd_config',
@@ -39,7 +42,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'controller_mode',
             default_value='safety_only',
-            description='Initial live deployment must use safety_only. outer_pd/outer_pid are experimental.',
+            description=(
+                'Initial live deployment must use safety_only. outer_pd/outer_pid '
+                'are experimental.'
+            ),
         ),
         DeclareLaunchArgument(
             'use_sim',
@@ -49,7 +55,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'override_imu',
             default_value='false',
-            description='Use nominal IMU values instead of /imu/data. Not recommended for live hardware.',
+            description=(
+                'Use nominal IMU values instead of /imu/data. Not recommended for '
+                'live hardware.'
+            ),
         ),
         Node(
             package='littlegreen_biped_pkg',

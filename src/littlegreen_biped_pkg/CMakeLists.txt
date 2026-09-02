@@ -40,7 +40,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 set(ONNXRUNTIME_VERSION "1.22.0")
 
 if(DEFINED ENV{ONNXRUNTIME_DIR} AND
-   NOT "$ENV{ONNXRUNTIME_DIR}" STREQUAL "")
+  NOT "$ENV{ONNXRUNTIME_DIR}" STREQUAL "")
 
   set(ONNXRUNTIME_DIR "$ENV{ONNXRUNTIME_DIR}")
 
@@ -136,7 +136,7 @@ ament_target_dependencies(littlegreen_biped_node
   yaml-cpp
 )
 
-# Compile the runtime and tensor-contract probe with the v2.9.0 contract helpers.
+# Compile the runtime and tensor-contract probe with the v2.9.1 contract helpers.
 target_compile_features(littlegreen_biped_node PUBLIC cxx_std_17)
 target_compile_features(policy_onnx_contract_probe PUBLIC cxx_std_17)
 

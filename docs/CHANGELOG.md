@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.9.1
+
+- Fixed ONNX Runtime tensor metadata lifetime handling in both the policy node and offline shape probe.
+- Retained owning `Ort::TypeInfo` objects while reading non-owning tensor shape views, eliminating the Orange Pi `std::vector larger than max_size()` startup failure.
+- Retained allocated ONNX input/output name holders until the names are copied.
+- Applied the ROS 2 Humble `ament_uncrustify` formatting reported by the Orange Pi test run.
+- Corrected flake8, pep257, and CMake lint failures without changing policy, action, phase, driver, calibration, or safety semantics.
+- Preserved the unmodified v2.3.1 five-file policy bundle and all hardware maps.
+
 ## 2.9.0
 
 - Packaged the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand five-file bundle.

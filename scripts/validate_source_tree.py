@@ -18,7 +18,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 TOOLS = ROOT / "tools"
-EXPECTED_WORKSPACE_VERSION = "2.9.0"
+EXPECTED_WORKSPACE_VERSION = "2.9.1"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -99,8 +99,8 @@ biped_package_xml = SRC / "littlegreen_biped_pkg/package.xml"
 if biped_package_xml.is_file():
     try:
         biped_tree = ET.parse(biped_package_xml)
-        if biped_tree.findtext("version") != "0.7.0":
-            fail("littlegreen_biped_pkg package version must be 0.7.0 for workspace v2.9.0")
+        if biped_tree.findtext("version") != "0.7.1":
+            fail("littlegreen_biped_pkg package version must be 0.7.1 for workspace v2.9.1")
     except Exception as exc:
         fail(f"unable to validate littlegreen_biped_pkg version: {exc}")
 
@@ -230,7 +230,31 @@ if policy_node.is_file():
     ]
     for token in required_contract_tokens:
         if token not in policy_text:
-            fail(f"policy node is missing v2.9.0 policy-contract token: {token}")
+            fail(f"policy node is missing v2.9.1 policy-contract token: {token}")
+    if "GetInputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
+        fail("policy node must retain owning ONNX input TypeInfo during shape inspection")
+    if "GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
+        fail("policy node must retain owning ONNX output TypeInfo during shape inspection")
+    for token in [
+        "const auto input_type_info = session_->GetInputTypeInfo(0)",
+        "const auto output_type_info = session_->GetOutputTypeInfo(0)",
+    ]:
+        if token not in policy_text:
+            fail(f"policy node is missing ONNX metadata lifetime guard: {token}")
+
+onnx_probe = SRC / "littlegreen_biped_pkg/src/policy_onnx_contract_probe.cpp"
+if onnx_probe.is_file():
+    probe_text = onnx_probe.read_text(encoding="utf-8")
+    if "GetInputTypeInfo(0).GetTensorTypeAndShapeInfo()" in probe_text:
+        fail("ONNX probe must retain owning input TypeInfo during shape inspection")
+    if "GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo()" in probe_text:
+        fail("ONNX probe must retain owning output TypeInfo during shape inspection")
+    for token in [
+        "const auto input_type_info = session.GetInputTypeInfo(0)",
+        "const auto output_type_info = session.GetOutputTypeInfo(0)",
+    ]:
+        if token not in probe_text:
+            fail(f"ONNX probe is missing metadata lifetime guard: {token}")
 
 observation_header = SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_observation_contract.hpp"
 phase_header = SRC / "littlegreen_biped_pkg/include/littlegreen_biped_pkg/policy_phase_state.hpp"

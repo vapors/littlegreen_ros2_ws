@@ -28,7 +28,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'onnx_model_path',
             default_value='',
-            description='Optional explicit ONNX override. Empty uses the model paired with policy_config.',
+            description=(
+                'Optional explicit ONNX override. Empty uses the model paired with '
+                'policy_config.'
+            ),
         ),
         DeclareLaunchArgument(
             'use_sim',
@@ -48,17 +51,26 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'enable_phase_test_override',
             default_value='false',
-            description='Test/replay only. Enable deterministic Stand phase injection in shadow mode.',
+            description=(
+                'Test/replay only. Enable deterministic Stand phase injection in '
+                'shadow mode.'
+            ),
         ),
         DeclareLaunchArgument(
             'phase_test_fixed_value',
             default_value='-1.0',
-            description='Fixed phase in [0,1) when the test override is enabled; negative disables it.',
+            description=(
+                'Fixed phase in [0,1) when the test override is enabled; negative '
+                'disables it.'
+            ),
         ),
         DeclareLaunchArgument(
             'phase_test_seed',
             default_value='-1',
-            description='Deterministic phase seed when the test override is enabled; negative disables it.',
+            description=(
+                'Deterministic phase seed when the test override is enabled; '
+                'negative disables it.'
+            ),
         ),
         Node(
             package='littlegreen_biped_pkg',

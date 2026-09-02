@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
 import importlib.util
-import json
 from pathlib import Path
 
 import yaml
@@ -82,6 +80,7 @@ def test_legacy_45_bundle_remains_compatible(tmp_path: Path) -> None:
 
 def test_old_v280_47_contract_remains_a_separate_compatibility_path(tmp_path: Path) -> None:
     policy_path, onnx_path = copy_v231_bundle(tmp_path)
+
     def mutate(policy):
         policy.update({
             'observation_contract_version': 2,
@@ -120,6 +119,7 @@ def test_v231_compact_layout_mismatch_is_rejected(tmp_path: Path) -> None:
 
 def test_v231_layout_ranges_mismatch_is_rejected(tmp_path: Path) -> None:
     policy_path, onnx_path = copy_v231_bundle(tmp_path)
+
     def mutate(policy):
         policy['observation_layout_ranges']['phase_sin_cos'] = [44, 46]
     rewrite_policy(policy_path, mutate)
@@ -132,7 +132,9 @@ def test_stand_phase_mode_mismatch_is_rejected(tmp_path: Path) -> None:
     policy_path, onnx_path = copy_v231_bundle(tmp_path)
     rewrite_policy(
         policy_path,
-        lambda policy: policy.__setitem__('phase_mode', 'command_synchronized_continuous_nonblocking'),
+        lambda policy: policy.__setitem__(
+            'phase_mode', 'command_synchronized_continuous_nonblocking'
+        ),
     )
     probe = make_probe(tmp_path / 'probe', 47)
     errors, _, _ = AUDIT.audit(policy_path, JOINT_MAP, onnx_path, probe)
@@ -141,6 +143,7 @@ def test_stand_phase_mode_mismatch_is_rejected(tmp_path: Path) -> None:
 
 def test_walk_without_explicit_stage_is_rejected(tmp_path: Path) -> None:
     policy_path, onnx_path = copy_v231_bundle(tmp_path)
+
     def mutate(policy):
         policy['metadata']['task_role'] = 'walk'
         policy['phase_mode'] = 'command_synchronized_continuous_nonblocking'

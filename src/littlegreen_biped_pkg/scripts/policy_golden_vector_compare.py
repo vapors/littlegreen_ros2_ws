@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Compare Track 1 golden vectors with the Track 2 47-D/action-v4 contract.
+"""
+Compare Track 1 golden vectors with the Track 2 47-D/action-v4 contract.
 
 The fixture is transport-neutral YAML.  It can contain Track 1 observations, raw
 actor outputs, and q-targets.  ONNX inference is optional and is used when the
@@ -76,14 +77,18 @@ def run_onnx(path: Path, observation: list[float]) -> list[float]:
         import onnxruntime as ort
     except ImportError as exc:
         raise ValueError(
-            'onnxruntime Python package is unavailable; use --skip-onnx or run on the Orange Pi validation host'
+            'onnxruntime Python package is unavailable; use --skip-onnx or run '
+            'on the Orange Pi validation host'
         ) from exc
     session = ort.InferenceSession(str(path), providers=['CPUExecutionProvider'])
     inputs = session.get_inputs()
     outputs = session.get_outputs()
     if len(inputs) != 1 or len(outputs) != 1:
         raise ValueError('ONNX model must expose one input and one output')
-    raw = session.run([outputs[0].name], {inputs[0].name: np.asarray([observation], dtype=np.float32)})[0]
+    raw = session.run(
+        [outputs[0].name],
+        {inputs[0].name: np.asarray([observation], dtype=np.float32)},
+    )[0]
     return [float(value) for value in raw.reshape(-1)]
 
 
@@ -114,7 +119,10 @@ def main() -> int:
             if expected_observation is not None:
                 expected = [float(value) for value in expected_observation]
                 difference = max_abs_difference(observation, expected)
-                print(f'{name}: Track1 observation vs Track2 builder max_abs_diff={difference:.9g}')
+                print(
+                    f'{name}: Track1 observation vs Track2 builder '
+                    f'max_abs_diff={difference:.9g}'
+                )
                 if difference > args.tolerance:
                     failures.append(f'{name} observation mismatch {difference:.9g}')
 
@@ -123,7 +131,9 @@ def main() -> int:
                 raw_action = run_onnx(args.onnx, observation)
                 expected_raw = vector.get('track1_raw_action')
                 if expected_raw is not None:
-                    difference = max_abs_difference(raw_action, [float(value) for value in expected_raw])
+                    difference = max_abs_difference(
+                        raw_action, [float(value) for value in expected_raw]
+                    )
                     print(f'{name}: Track1 raw action vs ONNX max_abs_diff={difference:.9g}')
                     if difference > args.tolerance:
                         failures.append(f'{name} raw-action mismatch {difference:.9g}')
@@ -135,12 +145,16 @@ def main() -> int:
                 expected_bounded = vector.get('track1_bounded_action')
                 expected_target = vector.get('track1_q_target')
                 if expected_bounded is not None:
-                    difference = max_abs_difference(bounded, [float(value) for value in expected_bounded])
+                    difference = max_abs_difference(
+                        bounded, [float(value) for value in expected_bounded]
+                    )
                     print(f'{name}: bounded-action max_abs_diff={difference:.9g}')
                     if difference > args.tolerance:
                         failures.append(f'{name} bounded-action mismatch {difference:.9g}')
                 if expected_target is not None:
-                    difference = max_abs_difference(target, [float(value) for value in expected_target])
+                    difference = max_abs_difference(
+                        target, [float(value) for value in expected_target]
+                    )
                     print(f'{name}: q-target max_abs_diff={difference:.9g}')
                     if difference > args.tolerance:
                         failures.append(f'{name} q-target mismatch {difference:.9g}')

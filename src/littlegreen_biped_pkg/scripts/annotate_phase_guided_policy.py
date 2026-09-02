@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Add the canonical v1.4.7 47-D observation metadata to a genuine exported policy YAML.
+"""
+Add the canonical v1.4.7 47-D observation metadata to a genuine exported policy YAML.
 
 This tool never changes num_observations, action fields, ONNX bytes, or policy_sha256.
 It refuses 45-D bundles and unexpected Track 1 tasks.
@@ -58,7 +59,10 @@ def annotate(policy: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f'refusing bundle: task is {task!r}, expected {EXPECTED_TASK!r}')
     checksum = str(policy.get('policy_sha256', '')).strip().lower()
     if not re.fullmatch(r'[0-9a-f]{64}', checksum):
-        raise ValueError('refusing bundle: policy_sha256 must be 64 lowercase/uppercase hex characters')
+        raise ValueError(
+            'refusing bundle: policy_sha256 must be 64 lowercase/uppercase hex '
+            'characters'
+        )
 
     annotated = dict(policy)
     annotated.update(PHASE_FIELDS)
