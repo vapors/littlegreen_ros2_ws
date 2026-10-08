@@ -1,0 +1,6 @@
+{
+  "checkpoint": "/home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v10_2_st3215_tracking_wide_command_exploration/2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113/model_10000.pt",
+  "status": "complete",
+  "steps": 2000,
+  "task": "Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102"
+}

@@ -1,0 +1,483 @@
+{
+  "action_count": 12,
+  "bilateral_world_rate_v101": {
+    "definition": "v10.1 keeps v10.0 per-exchange WORLD-rate arithmetic and +2.00 weight, then couples consecutive opposite-leg rate quality with a 50% geometric-mean pair score",
+    "events": 0,
+    "left": {
+      "events": 0,
+      "mean_dense_score": 0.0,
+      "pair_valid_fraction": 0.0
+    },
+    "mean_current_quality": 0.0,
+    "mean_current_signed_score": 0.0,
+    "mean_dense_pair_sensitive_score_before_viability": 0.0,
+    "mean_pair_quality": 0.0,
+    "mean_pair_signed_score": 0.0,
+    "pair_valid_fraction": 0.0,
+    "right": {
+      "events": 0,
+      "mean_dense_score": 0.0,
+      "pair_valid_fraction": 0.0
+    }
+  },
+  "checkpoint": "/home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v10_2_st3215_tracking_wide_command_exploration/2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113/model_10000.pt",
+  "com_lateral_bridge_v99": {
+    "definition": "active reward diagnostic: body-yaw lateral (+/-Y) COM velocity relative to the loaded stance foot, signed toward the stance side; command-parallel COM velocity is diagnostic only",
+    "interpretation": "for forward/reverse commands the COM bridge shapes left/right unloading without directly paying sagittal motion; acceleration must be earned through dense WORLD-rate feedback",
+    "mean_abs_lateral_stance_offset_m": 0.0,
+    "mean_lateral_closeness": 0.0,
+    "mean_relative_com_lateral_velocity_toward_stance_m_s": 0.0,
+    "mean_relative_com_velocity_along_command_m_s": 0.0,
+    "reward_gate_samples": 0
+  },
+  "confirmed_step_sequence": {
+    "alternating_confirmed_count": 0,
+    "confirmation_duration_s": 0.16,
+    "confirmation_min_viability": 0.55,
+    "confirmed_steps_left": 0,
+    "confirmed_steps_right": 0,
+    "first_confirmed_count": 0,
+    "immediate_credit_fraction": 0.3,
+    "landing_completions_left": 0,
+    "landing_completions_right": 0,
+    "left": {
+      "mean_landing_progress_m": 0.0,
+      "mean_swing_coherence": 0.0,
+      "mean_velocity_ratio": 0.0
+    },
+    "low_viability_releases_left": 0,
+    "low_viability_releases_right": 0,
+    "raw_whole_foot_releases_left": 0,
+    "raw_whole_foot_releases_right": 0,
+    "repeated_same_foot_confirmed_count": 0,
+    "right": {
+      "mean_landing_progress_m": 0.0,
+      "mean_swing_coherence": 0.0,
+      "mean_velocity_ratio": 0.0
+    },
+    "sequence_multipliers": {
+      "first": 1.0,
+      "opposite": 2.0,
+      "repeat": 0.1
+    },
+    "viability_qualified_swings_left": 0,
+    "viability_qualified_swings_right": 0
+  },
+  "contact": {
+    "both_feet_any_contact_fraction": 0.988814453125,
+    "no_support_fraction": 0.0006484375,
+    "partial_main_or_toe_contact_fraction": 0.06194921875,
+    "single_support_any_contact_fraction": 0.010537109375
+  },
+  "counterfactual_planar_com_audit_v98": {
+    "definition": "counterfactual diagnostic only: decomposes the retired v9.8 WORLD-XY COM->stance direction into command-parallel and command-orthogonal components; this geometry no longer receives reward",
+    "fraction_gate_direction_points_backward": 0.3763440860215054,
+    "interpretation": "negative direction-dot-command or high backward fraction describes the v9.8 coupling that v9.9 intentionally removes",
+    "mean_abs_stance_lateral_offset_m": 0.09262164917484086,
+    "mean_relative_com_lateral_velocity_toward_stance_m_s": 3.091808094302573e-05,
+    "mean_relative_com_velocity_along_command_m_s": -0.0026724799173153055,
+    "mean_stance_offset_along_command_m": 0.021419421474259067,
+    "mean_toward_stance_direction_dot_command": 0.1880386584909052,
+    "reward_gate_samples": 186
+  },
+  "done_count": 549,
+  "economics_v100": {
+    "definition": "v9.9 mechanics preserved; only four weights change to protect whole-foot gait acquisition while making useful bilateral/world progression more important",
+    "v99_weights": {
+      "bilateral_passage": 0.8,
+      "commanded_world_rate": 1.5,
+      "completed_gait_step": 2.75,
+      "opposite_support_release": 2.2
+    },
+    "weights": {
+      "bilateral_passage": 1.1,
+      "commanded_world_rate": 2.0,
+      "completed_gait_step": 1.85,
+      "opposite_support_release": 1.8
+    }
+  },
+  "economics_v102": {
+    "configured_general_ranges": {
+      "ang_vel_z_rad_s": [
+        -0.5,
+        0.5
+      ],
+      "lin_vel_x_m_s": [
+        -0.45,
+        0.65
+      ],
+      "lin_vel_y_m_s": [
+        -0.3,
+        0.3
+      ]
+    },
+    "definition": "v10.1 gait/turn/bilateral WORLD-rate economics preserved; existing planar acquisition increases 0.80->1.20 and general vx/vy command ranges widen; no new reward term",
+    "weights": {
+      "bilateral_passage": 1.1,
+      "commanded_world_rate": 2.0,
+      "completed_gait_step": 1.85,
+      "opposite_support_release": 1.8,
+      "track_lin_vel_xy_acquisition": 1.2,
+      "yaw_acquisition": 0.55
+    },
+    "world_rate_bilateral_mix": 0.5
+  },
+  "forced_command": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "hip_pitch_contract_v102": {
+    "definition": "source-contract audit; left/right hip pitch have identical active q_default and residual authority; captured physical envelopes differ slightly but neither clips the +/-0.42 rad policy target window",
+    "left": {
+      "peak_velocity_large_step_rad_s": 0.9022010275417774,
+      "physical_lower_rad": -1.92207792722071,
+      "physical_span_rad": 2.603165397041935,
+      "physical_upper_rad": 0.681087469821225,
+      "policy_target_lower_rad": -0.66,
+      "policy_target_upper_rad": 0.18,
+      "q_default_rad": -0.24,
+      "residual_scale_rad": 0.42,
+      "tau_median_s": 0.07368140888732962
+    },
+    "loaded_return_tau_scale_identical": true,
+    "physical_span_difference_percent_of_mean": 2.566,
+    "physical_span_difference_rad": 0.065961173879087,
+    "right": {
+      "peak_velocity_large_step_rad_s": 0.9010160816263557,
+      "physical_lower_rad": -1.99110706267556,
+      "physical_span_rad": 2.537204223162848,
+      "physical_upper_rad": 0.546097160487288,
+      "policy_target_lower_rad": -0.66,
+      "policy_target_upper_rad": 0.18,
+      "q_default_rad": -0.24,
+      "residual_scale_rad": 0.42,
+      "tau_median_s": 0.07369036518620001
+    },
+    "urdf_nominal_limits_identical": true
+  },
+  "locomotion_economics_v98": {
+    "command_epoch_reset_samples": 256,
+    "definition": "v9.8: v9.7 arithmetic re-clocked onto every validated v6.3 confirmed-step mechanical support-takeover exchange; passage and WORLD support-frontier rate are evaluated at physical gait frequency",
+    "dense_bilateral_passage": {
+      "events": 0,
+      "left": {
+        "events": 0,
+        "mean_current_signed_score": 0.0,
+        "mean_pass_margin_m": 0.0,
+        "mean_quality": 0.0
+      },
+      "mean_current_quality": 0.0,
+      "mean_current_signed_score": 0.0,
+      "mean_dense_reward_score_before_viability": 0.0,
+      "mean_pair_quality": 0.0,
+      "mean_pair_signed_score": 0.0,
+      "mean_pass_margin_m": 0.0,
+      "pair_valid_fraction": 0.0,
+      "right": {
+        "events": 0,
+        "mean_current_signed_score": 0.0,
+        "mean_pass_margin_m": 0.0,
+        "mean_quality": 0.0
+      }
+    },
+    "dense_step_support_world_rate": {
+      "alternating_event_fraction": 0.0,
+      "events": 0,
+      "left": {
+        "events": 0,
+        "mean_command_m_s": 0.0,
+        "mean_exchange_time_s": 0.0,
+        "mean_rate_ratio": 0.0,
+        "mean_signed_score": 0.0,
+        "mean_world_advance_m": 0.0,
+        "mean_world_rate_m_s": 0.0
+      },
+      "neutral_rate_ratio": 0.2,
+      "rate_softness_ratio": 0.12,
+      "right": {
+        "events": 0,
+        "mean_command_m_s": 0.0,
+        "mean_exchange_time_s": 0.0,
+        "mean_rate_ratio": 0.0,
+        "mean_signed_score": 0.0,
+        "mean_world_advance_m": 0.0,
+        "mean_world_rate_m_s": 0.0
+      }
+    },
+    "event_density": {
+      "dense_passage_events": 0,
+      "dense_passage_to_v63_handoff_ratio": 0.0,
+      "dense_world_rate_events": 0,
+      "dense_world_rate_to_v63_handoff_ratio": 0.0,
+      "v63_confirmed_steps": 0,
+      "v63_handoff_to_confirmed_step_ratio": 0.0,
+      "v63_mechanical_support_handoffs": 0,
+      "v66_support_baton_handoffs": 0
+    }
+  },
+  "num_envs": 256,
+  "policy_observation_count": 47,
+  "posture": {
+    "mean_abs_com_lateral_offset_m": 0.01032534187094567,
+    "mean_base_com_height_m": 0.4515520105730975,
+    "mean_com_forward_offset_m": -0.05972228699320674,
+    "mean_loaded_foot_speed_proxy_m_s": 0.07813639832995019
+  },
+  "release": "10.2.0",
+  "standing_probe": {
+    "bilateral_main_toe_full_plant_fraction": 0.939546875,
+    "both_feet_any_contact_fraction": 0.9919453125,
+    "done_count": 77,
+    "height_deficit_full_penalty_m": 0.405,
+    "height_deficit_zero_penalty_m": 0.445,
+    "mean_abs_com_lateral_offset_m": 0.009570833178293306,
+    "mean_actionable_joint_velocity_l2": 0.49637541079024067,
+    "mean_base_com_height_m": 0.4515559651775984,
+    "mean_left_right_vertical_load_imbalance_fraction": 0.11067157460680935,
+    "steps": 500
+  },
+  "steps": 2000,
+  "support_baton_v66": {
+    "definition": "event-driven support readiness -> whole-foot swing -> loaded replant -> load+COM takeover -> handoff -> old-support release; first side free, continuation side comes from handoff",
+    "expected_swing_fraction_free": 1.0,
+    "expected_swing_fraction_left": 0.0,
+    "expected_swing_fraction_right": 0.0,
+    "handoff_to_old_support_release_ratio": 0.0,
+    "loaded_replant_events_left": 0,
+    "loaded_replant_events_right": 0,
+    "mean_directional_trajectory_delta_per_moving_sample": 0.0,
+    "mean_milestone_level": 0.0,
+    "mean_support_readiness_delta_per_moving_sample": 0.0,
+    "mean_takeover_best_score": 0.0,
+    "mean_takeover_delta_per_moving_sample": 0.0,
+    "old_support_release_events_left": 0,
+    "old_support_release_events_right": 0,
+    "pending_old_support_release_fraction": 0.0,
+    "readiness_mean_candidate_stance_com_closeness": 0.5101594676864543,
+    "readiness_mean_candidate_stance_load_share": 0.60956867175725,
+    "stage_fraction_ready": 1.0,
+    "stage_fraction_swing": 0.0,
+    "stage_fraction_takeover": 0.0,
+    "support_handoff_events_left": 0,
+    "support_handoff_events_right": 0,
+    "swing_start_events_left": 0,
+    "swing_start_events_right": 0,
+    "takeover_mean_new_foot_com_closeness": 0.0,
+    "takeover_mean_new_foot_load_share": 0.0,
+    "takeover_new_foot_com_closeness_ge_0p56_fraction": 0.0,
+    "takeover_new_foot_load_ge_0p50_fraction": 0.0
+  },
+  "support_takeover": {
+    "handoff_events_left": 0,
+    "handoff_events_right": 0,
+    "handoff_load_threshold": 0.47,
+    "mean_viability_gated_score": 0.0,
+    "new_foot_load_ge_0p50_fraction": 0.0,
+    "opposite_release_events_left": 0,
+    "opposite_release_events_right": 0,
+    "starts_after_confirmed_step": true
+  },
+  "support_translation_v69": {
+    "definition": "v6.9: support-foot retreat is tracked from touchdown through takeover; support advance is new-vs-old stance at successful handoff; COM advance is measured only between consecutive direction-consistent successful handoffs",
+    "direction_consistent_com_cycles": 0,
+    "handoff_events_sampled": 0,
+    "mean_com_progress_horizon_m": 0.0,
+    "mean_com_progress_score": 0.0,
+    "mean_handoff_progress_retention_ratio": 0.0,
+    "mean_handoff_to_handoff_com_advance_m": 0.0,
+    "mean_post_touchdown_retreat_m": 0.0,
+    "mean_support_progress_horizon_m": 0.0,
+    "mean_support_progress_score": 0.0,
+    "mean_support_to_support_advance_m": 0.0,
+    "post_touchdown_retreat_gt_12mm_fraction": 0.0,
+    "post_touchdown_retreat_gt_5mm_fraction": 0.0,
+    "takeover_samples": 0
+  },
+  "swing_commitment_v67": {
+    "candidate_samples": 116,
+    "definition": "candidate swing foot is lower-load foot; 3/10/22/40mm whole-foot ladder; directional velocity is swing-foot center velocity relative to stance-foot center; COM drive is base velocity relative to stance foot toward that foot",
+    "mean_base_along_command_at_ge_18mm_swing_m_s": 0.0,
+    "mean_base_along_command_before_10mm_swing_m_s": -0.002074332843574588,
+    "mean_coherent_swing_rise_m_s": -0.0027764270248710468,
+    "mean_com_velocity_toward_stance_relative_to_stance_foot_m_s": 0.01468186266720295,
+    "mean_ready_no_lift_timer_s": 0.0,
+    "mean_stance_foot_xy_speed_during_ready_m_s": 0.10650373250246048,
+    "mean_stance_relative_swing_foot_command_velocity_m_s": 0.00048526377649977804,
+    "positive_stance_relative_swing_foot_command_velocity_fraction": 0.6,
+    "ready_no_lift_timer_ge_0p18_fraction": 0.0,
+    "stance_relative_swing_foot_command_velocity_ge_0p20_fraction": 0.0,
+    "whole_clearance_ge_10mm_fraction": 0.0,
+    "whole_clearance_ge_22mm_fraction": 0.0,
+    "whole_clearance_ge_3mm_fraction": 0.08620689655172414,
+    "whole_clearance_ge_40mm_fraction": 0.0,
+    "whole_clearance_ge_50mm_fraction": 0.0,
+    "whole_clearance_ge_60mm_fraction": 0.0
+  },
+  "swing_frontier_v68": {
+    "backtrack_gt_14mm_fraction": 0.0,
+    "backtrack_gt_6mm_fraction": 0.0,
+    "definition": "v6.8: commanded planar speed softly scales useful stride horizon and target stance-relative swing speed; positive velocity fades behind the remembered directional frontier; touchdown records retained peak progress",
+    "loaded_replant_events_sampled": 0,
+    "mean_backtrack_from_frontier_m": 0.0,
+    "mean_frontier_velocity_credit_factor": 0.0,
+    "mean_peak_directional_progress_m": 0.0,
+    "mean_soft_stride_horizon_m": 0.0,
+    "mean_target_stance_relative_swing_speed_m_s": 0.0,
+    "mean_touchdown_directional_progress_m": 0.0,
+    "mean_touchdown_progress_retention_ratio": 0.0,
+    "mean_touchdown_soft_stride_horizon_m": 0.0,
+    "swing_stage_samples": 0
+  },
+  "swing_initiation": {
+    "definition": "legacy v6.4-style diagnostic retained for longitudinal comparison; v6.7 lineage clearance/foot-relative metrics are retained in swing_commitment_v67; v6.8 frontier metrics are in swing_frontier_v68",
+    "left": {
+      "bridge_active_fraction": 0.41494845360824745,
+      "coherent_rise_gt_0p02_mps_fraction": 0.06701030927835051,
+      "load_share_le_0p45_fraction": 0.4020618556701031,
+      "mean_bridge_score": 0.002107820779168758,
+      "mean_hip_pitch_at_raw_liftoff_rad": 0.0,
+      "mean_knee_pitch_at_raw_liftoff_rad": 0.0,
+      "whole_clearance_ge_10mm_fraction": 0.0,
+      "whole_clearance_ge_15mm_fraction": 0.0,
+      "whole_clearance_ge_2mm_fraction": 0.11855670103092783,
+      "whole_clearance_ge_5mm_fraction": 0.03350515463917526
+    },
+    "right": {
+      "bridge_active_fraction": 0.47706422018348627,
+      "coherent_rise_gt_0p02_mps_fraction": 0.11926605504587157,
+      "load_share_le_0p45_fraction": 0.009174311926605505,
+      "mean_bridge_score": 0.0006247943822660474,
+      "mean_hip_pitch_at_raw_liftoff_rad": 0.0,
+      "mean_knee_pitch_at_raw_liftoff_rad": 0.0,
+      "whole_clearance_ge_10mm_fraction": 0.0,
+      "whole_clearance_ge_15mm_fraction": 0.0,
+      "whole_clearance_ge_2mm_fraction": 0.1926605504587156,
+      "whole_clearance_ge_5mm_fraction": 0.027522935779816515
+    }
+  },
+  "swing_joint_diagnostics_v98": {
+    "definition": "diagnostic only; event-aligned hip-pitch/knee-pitch/ankle-pitch pose and excursion across the v6.6 swing baton; no joint-specific reward is active",
+    "left": {
+      "handoff_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "mean_swing_excursion_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "peak_deviation_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "replant_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "start_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "swing_samples": 0
+    },
+    "right": {
+      "handoff_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "mean_swing_excursion_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "peak_deviation_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "replant_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "start_pose_rad": {
+        "ankle_pitch": 0.0,
+        "hip_pitch": 0.0,
+        "knee_pitch": 0.0
+      },
+      "swing_samples": 0
+    }
+  },
+  "task": "Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102",
+  "turn_tracking_v102": {
+    "configured_general_ranges": {
+      "ang_vel_z_rad_s": [
+        -0.5,
+        0.5
+      ],
+      "lin_vel_x_m_s": [
+        -0.45,
+        0.65
+      ],
+      "lin_vel_y_m_s": [
+        -0.3,
+        0.3
+      ]
+    },
+    "configured_turn_focus_probability_nonstanding": 0.125,
+    "configured_turn_focus_ranges": {
+      "abs_ang_vel_z_rad_s": [
+        0.3,
+        0.5
+      ],
+      "lin_vel_x_m_s": [
+        0.1,
+        0.3
+      ],
+      "lin_vel_y_m_s": [
+        -0.08,
+        0.08
+      ]
+    },
+    "correct_yaw_direction_fraction": 0.0,
+    "definition": "existing fall-neutral track_ang_vel_z_acquisition_v63 only; v10.2 preserves direct yaw-rate commands at +/-0.50 rad/s, raises its existing weight 0.35->0.55, and reserves 12.5% of non-standing resamples for forward high-yaw turns",
+    "mean_abs_yaw_command_rad_s": 0.3276424923290809,
+    "mean_actual_yaw_rate_in_command_direction_rad_s": 0.0,
+    "mean_signed_yaw_rate_ratio": 0.0,
+    "random_turn_focus_sample_fraction": null,
+    "strong_turn_fraction_of_yaw_active": 0.5225225225225225,
+    "yaw_active_samples": 444
+  },
+  "velocity": {
+    "mean_actual": [
+      0.005082022967350726,
+      -0.0008006876372268242,
+      0.010069694030144087
+    ],
+    "mean_command": [
+      0.00013098046053573853,
+      2.190344526127319e-06,
+      3.1905924167631386e-05
+    ],
+    "mean_raw_along_command_m_s": -0.002074332843574588,
+    "mean_viability_weighted_along_command_m_s": -0.0015115628317339121,
+    "positive_velocity_low_viability_fraction": 0.10331384015594541,
+    "tracking_rmse": [
+      0.07394669176805446,
+      0.07033583315506932,
+      0.042469243656105576
+    ]
+  },
+  "viability": {
+    "definition": "soft product: full by <=25deg tilt and >=0.400m COM height; zero by >=55deg or <=0.340m",
+    "fraction_below_0p45": 0.0025546875,
+    "mean_factor": 0.9971809151306154
+  }
+}
