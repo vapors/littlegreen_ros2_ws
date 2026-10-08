@@ -84,12 +84,16 @@ All services use `std_srvs/srv/Trigger`.
 
 | Service | Meaning |
 |---|---|
-| `/st3215_driver/move_to_default_pose` | Compatibility service name: ramp from measured pose to the configured **policy-default stance** and assert the pose override |
+| `/st3215_driver/move_to_default_pose` | Ramp from measured pose to training `q_default` and assert the pose override; retained as a commissioning/reference move |
+| `/st3215_driver/move_to_policy_handoff_pose` | Ramp to the dynamically loaded Track-1 learned zero-command policy-entry pose and keep the pose override asserted |
 | `/st3215_driver/abort_pose_move` | Stop the ramp and hold the best current measured pose |
 | `/st3215_driver/hold_current_pose` | Latch the current measured pose and block external targets |
 | `/st3215_driver/release_pose_override` | Return command authority to `/servo_target_radians` |
 | `/st3215_driver/disable_torque_all` | Request torque-off for all servos |
 | `/st3215_driver/enable_torque_hold_current` | Seed and hold current position, then enable torque |
+| `/policy/arm_handoff` | Validate zero command, joint pose/velocity, IMU state and feedback freshness; seed previous action while policy authority remains disabled |
+| `/policy/enable_authority` | Revalidate and enable live locomotion output from the armed handoff state |
+| `/policy/disable_authority` | Latch live locomotion authority off and require a fresh handoff |
 
 Software position holds are not hardware E-stops.
 
@@ -112,6 +116,23 @@ Software position holds are not hardware E-stops.
 | `read_order_stride` | `1` |
 | `worker_cpu` | `-1` |
 | `realtime_priority` | `0` |
+
+### v2.9.3 policy handoff / IMU-reset parameters
+
+| Parameter | Default | Meaning |
+|---|---:|---|
+| `require_policy_handoff_for_live_locomotion` | `true` | block live locomotion inference until explicit Track-1 handoff |
+| `handoff_joint_tolerance_rad` | `0.080` | maximum joint error from learned handoff pose at arm/enable |
+| `handoff_max_abs_joint_velocity_rad_s` | `0.35` | maximum per-joint speed at handoff |
+| `handoff_max_base_angular_velocity_rad_s` | `0.20` | maximum base angular speed at handoff |
+| `handoff_max_tilt_rad` | `0.35` | maximum base tilt at handoff |
+| `imu_startup_stability_sec` | `1.0` | initial IMU stabilization hold |
+| `imu_recovery_hold_sec` | `1.5` | policy inhibit after a reset-like discontinuity |
+| `imu_transport_gap_reset_sec` | `0.080` | transport-gap threshold used by discontinuity gate |
+| `imu_orientation_jump_threshold_rad` | `0.12` | orientation-jump threshold when gyro is quiet |
+| `imu_discontinuity_latches_live_authority` | `true` | force a fresh handoff after a reset-like IMU event |
+
+The learned handoff state is SHA-bound in `littlegreen_biped_pkg/configs/policy_handoff.yaml`; it does not redefine `q_default`.
 
 ### Command and safety behavior
 

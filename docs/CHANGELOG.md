@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.9.3
+
+- Added a SHA-bound Track-1 learned zero-command policy handoff profile for v10.2 model_10000.
+- Kept `q_default` unchanged as the protected observation/action reference; the learned zero-command pose becomes the default **policy-entry pose**, not an automatic power-on pose.
+- Added guarded `/st3215_driver/move_to_policy_handoff_pose` support with the existing smooth 50 Hz pose override machinery.
+- Added live locomotion authority gating: inference output remains blocked until `/policy/arm_handoff` validates the physical pose and seeds obs[33:45], then `/policy/enable_authority` explicitly releases the first live policy tick.
+- Added exact previous-action seeding from the Track-1 analyzer (`max_abs_previous_action_obs_vs_action_term = 0`).
+- Added IMU startup/reset stabilization gating and reset-like discontinuity detection; live locomotion authority is latched off on the observed transport-gap / identity-quaternion failure signature.
+- Added `policy_handoff_control` for pose-only validation, arm-only validation, guarded live transfer, and disable/hold recovery.
+- Extended the policy bundle auditor and installer to validate/install an optional Track-1 `zero_command_handoff_pose.json`.
+- Preserved the 47-D observation contract, action-contract v4, canonical joint order, q_default, residual scales, physical limits, servo calibration, and 50 Hz policy/driver timing.
+
 ## 2.9.2
 
 - Added first-class Track-1 v10.2 locomotion deployment support without changing the packaged default Stand policy.

@@ -222,6 +222,7 @@ telemetry_topic
 legacy_debug_topic
 target_debug_topic
 move_default_pose_service
+move_policy_handoff_pose_service
 release_pose_override_service
 abort_pose_move_service
 hold_current_pose_service
@@ -229,13 +230,15 @@ disable_torque_all_service
 enable_torque_hold_current_service
 ```
 
-### Policy-default ramp parameters
+### Guarded training-default / policy-handoff ramp parameters
 
 | Parameter | Default | Meaning |
 |---|---:|---|
 | `default_pose_move_duration_sec` | `4.0` | total smooth ramp time |
 | `default_pose_ramp_rate_hz` | `50.0` | ramp update rate |
-| `default_pose_hold_after_move` | `true` | retain internal override after reaching the policy default |
+| `default_pose_hold_after_move` | `true` | retain internal override after reaching the guarded target |
+| `policy_handoff_pose_enabled` | `false` | enables the dynamically loaded Track-1 zero-command handoff target |
+| `policy_handoff_pose_rad` | 12 zeros | populated by `policy_handoff_control`; not a replacement for `q_default` |
 
 ## 6. Driver service behavior
 
@@ -245,10 +248,26 @@ All services use `std_srvs/srv/Trigger`.
 |---|---|---|
 | `/st3215_driver/hold_current_pose` | writes enabled; fresh feedback preferred | measured pose is held; external targets blocked |
 | `/st3215_driver/enable_torque_hold_current` | writes enabled; complete fresh feedback required | torque enabled at measured pose; external targets blocked |
-| `/st3215_driver/move_to_default_pose` | writes enabled; complete fresh feedback required | smooth ramp to **policy default**; override normally remains active |
+| `/st3215_driver/move_to_default_pose` | writes enabled; complete fresh feedback required | smooth ramp to training **`q_default`**; override normally remains active |
+| `/st3215_driver/move_to_policy_handoff_pose` | writes enabled; complete fresh feedback; valid handoff target loaded | smooth ramp to Track-1 learned zero-command policy-entry pose; override remains active |
 | `/st3215_driver/abort_pose_move` | ramp or override active | ramp stops; latest pose/last target is held; override remains active |
 | `/st3215_driver/release_pose_override` | override active | external `/servo_target_radians` publisher gains authority immediately |
 | `/st3215_driver/disable_torque_all` | writes enabled | torque disabled; override remains active |
+
+
+### v2.9.3 live locomotion handoff
+
+The preferred orchestration command is:
+
+```bash
+ros2 run littlegreen_biped_pkg policy_handoff_control pose
+ros2 run littlegreen_biped_pkg policy_handoff_control live
+ros2 run littlegreen_biped_pkg policy_handoff_control disable
+```
+
+`pose` ramps to the SHA-bound Track-1 zero-command state and deliberately leaves the driver pose override active. `live` performs the guarded ramp, arms the policy, releases the driver override, and enables policy authority. The policy node provides `/policy/arm_handoff`, `/policy/enable_authority`, and `/policy/disable_authority` for manual commissioning.
+
+Power-on does not execute the handoff ramp automatically; the driver keeps its existing measured-current safety behavior until the operator intentionally enters policy control.
 
 Before releasing the override:
 

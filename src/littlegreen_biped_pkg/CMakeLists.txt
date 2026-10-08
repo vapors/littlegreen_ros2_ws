@@ -136,7 +136,7 @@ ament_target_dependencies(littlegreen_biped_node
   yaml-cpp
 )
 
-# Compile the runtime and tensor-contract probe with the v2.9.2 contract helpers.
+# Compile the runtime and tensor-contract probe with the v2.9.3 contract helpers.
 target_compile_features(littlegreen_biped_node PUBLIC cxx_std_17)
 target_compile_features(policy_onnx_contract_probe PUBLIC cxx_std_17)
 
@@ -163,6 +163,9 @@ install(PROGRAMS scripts/policy_golden_vector_compare.py
 install(PROGRAMS scripts/install_exported_policy_bundle.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME install_exported_policy_bundle)
+install(PROGRAMS scripts/policy_handoff_control.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME policy_handoff_control)
 
 # Install resources
 install(DIRECTORY src/checkpoints
@@ -210,6 +213,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_policy_golden_vector_compare
     test/test_policy_golden_vector_compare.py
+  )
+  ament_add_pytest_test(
+    test_policy_handoff_profile
+    test/test_policy_handoff_profile.py
   )
 endif()
 

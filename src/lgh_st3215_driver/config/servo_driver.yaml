@@ -110,3 +110,10 @@ lgh_st3215_driver:
     # through the native bus worker so service callbacks never race UART traffic.
     disable_torque_all_service: /st3215_driver/disable_torque_all
     enable_torque_hold_current_service: /st3215_driver/enable_torque_hold_current
+
+    # v2.9.3 policy handoff pose. This is populated dynamically from the
+    # SHA-bound Track-1 zero-command handoff profile by policy_handoff_control.
+    # It intentionally does not replace training q_default and is disabled at boot.
+    policy_handoff_pose_enabled: false
+    policy_handoff_pose_rad: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    move_policy_handoff_pose_service: /st3215_driver/move_to_policy_handoff_pose

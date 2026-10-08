@@ -1,5 +1,7 @@
 # Live Policy Deployment
 
+> **v2.9.3 locomotion note:** live locomotion no longer enters policy control from training `q_default`. Power-on remains a measured-current hold. When live locomotion is intentionally started, Track 2 ramps to the SHA-bound Track-1 `learned_zero_command` handoff state, seeds the exported previous-action observation, verifies IMU/joint readiness, and only then enables policy authority. See [V2_9_3_POLICY_HANDOFF.md](V2_9_3_POLICY_HANDOFF.md).
+
 This page covers the guarded transition from a paired Track 1 export to a live LittleGreen hardware policy. Servo, IMU, and shadow commissioning must already pass.
 
 Live deployment is a staged sequence. Stop between stages and review the result before continuing. v2.9.0 packages the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand bundle and must consume its exported YAML unchanged.
@@ -28,20 +30,23 @@ lgh_st3215_driver
 
 The policy node owns observation construction, ONNX inference, action-contract transformation, and target generation. `pd_controller_node` owns the downstream safety envelope. `lgh_st3215_driver` remains the sole normal UART owner.
 
-## 2. Current packaged Track 1 policy contract
+## 2. Active Track 1 policy contract
+
+The repository retains a conservative Stand bundle as its clean-source fallback. A deployed robot may instead contain a complete Track-1 export installed by `install_exported_policy_bundle`. For the current v10.2 locomotion deployment, the active bundle is:
 
 ```text
-Task:                 Velocity-Lilgreen-Stand-ST3215-Loaded-v23
-Task role:            stand
+Task:                 Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102
+Task role:            locomotion
 Interface:            observation[47] -> action[12]
 Rate:                 50 Hz
 Observation contract: littlegreen_velocity_47d_phase_v1
-Phase mode:           randomized_static_per_episode
-Action contract:      4
-Transform:            bounded_default_centered_vector_residual
+Phase mode:           neutral_static
+Phase tail:           obs[45:47] = [0, 1]
+Action contract:      v4 / v1_4_5_stabilized_vector_residual
+Command envelope:     vx [-0.45,+0.65], vy [-0.30,+0.30], yaw [-0.50,+0.50]
 ```
 
-The shared actor layout is fixed. The Stand phase is sampled uniformly once during intentional policy-episode startup and remains unchanged. It does not advance with time, command, contact, inference count, or transient readiness loss.
+`q_default` remains the protected observation/action reference. For live locomotion, it is **not** the policy-entry pose. v2.9.3 loads `policy_handoff.yaml`, which is bound to the active task and ONNX SHA. Live authority remains disabled until the robot is within the learned zero-command handoff pose tolerance and the previous-action observation has been seeded.
 
 Action contract v4 remains:
 
@@ -52,7 +57,7 @@ q_target[i]       = clip(nominal_target[i], physical_lower[i], physical_upper[i]
 previous_action_observation[i] = bounded_action[i]
 ```
 
-Future Walk uses a different phase mode. Live Walk is blocked until its exported checkpoint explicitly pins the intended deployment stage or exact period.
+For first entry into the current locomotion policy, use `ros2 run littlegreen_biped_pkg policy_handoff_control pose` to validate the physical handoff posture, then `policy_handoff_control live` only after the supported-robot checks pass.
 
 ## 3. Required complete bundle
 
@@ -312,7 +317,7 @@ pd_controller_node
 
 It does not start the driver, IMU source, joystick, or keyboard.
 
-Verify the command chain before releasing any driver pose override:
+Verify the command chain before any live authority transition:
 
 ```bash
 ros2 node list
@@ -322,17 +327,17 @@ ros2 topic echo /policy_status --once
 ros2 topic echo /safe_joint_targets --once
 ```
 
-When the policy and controller publisher are confirmed intentional, release the driver override:
+For a v2.9.3 **locomotion** bundle, do **not** manually release the driver override. Live authority starts disabled and the zero-command handoff must coordinate the release:
 
 ```bash
-ros2 service call \
-  /st3215_driver/release_pose_override \
-  std_srvs/srv/Trigger '{}'
+ros2 run littlegreen_biped_pkg policy_handoff_control live
 ```
 
-The release is immediate; an active `/servo_target_radians` publisher becomes authoritative at once.
+This ramps to the SHA-bound Track-1 learned zero-command pose, waits for readiness, seeds `obs[33:45]`, releases the driver override, and then enables policy authority. If the final enable fails, the helper requests `hold_current_pose`.
 
-For a 47-D live policy, `/policy/reset_gait_phase` is intentionally refused. Stop and restart the guarded live policy while supported to begin a new phase-zero deployment episode.
+The manual `/st3215_driver/release_pose_override` service remains available for commissioning and non-handoff workflows, but bypassing the v2.9.3 locomotion handoff is not the deployment path.
+
+For 47-D live locomotion, `/policy/reset_gait_phase` remains intentionally refused. The current v10.2 contract uses `neutral_static`, so its phase tail is fixed at `[0,1]`.
 
 First live runs use:
 

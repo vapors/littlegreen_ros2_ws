@@ -18,7 +18,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 TOOLS = ROOT / "tools"
-EXPECTED_WORKSPACE_VERSION = "2.9.2"
+EXPECTED_WORKSPACE_VERSION = "2.9.3"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -99,8 +99,8 @@ biped_package_xml = SRC / "littlegreen_biped_pkg/package.xml"
 if biped_package_xml.is_file():
     try:
         biped_tree = ET.parse(biped_package_xml)
-        if biped_tree.findtext("version") != "0.7.2":
-            fail("littlegreen_biped_pkg package version must be 0.7.2 for workspace v2.9.2")
+        if biped_tree.findtext("version") != "0.7.3":
+            fail("littlegreen_biped_pkg package version must be 0.7.3 for workspace v2.9.3")
     except Exception as exc:
         fail(f"unable to validate littlegreen_biped_pkg version: {exc}")
 
@@ -169,6 +169,7 @@ required_files = [
     SRC / "littlegreen_biped_pkg/scripts/annotate_phase_guided_policy.py",
     SRC / "littlegreen_biped_pkg/scripts/policy_golden_vector_compare.py",
     SRC / "littlegreen_biped_pkg/scripts/install_exported_policy_bundle.py",
+    SRC / "littlegreen_biped_pkg/scripts/policy_handoff_control.py",
     SRC / "littlegreen_biped_pkg/test/test_policy_observation_contract.cpp",
     SRC / "littlegreen_biped_pkg/test/test_policy_bundle_audit.py",
     SRC / "littlegreen_biped_pkg/test/test_annotate_phase_guided_policy.py",
@@ -184,6 +185,7 @@ required_files = [
     SRC / "littlegreen_biped_pkg/src/configs/policy.sha256",
     SRC / "littlegreen_biped_pkg/src/configs/bundle_manifest.yaml",
     SRC / "littlegreen_biped_pkg/src/configs/joint_map.yaml",
+    SRC / "littlegreen_biped_pkg/src/configs/policy_handoff.yaml",
     SRC / "littlegreen_description/urdf/littlegreen.xacro",
     ROOT / "scripts/install_ubuntu_x86_64.sh",
     ROOT / "scripts/install_onnxruntime_x86_64.sh",
@@ -203,6 +205,7 @@ required_files = [
     ROOT / "docs/V2_9_0_RELEASE.md",
     ROOT / "docs/V2_9_0_VALIDATION.md",
     ROOT / "docs/V2_9_2_SIM2REAL_BRIDGE.md",
+    ROOT / "docs/V2_9_3_POLICY_HANDOFF.md",
     ROOT / "tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py",
     ROOT / "tools/lgh_hardware_limit_tool/README.md",
 ]
@@ -232,10 +235,14 @@ if policy_node.is_file():
         "live Walk is blocked",
         "/policy_debug/gait_phase",
         "/policy/reset_gait_phase",
+        "/policy/arm_handoff",
+        "/policy/enable_authority",
+        "policy_handoff_config_path",
+        "imu_orientation_jump_threshold_rad",
     ]
     for token in required_contract_tokens:
         if token not in policy_text:
-            fail(f"policy node is missing v2.9.2 policy-contract token: {token}")
+            fail(f"policy node is missing v2.9.3 policy-contract token: {token}")
     if "GetInputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
         fail("policy node must retain owning ONNX input TypeInfo during shape inspection")
     if "GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:

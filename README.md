@@ -38,6 +38,10 @@ The runtime now also accepts Track-1 `Velocity-Lilgreen-Locomotion-ST3215-Loaded
 
 The packaged default policy remains the proven v2.3.1 Stand bundle until a v10.2 checkpoint is explicitly exported, audited, and installed. Use `install_exported_policy_bundle` in dry-run mode first, then begin with shadow output.
 
+### Learned zero-command live handoff (workspace v2.9.3)
+
+v2.9.3 keeps `q_default` protected but makes the Track-1 learned zero-command standing state the default **policy-entry pose** for live locomotion. Live v10.2 authority starts gated; the robot is explicitly ramped to the SHA-bound handoff pose, obs[33:45] is seeded with the matching bounded previous action, IMU stability is verified, and policy authority is then enabled. Power-on behavior remains hold-current-position; there is no automatic startup motion. See [`docs/V2_9_3_POLICY_HANDOFF.md`](docs/V2_9_3_POLICY_HANDOFF.md).
+
 ## Install
 
 ### Orange Pi 5 Max
@@ -157,6 +161,7 @@ Start with [`docs/README.md`](docs/README.md). Common pages:
 - [`docs/SAFETY_AND_LIMITATIONS.md`](docs/SAFETY_AND_LIMITATIONS.md)
 - [`docs/V2_9_0_RELEASE.md`](docs/V2_9_0_RELEASE.md)
 - [`docs/V2_9_0_VALIDATION.md`](docs/V2_9_0_VALIDATION.md)
+- [`docs/V2_9_3_POLICY_HANDOFF.md`](docs/V2_9_3_POLICY_HANDOFF.md)
 - [`docs/VALIDATION.md`](docs/VALIDATION.md)
 
 Historical records are retained under `docs/archive/` and `docs/history/` and are not active operating instructions.

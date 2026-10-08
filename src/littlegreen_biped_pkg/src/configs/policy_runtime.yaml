@@ -42,3 +42,22 @@
       - 0.0
       - 0.0
       - 1.0
+
+    # v2.9.3 locomotion startup/handoff gate. q_default remains the protected
+    # observation/action reference; live locomotion starts from the Track-1
+    # learned zero-command handoff profile instead.
+    require_policy_handoff_for_live_locomotion: true
+    handoff_joint_tolerance_rad: 0.080
+    handoff_command_tolerance: 0.010
+    handoff_max_abs_joint_velocity_rad_s: 0.35
+    handoff_max_base_angular_velocity_rad_s: 0.20
+    handoff_max_tilt_rad: 0.35
+
+    # IMU reset/discontinuity protection. The observed failure mode was an
+    # identity-quaternion reset after a transport gap with near-zero gyro.
+    imu_startup_stability_sec: 1.0
+    imu_recovery_hold_sec: 1.5
+    imu_transport_gap_reset_sec: 0.080
+    imu_orientation_jump_threshold_rad: 0.12
+    imu_stationary_gyro_max_rad_s: 0.35
+    imu_discontinuity_latches_live_authority: true

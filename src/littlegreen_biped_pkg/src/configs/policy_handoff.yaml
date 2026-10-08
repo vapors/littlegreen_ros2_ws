@@ -1,0 +1,100 @@
+schema_version: 1
+mode: learned_zero_command
+task: Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102
+policy_sha256: da7adcaf996809bfb7a413bfec712dd2f3bd2ed984f8f661af2f9cc9c4d7872e
+source:
+  analyzer_schema_version: 2
+  checkpoint: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v10_2_st3215_tracking_wide_command_exploration/2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113/model_10000.pt
+  handoff_json_sha256: 1fd490c747f40939deb62fc0033a12bd9c64c7f6b5b6607b136bbd4bc7e0b242
+  selected_samples: 92419
+  selection:
+    exclude_done_samples: true
+    late_fraction: 0.5
+    late_start_post_settle_step: 375
+    minimum_viability: 0.9
+    require_bilateral_main_toe_full_plant: true
+    selected_samples: 92419
+    standing_settle_steps: 250
+    standing_steps: 750
+joint_order:
+- leg_left_hip_roll_joint
+- leg_left_hip_yaw_joint
+- leg_left_hip_pitch_joint
+- leg_left_knee_pitch_joint
+- leg_left_ankle_pitch_joint
+- leg_left_ankle_roll_joint
+- leg_right_hip_roll_joint
+- leg_right_hip_yaw_joint
+- leg_right_hip_pitch_joint
+- leg_right_knee_pitch_joint
+- leg_right_ankle_pitch_joint
+- leg_right_ankle_roll_joint
+joint_position_rad:
+- -0.0022942114155739546
+- 0.014345815405249596
+- -0.34772855043411255
+- 0.8788803219795227
+- -0.44490545988082886
+- 0.0664796531200409
+- -0.03032059408724308
+- -0.056757289151768725
+- -0.2813382148742676
+- 0.8014949560165405
+- -0.4355151951313019
+- 0.05092838034033775
+source_median_joint_position_rad:
+- -0.0022942114155739546
+- 0.014345815405249596
+- -0.34772855043411255
+- 0.8788803219795227
+- -0.44490545988082886
+- 0.0664796531200409
+- -0.03032059408724308
+- -0.05677672475576401
+- -0.2813382148742676
+- 0.8014949560165405
+- -0.4355151951313019
+- 0.05092838034033775
+physical_limit_clamps:
+- index: 7
+  joint: leg_right_hip_yaw_joint
+  source_rad: -0.05677672475576401
+  effective_rad: -0.056757289151768725
+  delta_rad: 1.9435603995282547e-05
+previous_action_bounded:
+- -0.18711842596530914
+- 0.9505239725112915
+- -0.5016342401504517
+- -0.05250871926546097
+- -0.08378325402736664
+- 0.2786795496940613
+- -0.2837223410606384
+- -0.9598009586334229
+- -0.29140228033065796
+- -0.12113270163536072
+- 0.2477010041475296
+- 0.0395602248609066
+command:
+- 0.0
+- 0.0
+- 0.0
+phase:
+- 0.0
+- 1.0
+source_median_projected_gravity_b:
+- -0.07719647884368896
+- 0.030905187129974365
+- -0.9962838888168335
+previous_action_observation_indices:
+- 33
+- 44
+previous_action_observation_semantics: 'bounded_last_action(joint_pos): 12-D bounded
+  normalized action from the immediately preceding policy step'
+max_abs_previous_action_obs_vs_action_term: 0.0
+notes:
+- q_default remains the protected observation/action reference and is not replaced
+  by this pose.
+- This profile is the default pre-position/start state for live locomotion policy
+  handoff, not an automatic power-on motion.
+- The driver must hold pose override during the ramp; policy authority remains disabled
+  until explicitly armed and enabled.

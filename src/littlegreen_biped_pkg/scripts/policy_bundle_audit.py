@@ -537,6 +537,80 @@ def validate_companion_bundle(
                     errors.append(f'deployment contract timing {key} mismatch')
 
 
+def validate_policy_handoff(
+    policy: dict[str, Any],
+    joint_map: dict[str, Any],
+    handoff_path: Path,
+    errors: list[str],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not handoff_path.is_file():
+        if task_role(policy) == 'locomotion':
+            warnings.append(
+                'no policy_handoff.yaml found; shadow is allowed but v2.9.3 live locomotion authority will remain gated'
+            )
+        return None
+    handoff = yaml.safe_load(handoff_path.read_text(encoding='utf-8'))
+    if not isinstance(handoff, dict):
+        errors.append('policy_handoff.yaml must contain a mapping')
+        return None
+    if task_role(policy) != 'locomotion':
+        warnings.append('policy_handoff.yaml is present but inactive for non-locomotion policy role')
+        return handoff
+    if int(handoff.get('schema_version', -1)) != 1:
+        errors.append('policy_handoff schema_version must be 1')
+    if handoff.get('mode') != 'learned_zero_command':
+        errors.append('policy_handoff mode must be learned_zero_command')
+    if handoff.get('task') != task_name(policy):
+        errors.append('policy_handoff task does not match active policy')
+    if handoff.get('policy_sha256') != policy.get('policy_sha256'):
+        errors.append('policy_handoff SHA does not match active policy')
+    entries = sorted(
+        joint_map.get('joints', []), key=lambda item: int(item['policy_action_index'])
+    )
+    names = [str(item['name']) for item in entries]
+    if handoff.get('joint_order') != names:
+        errors.append('policy_handoff joint_order does not match canonical joint order')
+    pose = handoff.get('joint_position_rad')
+    previous = handoff.get('previous_action_bounded')
+    if not isinstance(pose, list) or len(pose) != NUM_ACTIONS:
+        errors.append('policy_handoff joint_position_rad must contain 12 values')
+    else:
+        for i, (value, entry) in enumerate(zip(pose, entries)):
+            try:
+                q = float(value)
+                lo = float(entry['limit_lower_rad'])
+                hi = float(entry['limit_upper_rad'])
+            except (TypeError, ValueError, KeyError):
+                errors.append(f'policy_handoff invalid joint value at action[{i}]')
+                continue
+            if not math.isfinite(q) or q < lo or q > hi:
+                errors.append(f'policy_handoff joint target outside physical limits at action[{i}]')
+    if not isinstance(previous, list) or len(previous) != NUM_ACTIONS:
+        errors.append('policy_handoff previous_action_bounded must contain 12 values')
+    else:
+        for i, value in enumerate(previous):
+            try:
+                a = float(value)
+            except (TypeError, ValueError):
+                errors.append(f'policy_handoff invalid previous action at action[{i}]')
+                continue
+            if not math.isfinite(a) or a < -1.0 or a > 1.0:
+                errors.append(f'policy_handoff previous action outside [-1,1] at action[{i}]')
+    if handoff.get('command') != [0.0, 0.0, 0.0]:
+        errors.append('policy_handoff learned-zero command must be [0,0,0]')
+    if policy.get('phase_mode') == 'neutral_static' and handoff.get('phase') != [0.0, 1.0]:
+        errors.append('policy_handoff neutral_static phase must be [0,1]')
+    crosscheck = handoff.get('max_abs_previous_action_obs_vs_action_term')
+    if crosscheck is not None:
+        try:
+            if float(crosscheck) > 1.0e-6:
+                errors.append('policy_handoff previous-action observation cross-check is not zero')
+        except (TypeError, ValueError):
+            errors.append('policy_handoff previous-action cross-check is invalid')
+    return handoff
+
+
 def audit(
     policy_path: Path,
     joint_map_path: Path,
@@ -546,6 +620,7 @@ def audit(
     deployment_contract: Path | None = None,
     checksum_file: Path | None = None,
     bundle_manifest: Path | None = None,
+    handoff_config: Path | None = None,
 ) -> tuple[list[str], list[str], dict[str, Any] | None]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -707,6 +782,9 @@ def audit(
             errors, warnings, require_complete,
         )
 
+    if handoff_config is not None:
+        validate_policy_handoff(policy, joint_map, handoff_config, errors, warnings)
+
     return errors, warnings, shape_info
 
 
@@ -719,6 +797,7 @@ def main() -> int:
     parser.add_argument('--deployment-contract', type=Path, default=None)
     parser.add_argument('--policy-sha256-file', type=Path, default=None)
     parser.add_argument('--bundle-manifest', type=Path, default=None)
+    parser.add_argument('--handoff-config', type=Path, default=None)
     parser.add_argument('--onnx-shape-probe', type=Path, default=None)
     parser.add_argument('--skip-onnx-shape-check', action='store_true')
     args = parser.parse_args()
@@ -729,8 +808,13 @@ def main() -> int:
             if args.onnx_shape_probe else None
         )
         probe = resolve_probe(explicit_probe)
+        policy_path = args.policy_yaml.expanduser().resolve()
+        handoff_path = (
+            args.handoff_config.expanduser().resolve()
+            if args.handoff_config else policy_path.parent / 'policy_handoff.yaml'
+        )
         errors, warnings, shape_info = audit(
-            args.policy_yaml.expanduser().resolve(),
+            policy_path,
             args.joint_map.expanduser().resolve(),
             args.onnx.expanduser().resolve() if args.onnx else None,
             probe,
@@ -738,6 +822,7 @@ def main() -> int:
             args.deployment_contract.expanduser().resolve() if args.deployment_contract else None,
             args.policy_sha256_file.expanduser().resolve() if args.policy_sha256_file else None,
             args.bundle_manifest.expanduser().resolve() if args.bundle_manifest else None,
+            handoff_path,
         )
     except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as exc:
         print(f'POLICY BUNDLE AUDIT: CONFIG ERROR\n{exc}', file=sys.stderr)
@@ -772,6 +857,16 @@ def main() -> int:
     )
     print(f"policy_dt: {policy.get('policy_dt')} s")
     print(f"policy_sha256: {policy.get('policy_sha256')}")
+    handoff_path = (
+        args.handoff_config.expanduser().resolve()
+        if args.handoff_config else args.policy_yaml.expanduser().resolve().parent / 'policy_handoff.yaml'
+    )
+    if handoff_path.is_file():
+        handoff = yaml.safe_load(handoff_path.read_text(encoding='utf-8'))
+        print(
+            f"handoff: {handoff.get('mode')} pose[12] + previous_action[12] "
+            f"sha={handoff.get('policy_sha256')}"
+        )
     if shape_info is not None:
         print(f"onnx_input: {shape_info.get('input_name')} {shape_info.get('input_shape')}")
         print(f"onnx_output: {shape_info.get('output_name')} {shape_info.get('output_shape')}")

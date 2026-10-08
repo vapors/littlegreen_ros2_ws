@@ -19,6 +19,7 @@ Use the page matching the task being performed.
 - [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md) — exact shared 47-D layout, static Stand phase, future Walk phase, metadata, and legacy rules.
 - [`TRACK1_V2_3_1_INTEGRATION_AUDIT.md`](TRACK1_V2_3_1_INTEGRATION_AUDIT.md) — bundle/runtime mismatch audit and v2.9.0 integration boundary.
 - [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md) — paired bundle audit, observation/action validation, shadow gates, and guarded live launch.
+- [`V2_9_3_POLICY_HANDOFF.md`](V2_9_3_POLICY_HANDOFF.md) — SHA-bound Track-1 zero-command pose, previous-action seeding, IMU reset gate, and first live handoff workflow.
 - [`TRACK1_TRACK2_POLICY_METRICS.md`](TRACK1_TRACK2_POLICY_METRICS.md) — mapping between Track 1 analysis metrics and real-hardware observability.
 
 ## Calibrate and characterize

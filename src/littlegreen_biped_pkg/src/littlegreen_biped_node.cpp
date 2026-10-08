@@ -14,6 +14,7 @@
 // This node intentionally does not implement servo-bus conversion or actuator-level control.
 
 #include <algorithm>
+#include <atomic>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -297,14 +298,17 @@ public:
     std::string policy_config_path;
     std::string joint_map_path;
     std::string onnx_model_path_override;
+    std::string policy_handoff_config_path;
     this->get_parameter("policy_config_path", policy_config_path);
     this->get_parameter("joint_map_path", joint_map_path);
     this->get_parameter("onnx_model_path", onnx_model_path_override);
+    this->get_parameter("policy_handoff_config_path", policy_handoff_config_path);
 
     load_policy_config(policy_config_path);
     load_joint_map(joint_map_path);
     validate_policy_contract();
     initialize_state_storage();
+    configure_policy_handoff(policy_handoff_config_path);
 
     const std::string model_path = resolve_model_path(policy_config_path, onnx_model_path_override);
     load_onnx_model(model_path);
@@ -364,6 +368,24 @@ public:
           this,
           std::placeholders::_1,
           std::placeholders::_2));
+    }
+
+    if (policy_handoff_required_) {
+      arm_policy_handoff_service_ = this->create_service<std_srvs::srv::Trigger>(
+        "/policy/arm_handoff",
+        std::bind(
+          &LittleGreenBipedPolicyNode::arm_policy_handoff_callback,
+          this, std::placeholders::_1, std::placeholders::_2));
+      enable_policy_authority_service_ = this->create_service<std_srvs::srv::Trigger>(
+        "/policy/enable_authority",
+        std::bind(
+          &LittleGreenBipedPolicyNode::enable_policy_authority_callback,
+          this, std::placeholders::_1, std::placeholders::_2));
+      disable_policy_authority_service_ = this->create_service<std_srvs::srv::Trigger>(
+        "/policy/disable_authority",
+        std::bind(
+          &LittleGreenBipedPolicyNode::disable_policy_authority_callback,
+          this, std::placeholders::_1, std::placeholders::_2));
     }
 
     if (override_imu_) {
@@ -429,6 +451,11 @@ public:
       "LittleGreen policy node initialized: obs[%zu] -> actions[%zu], observation_contract=v%d/%s, policy_dt=%.3fs, output_mode=%s.",
       num_observations_, num_actions_, observation_contract_version_,
       observation_contract_name_.c_str(), policy_dt_, policy_output_mode_.c_str());
+    if (policy_handoff_required_) {
+      RCLCPP_WARN(
+        this->get_logger(),
+        "LIVE LOCOMOTION HANDOFF GATE: authority starts disabled. Ramp to the Track-1 zero-command handoff pose, arm /policy/arm_handoff, release driver pose override, then enable /policy/enable_authority.");
+    }
     if (policy_output_mode_ == "shadow") {
       RCLCPP_WARN(
         this->get_logger(),
@@ -498,6 +525,19 @@ private:
     std::uint64_t episode = 0U;
   };
 
+  struct PolicyHandoffConfig
+  {
+    bool loaded = false;
+    std::string mode;
+    std::string task;
+    std::string policy_sha256;
+    std::vector<std::string> joint_order;
+    std::vector<float> joint_position_rad;
+    std::vector<float> previous_action_bounded;
+    std::array<float, 3> command{0.0F, 0.0F, 0.0F};
+    std::array<float, 2> phase{0.0F, 1.0F};
+  };
+
   void declare_parameters(const std::string & package_share_dir)
   {
     this->declare_parameter<bool>("use_sim", false);
@@ -515,6 +555,26 @@ private:
     this->declare_parameter<bool>("enable_phase_test_override", false);
     this->declare_parameter<double>("phase_test_fixed_value", -1.0);
     this->declare_parameter<int64_t>("phase_test_seed", -1);
+
+    this->declare_parameter<std::string>(
+      "policy_handoff_config_path", package_share_dir + "/configs/policy_handoff.yaml");
+    this->declare_parameter<bool>("require_policy_handoff_for_live_locomotion", true);
+    this->declare_parameter<double>("handoff_joint_tolerance_rad", 0.080);
+    this->declare_parameter<double>("handoff_command_tolerance", 0.010);
+    this->declare_parameter<double>("handoff_max_abs_joint_velocity_rad_s", 0.35);
+    this->declare_parameter<double>("handoff_max_base_angular_velocity_rad_s", 0.20);
+    this->declare_parameter<double>("handoff_max_tilt_rad", 0.35);
+
+    // An intermittent ICM-20948/Madgwick reset was observed as an identity
+    // quaternion after a transport gap while the gyro remained stationary.
+    // Gate policy output through startup/recovery holds and latch live locomotion
+    // authority off on a reset-like discontinuity.
+    this->declare_parameter<double>("imu_startup_stability_sec", 1.0);
+    this->declare_parameter<double>("imu_recovery_hold_sec", 1.5);
+    this->declare_parameter<double>("imu_transport_gap_reset_sec", 0.080);
+    this->declare_parameter<double>("imu_orientation_jump_threshold_rad", 0.12);
+    this->declare_parameter<double>("imu_stationary_gyro_max_rad_s", 0.35);
+    this->declare_parameter<bool>("imu_discontinuity_latches_live_authority", true);
 
     this->declare_parameter<double>("imu_timeout_sec", 0.050);
     // Transport freshness for the cached /joint_states message stream.
@@ -553,6 +613,25 @@ private:
     this->get_parameter("enable_phase_test_override", enable_phase_test_override_);
     this->get_parameter("phase_test_fixed_value", phase_test_fixed_value_);
     this->get_parameter("phase_test_seed", phase_test_seed_);
+    this->get_parameter(
+      "require_policy_handoff_for_live_locomotion",
+      require_policy_handoff_for_live_locomotion_);
+    this->get_parameter("handoff_joint_tolerance_rad", handoff_joint_tolerance_rad_);
+    this->get_parameter("handoff_command_tolerance", handoff_command_tolerance_);
+    this->get_parameter(
+      "handoff_max_abs_joint_velocity_rad_s", handoff_max_abs_joint_velocity_rad_s_);
+    this->get_parameter(
+      "handoff_max_base_angular_velocity_rad_s", handoff_max_base_angular_velocity_rad_s_);
+    this->get_parameter("handoff_max_tilt_rad", handoff_max_tilt_rad_);
+    this->get_parameter("imu_startup_stability_sec", imu_startup_stability_sec_);
+    this->get_parameter("imu_recovery_hold_sec", imu_recovery_hold_sec_);
+    this->get_parameter("imu_transport_gap_reset_sec", imu_transport_gap_reset_sec_);
+    this->get_parameter(
+      "imu_orientation_jump_threshold_rad", imu_orientation_jump_threshold_rad_);
+    this->get_parameter("imu_stationary_gyro_max_rad_s", imu_stationary_gyro_max_rad_s_);
+    this->get_parameter(
+      "imu_discontinuity_latches_live_authority",
+      imu_discontinuity_latches_live_authority_);
     if (policy_output_mode_ != "live" &&
       policy_output_mode_ != "shadow" &&
       policy_output_mode_ != "disabled")
@@ -597,6 +676,19 @@ private:
       !(command_timeout_sec_ > 0.0))
     {
       throw std::runtime_error("freshness timeout parameters must be positive");
+    }
+    if (!(handoff_joint_tolerance_rad_ > 0.0) ||
+      !(handoff_command_tolerance_ >= 0.0) ||
+      !(handoff_max_abs_joint_velocity_rad_s_ > 0.0) ||
+      !(handoff_max_base_angular_velocity_rad_s_ > 0.0) ||
+      !(handoff_max_tilt_rad_ > 0.0) ||
+      !(imu_startup_stability_sec_ >= 0.0) ||
+      !(imu_recovery_hold_sec_ >= 0.0) ||
+      !(imu_transport_gap_reset_sec_ > 0.0) ||
+      !(imu_orientation_jump_threshold_rad_ > 0.0) ||
+      !(imu_stationary_gyro_max_rad_s_ >= 0.0))
+    {
+      throw std::runtime_error("policy handoff / IMU discontinuity parameters are invalid");
     }
   }
 
@@ -1022,6 +1114,109 @@ private:
 
     throw std::runtime_error(
             "Unsupported 47-D observation_contract_name: " + observation_contract_name_);
+  }
+
+  void configure_policy_handoff(const std::string & config_path)
+  {
+    policy_handoff_required_ =
+      policy_output_mode_ == "live" && task_role_ == "locomotion" &&
+      require_policy_handoff_for_live_locomotion_;
+    policy_authority_enabled_.store(!policy_handoff_required_);
+    handoff_armed_.store(false);
+
+    if (task_role_ != "locomotion") {
+      return;
+    }
+    if (config_path.empty() || !file_exists(config_path)) {
+      if (policy_handoff_required_) {
+        throw std::runtime_error(
+                "live locomotion requires a Track-1 zero-command policy handoff profile: " +
+                config_path);
+      }
+      RCLCPP_WARN(
+        this->get_logger(),
+        "No policy handoff profile found at %s; shadow/disabled locomotion may continue, but live handoff is unavailable.",
+        config_path.c_str());
+      return;
+    }
+
+    const YAML::Node root = YAML::LoadFile(config_path);
+    if (!root || !root.IsMap()) {
+      throw std::runtime_error("policy handoff profile must contain a YAML mapping");
+    }
+    if (root["schema_version"].as<int>(-1) != 1) {
+      throw std::runtime_error("unsupported policy handoff schema_version");
+    }
+    policy_handoff_.mode = root["mode"].as<std::string>("");
+    policy_handoff_.task = root["task"].as<std::string>("");
+    policy_handoff_.policy_sha256 = root["policy_sha256"].as<std::string>("");
+    if (policy_handoff_.mode != "learned_zero_command") {
+      throw std::runtime_error("policy handoff mode must be learned_zero_command");
+    }
+    const std::string active_task = policy_config_["metadata"] && policy_config_["metadata"]["task"] ?
+      policy_config_["metadata"]["task"].as<std::string>() :
+      policy_config_["task"].as<std::string>("");
+    const std::string active_sha = policy_config_["policy_sha256"].as<std::string>("");
+    if (policy_handoff_.task != active_task) {
+      throw std::runtime_error(
+              "policy handoff task mismatch: profile=" + policy_handoff_.task +
+              " active=" + active_task);
+    }
+    if (policy_handoff_.policy_sha256 != active_sha) {
+      throw std::runtime_error(
+              "policy handoff SHA mismatch: profile=" + policy_handoff_.policy_sha256 +
+              " active=" + active_sha);
+    }
+
+    policy_handoff_.joint_order = load_string_vector(
+      root["joint_order"], num_actions_, "handoff joint_order");
+    policy_handoff_.joint_position_rad = load_float_vector(
+      root["joint_position_rad"], num_actions_, "handoff joint_position_rad");
+    policy_handoff_.previous_action_bounded = load_float_vector(
+      root["previous_action_bounded"], num_actions_, "handoff previous_action_bounded");
+    const auto command = load_float_vector(root["command"], 3U, "handoff command");
+    const auto phase = load_float_vector(root["phase"], 2U, "handoff phase");
+    policy_handoff_.command = {command[0], command[1], command[2]};
+    policy_handoff_.phase = {phase[0], phase[1]};
+
+    if (policy_handoff_.joint_order != joint_names_) {
+      throw std::runtime_error("policy handoff joint_order does not match canonical policy order");
+    }
+    for (size_t i = 0; i < num_actions_; ++i) {
+      const float q = policy_handoff_.joint_position_rad[i];
+      const float a = policy_handoff_.previous_action_bounded[i];
+      if (!is_finite(q) || q < joint_lower_limits_[i] || q > joint_upper_limits_[i]) {
+        throw std::runtime_error(
+                "policy handoff joint position outside physical limits at action[" +
+                std::to_string(i) + "]");
+      }
+      if (!is_finite(a) || a < -1.0F || a > 1.0F) {
+        throw std::runtime_error(
+                "policy handoff previous action outside [-1,1] at action[" +
+                std::to_string(i) + "]");
+      }
+    }
+    if (!all_finite(policy_handoff_.command) || !all_finite(policy_handoff_.phase)) {
+      throw std::runtime_error("policy handoff command/phase contains non-finite value(s)");
+    }
+    if (std::fabs(policy_handoff_.command[0]) > 1.0e-6F ||
+      std::fabs(policy_handoff_.command[1]) > 1.0e-6F ||
+      std::fabs(policy_handoff_.command[2]) > 1.0e-6F)
+    {
+      throw std::runtime_error("learned_zero_command handoff command must be [0,0,0]");
+    }
+    if (phase_mode_name_ == "neutral_static" &&
+      (std::fabs(policy_handoff_.phase[0]) > 1.0e-6F ||
+      std::fabs(policy_handoff_.phase[1] - 1.0F) > 1.0e-6F))
+    {
+      throw std::runtime_error("neutral_static handoff phase must be [0,1]");
+    }
+
+    policy_handoff_.loaded = true;
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Loaded SHA-bound Track-1 zero-command handoff profile: task=%s sha=%s.",
+      policy_handoff_.task.c_str(), policy_handoff_.policy_sha256.c_str());
   }
 
   void load_policy_config(const std::string & config_path)
@@ -1702,13 +1897,54 @@ private:
       return;
     }
 
+    const auto now = SteadyClock::now();
     std::lock_guard<std::mutex> lock(state_mutex_);
+
+    bool discontinuity = false;
+    double gap_sec = 0.0;
+    double orientation_jump_rad = 0.0;
+    if (!have_valid_imu_) {
+      imu_inhibit_until_ = now + std::chrono::duration_cast<SteadyClock::duration>(
+        std::chrono::duration<double>(imu_startup_stability_sec_));
+    } else {
+      gap_sec = std::chrono::duration<double>(now - last_imu_update_time_).count();
+      Eigen::Quaternionf previous(
+        imu_orientation_wxyz_[0], imu_orientation_wxyz_[1],
+        imu_orientation_wxyz_[2], imu_orientation_wxyz_[3]);
+      previous.normalize();
+      const float dot = std::clamp(std::fabs(previous.dot(q)), 0.0F, 1.0F);
+      orientation_jump_rad = 2.0 * std::acos(static_cast<double>(dot));
+      const double omega_norm = static_cast<double>(omega_base.norm());
+      discontinuity = gap_sec > imu_transport_gap_reset_sec_ ||
+        (orientation_jump_rad > imu_orientation_jump_threshold_rad_ &&
+        omega_norm < imu_stationary_gyro_max_rad_s_);
+      if (discontinuity) {
+        imu_inhibit_until_ = now + std::chrono::duration_cast<SteadyClock::duration>(
+          std::chrono::duration<double>(imu_recovery_hold_sec_));
+        ++imu_discontinuity_count_;
+        if (policy_output_mode_ == "live" &&
+          policy_handoff_required_ &&
+          imu_discontinuity_latches_live_authority_)
+        {
+          policy_authority_enabled_.store(false);
+          handoff_armed_.store(false);
+        }
+        RCLCPP_ERROR(
+          this->get_logger(),
+          "IMU discontinuity gate triggered: gap=%.4fs orientation_jump=%.4frad. Policy output inhibited for %.2fs%s.",
+          gap_sec, orientation_jump_rad, imu_recovery_hold_sec_,
+          (policy_output_mode_ == "live" && policy_handoff_required_ &&
+          imu_discontinuity_latches_live_authority_) ?
+          " and live authority latched OFF" : "");
+      }
+    }
+
     base_ang_vel_[0] = omega_base.x();
     base_ang_vel_[1] = omega_base.y();
     base_ang_vel_[2] = omega_base.z();
     imu_orientation_wxyz_ = {q.w(), q.x(), q.y(), q.z()};
     have_valid_imu_ = true;
-    last_imu_update_time_ = SteadyClock::now();
+    last_imu_update_time_ = now;
   }
 
   void joint_state_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -1939,6 +2175,14 @@ private:
       if (imu_age > imu_timeout_sec_) {
         std::ostringstream stream;
         stream << "IMU stale: age=" << imu_age << "s limit=" << imu_timeout_sec_ << "s";
+        not_ready_reason = stream.str();
+        return false;
+      }
+      if (now < imu_inhibit_until_) {
+        const double remaining = std::chrono::duration<double>(imu_inhibit_until_ - now).count();
+        std::ostringstream stream;
+        stream << "IMU startup/reset stabilization hold active: remaining="
+               << remaining << "s";
         not_ready_reason = stream.str();
         return false;
       }
@@ -2217,6 +2461,160 @@ private:
     }
   }
 
+  bool validate_policy_handoff_state(
+    const PolicyStateSnapshot & snapshot,
+    std::string & reason,
+    double & max_joint_error) const
+  {
+    if (!policy_handoff_.loaded) {
+      reason = "Track-1 zero-command handoff profile is not loaded";
+      return false;
+    }
+    max_joint_error = 0.0;
+    for (size_t i = 0; i < num_actions_; ++i) {
+      max_joint_error = std::max(
+        max_joint_error,
+        std::fabs(static_cast<double>(snapshot.joint_positions[i] -
+        policy_handoff_.joint_position_rad[i])));
+      if (std::fabs(static_cast<double>(snapshot.joint_velocities[i])) >
+        handoff_max_abs_joint_velocity_rad_s_)
+      {
+        reason = "joint velocity too large for handoff: " + joint_names_[i];
+        return false;
+      }
+    }
+    if (max_joint_error > handoff_joint_tolerance_rad_) {
+      std::ostringstream stream;
+      stream << "joint pose is not within handoff tolerance: max_error=" << max_joint_error
+             << "rad limit=" << handoff_joint_tolerance_rad_ << "rad";
+      reason = stream.str();
+      return false;
+    }
+    for (const float value : snapshot.cmd_vel) {
+      if (std::fabs(static_cast<double>(value)) > handoff_command_tolerance_) {
+        reason = "effective command must be zero for policy handoff";
+        return false;
+      }
+    }
+    const double omega_norm = std::sqrt(
+      static_cast<double>(snapshot.base_ang_vel[0] * snapshot.base_ang_vel[0] +
+      snapshot.base_ang_vel[1] * snapshot.base_ang_vel[1] +
+      snapshot.base_ang_vel[2] * snapshot.base_ang_vel[2]));
+    if (omega_norm > handoff_max_base_angular_velocity_rad_s_) {
+      reason = "base angular velocity too large for policy handoff";
+      return false;
+    }
+    const auto gravity = compute_projected_gravity_base(snapshot.imu_orientation_wxyz);
+    const double gz = std::clamp(-static_cast<double>(gravity[2]), -1.0, 1.0);
+    const double tilt = std::acos(gz);
+    if (!std::isfinite(tilt) || tilt > handoff_max_tilt_rad_) {
+      std::ostringstream stream;
+      stream << "base tilt too large for policy handoff: tilt=" << tilt
+             << "rad limit=" << handoff_max_tilt_rad_ << "rad";
+      reason = stream.str();
+      return false;
+    }
+    return true;
+  }
+
+  void arm_policy_handoff_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request>/*request*/,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+  {
+    if (!response) {
+      return;
+    }
+    if (!policy_handoff_required_) {
+      response->success = false;
+      response->message = "active policy does not require the locomotion handoff gate";
+      return;
+    }
+    policy_authority_enabled_.store(false);
+    PolicyStateSnapshot snapshot;
+    std::string reason;
+    if (!make_ready_snapshot(snapshot, reason)) {
+      response->success = false;
+      response->message = "handoff readiness failed: " + reason;
+      return;
+    }
+    double max_joint_error = 0.0;
+    if (!validate_policy_handoff_state(snapshot, reason, max_joint_error)) {
+      response->success = false;
+      response->message = "handoff state validation failed: " + reason;
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(state_mutex_);
+      prev_actions_ = policy_handoff_.previous_action_bounded;
+    }
+    if (gait_phase_enabled_) {
+      std::lock_guard<std::mutex> lock(gait_phase_mutex_);
+      begin_policy_phase_episode();
+    }
+    handoff_armed_.store(true);
+    response->success = true;
+    std::ostringstream stream;
+    stream << "handoff armed; previous-action seed loaded; max_joint_error="
+           << max_joint_error << "rad. Driver pose override must still be released before authority.";
+    response->message = stream.str();
+  }
+
+  void enable_policy_authority_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request>/*request*/,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+  {
+    if (!response) {
+      return;
+    }
+    if (!policy_handoff_required_) {
+      response->success = false;
+      response->message = "active policy does not require the locomotion handoff gate";
+      return;
+    }
+    if (!handoff_armed_.load()) {
+      response->success = false;
+      response->message = "handoff is not armed; call /policy/arm_handoff first";
+      return;
+    }
+    PolicyStateSnapshot snapshot;
+    std::string reason;
+    if (!make_ready_snapshot(snapshot, reason)) {
+      response->success = false;
+      response->message = "authority readiness failed: " + reason;
+      return;
+    }
+    double max_joint_error = 0.0;
+    if (!validate_policy_handoff_state(snapshot, reason, max_joint_error)) {
+      handoff_armed_.store(false);
+      response->success = false;
+      response->message = "authority validation failed: " + reason;
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(state_mutex_);
+      // Reseed immediately before the first live inference so obs[33:45]
+      // exactly matches the Track-1 zero-command standing distribution.
+      prev_actions_ = policy_handoff_.previous_action_bounded;
+    }
+    policy_authority_enabled_.store(true);
+    response->success = true;
+    response->message = "live policy authority ENABLED from SHA-bound zero-command handoff state";
+    RCLCPP_WARN(this->get_logger(), "%s", response->message.c_str());
+  }
+
+  void disable_policy_authority_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request>/*request*/,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+  {
+    policy_authority_enabled_.store(false);
+    handoff_armed_.store(false);
+    if (response) {
+      response->success = true;
+      response->message = "live policy authority disabled; a fresh handoff arm is required";
+    }
+    RCLCPP_WARN(this->get_logger(), "Live policy authority disabled; fresh handoff required.");
+  }
+
   void reset_gait_phase_callback(
     const std::shared_ptr<std_srvs::srv::Trigger::Request>/*request*/,
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
@@ -2327,6 +2725,15 @@ private:
 
     if (policy_output_mode_ == "disabled") {
       publish_policy_status(true, "policy output disabled");
+      return;
+    }
+
+    if (policy_handoff_required_ && !policy_authority_enabled_.load()) {
+      publish_policy_status(
+        false,
+        handoff_armed_.load() ?
+        "zero-command handoff armed; live authority disabled" :
+        "waiting for SHA-bound zero-command policy handoff");
       return;
     }
 
@@ -2546,6 +2953,17 @@ private:
   std::vector<std::string> exported_sim_joint_names_;
   std::vector<float> exported_sim_default_joint_positions_;
 
+  PolicyHandoffConfig policy_handoff_;
+  bool require_policy_handoff_for_live_locomotion_{true};
+  bool policy_handoff_required_{false};
+  std::atomic_bool handoff_armed_{false};
+  std::atomic_bool policy_authority_enabled_{true};
+  double handoff_joint_tolerance_rad_{0.080};
+  double handoff_command_tolerance_{0.010};
+  double handoff_max_abs_joint_velocity_rad_s_{0.35};
+  double handoff_max_base_angular_velocity_rad_s_{0.20};
+  double handoff_max_tilt_rad_{0.35};
+
   mutable std::mutex state_mutex_;
   std::vector<float> prev_actions_;
   std::vector<float> joint_positions_;
@@ -2577,6 +2995,14 @@ private:
   bool have_valid_command_ = false;
   SteadyClock::time_point last_imu_update_time_{};
   SteadyClock::time_point last_command_update_time_{};
+  SteadyClock::time_point imu_inhibit_until_{};
+  double imu_startup_stability_sec_{1.0};
+  double imu_recovery_hold_sec_{1.5};
+  double imu_transport_gap_reset_sec_{0.080};
+  double imu_orientation_jump_threshold_rad_{0.12};
+  double imu_stationary_gyro_max_rad_s_{0.35};
+  bool imu_discontinuity_latches_live_authority_{true};
+  std::atomic<std::uint64_t> imu_discontinuity_count_{0U};
 
   std::array<float, 9> imu_to_base_matrix_{
     0.0f, 1.0f, 0.0f,
@@ -2617,6 +3043,9 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr policy_debug_saturation_mask_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr policy_debug_gait_phase_pub_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_gait_phase_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr arm_policy_handoff_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr enable_policy_authority_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr disable_policy_authority_service_;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscriber_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_subscriber_;

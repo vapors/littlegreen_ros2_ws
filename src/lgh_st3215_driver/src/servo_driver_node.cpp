@@ -269,6 +269,13 @@ class ServoDriverNode final : public rclcpp::Node {
             this,
             std::placeholders::_1,
             std::placeholders::_2));
+    move_policy_handoff_pose_service_ = create_service<std_srvs::srv::Trigger>(
+        get_parameter("move_policy_handoff_pose_service").as_string(),
+        std::bind(
+            &ServoDriverNode::moveToPolicyHandoffPoseCallback,
+            this,
+            std::placeholders::_1,
+            std::placeholders::_2));
     release_pose_override_service_ = create_service<std_srvs::srv::Trigger>(
         get_parameter("release_pose_override_service").as_string(),
         std::bind(
@@ -438,6 +445,14 @@ class ServoDriverNode final : public rclcpp::Node {
     declare_parameter<bool>("default_pose_hold_after_move", true);
     declare_parameter<std::string>(
         "move_default_pose_service", "/st3215_driver/move_to_default_pose");
+    // Policy startup/handoff pose is intentionally separate from q_default.
+    // It is populated from the Track-1 zero-command handoff profile before use.
+    declare_parameter<bool>("policy_handoff_pose_enabled", false);
+    declare_parameter<std::vector<double>>(
+        "policy_handoff_pose_rad", std::vector<double>(kNumJoints, 0.0));
+    declare_parameter<std::string>(
+        "move_policy_handoff_pose_service",
+        "/st3215_driver/move_to_policy_handoff_pose");
     declare_parameter<std::string>(
         "release_pose_override_service", "/st3215_driver/release_pose_override");
     declare_parameter<std::string>(
@@ -490,26 +505,56 @@ class ServoDriverNode final : public rclcpp::Node {
     return target;
   }
 
-  void moveToDefaultPoseCallback(
-      const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
+  bool policyHandoffPose(std::array<double, kNumJoints>& target, std::string& reason) const {
+    if (!get_parameter("policy_handoff_pose_enabled").as_bool()) {
+      reason = "policy_handoff_pose_enabled=false; load a SHA-bound Track-1 handoff profile first";
+      return false;
+    }
+    const auto values = get_parameter("policy_handoff_pose_rad").as_double_array();
+    if (values.size() != kNumJoints) {
+      reason = "policy_handoff_pose_rad must contain exactly 12 values";
+      return false;
+    }
+    for (std::size_t i = 0; i < kNumJoints; ++i) {
+      const auto& joint = joint_map_.at(i);
+      const double value = values[i];
+      if (!std::isfinite(value)) {
+        reason = "policy handoff pose contains a non-finite value at index " + std::to_string(i);
+        return false;
+      }
+      if (value < joint.min_rad || value > joint.max_rad) {
+        std::ostringstream stream;
+        stream << "policy handoff target outside physical limits for " << joint.name
+               << ": target=" << value << " limits=[" << joint.min_rad << ","
+               << joint.max_rad << "]";
+        reason = stream.str();
+        return false;
+      }
+      target[i] = value;
+    }
+    return true;
+  }
+
+  bool beginGuardedPoseRamp(
+      const JointStateSnapshot& state,
+      const std::array<double, kNumJoints>& goal,
+      const std::string& label,
       std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
     if (!writes_enabled_) {
       response->success = false;
       response->message =
           "Rejected: writes_enabled=false. Relaunch with enable_writes:=true after safety checks.";
-      return;
+      return false;
     }
     if (pose_move_running_.load()) {
       response->success = false;
-      response->message = "Rejected: a default-pose ramp is already running.";
-      return;
+      response->message = "Rejected: a guarded pose ramp is already running.";
+      return false;
     }
-
-    const JointStateSnapshot state = state_buffer_.copy();
     if (!state.full_feedback_ready) {
       response->success = false;
       response->message = "Rejected: complete fresh servo feedback is not ready.";
-      return;
+      return false;
     }
     const auto ages = computeFeedbackAges(state);
     const bool feedback_too_old = std::any_of(
@@ -521,29 +566,53 @@ class ServoDriverNode final : public rclcpp::Node {
     if (feedback_too_old) {
       response->success = false;
       response->message = "Rejected: one or more joint feedback samples are too old for a pose ramp.";
-      return;
+      return false;
     }
-
     if (pose_thread_.joinable()) {
       pose_thread_.join();
     }
-
-    // Seed the bus command with the measured physical pose before enabling the
-    // override thread so the first ramp packet cannot jump to an older policy target.
     std::array<double, kNumJoints> measured_hold{};
     for (std::size_t i = 0; i < kNumJoints; ++i) {
       measured_hold[i] = state.joints[i].position_rad;
     }
     command_buffer_.store(measured_hold);
-
     pose_stop_requested_.store(false);
     pose_override_active_.store(true);
     pose_move_running_.store(true);
-    pose_thread_ = std::thread(&ServoDriverNode::runDefaultPoseRamp, this, state);
+    pose_thread_ = std::thread(&ServoDriverNode::runPoseRamp, this, state, goal, label);
+    return true;
+  }
 
+  void moveToDefaultPoseCallback(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+    const JointStateSnapshot state = state_buffer_.copy();
+    const auto goal = trainingDefaultPose();
+    if (!beginGuardedPoseRamp(state, goal, "training q_default", response)) {
+      return;
+    }
     response->success = true;
     response->message =
-        "Started smooth ramp to the policy-default stance. External servo targets are ignored while pose override is active.";
+        "Started smooth ramp to the training q_default reference. External servo targets are ignored while pose override is active.";
+  }
+
+  void moveToPolicyHandoffPoseCallback(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+    std::array<double, kNumJoints> goal{};
+    std::string reason;
+    if (!policyHandoffPose(goal, reason)) {
+      response->success = false;
+      response->message = "Rejected: " + reason;
+      return;
+    }
+    const JointStateSnapshot state = state_buffer_.copy();
+    if (!beginGuardedPoseRamp(state, goal, "Track-1 zero-command policy handoff", response)) {
+      return;
+    }
+    response->success = true;
+    response->message =
+        "Started smooth ramp to the Track-1 zero-command policy handoff pose. External servo targets are ignored while pose override is active.";
   }
 
   void releasePoseOverrideCallback(
@@ -786,12 +855,14 @@ class ServoDriverNode final : public rclcpp::Node {
         "This is not a hardware torque-off E-stop.");
   }
 
-  void runDefaultPoseRamp(const JointStateSnapshot start_state) {
+  void runPoseRamp(
+      const JointStateSnapshot start_state,
+      const std::array<double, kNumJoints> goal,
+      const std::string label) {
     std::array<double, kNumJoints> start{};
     for (std::size_t i = 0; i < kNumJoints; ++i) {
       start[i] = start_state.joints[i].position_rad;
     }
-    const auto goal = trainingDefaultPose();
 
     const std::size_t step_count = static_cast<std::size_t>(std::max(
         1.0, std::ceil(default_pose_move_duration_sec_ * default_pose_ramp_rate_hz_)));
@@ -801,12 +872,12 @@ class ServoDriverNode final : public rclcpp::Node {
 
     RCLCPP_WARN(
         get_logger(),
-        "Starting guarded move to policy-default stance over %.2f s (%zu ramp steps).",
-        default_pose_move_duration_sec_, step_count);
+        "Starting guarded move to %s over %.2f s (%zu ramp steps).",
+        label.c_str(), default_pose_move_duration_sec_, step_count);
 
     for (std::size_t step = 1; step <= step_count && !pose_stop_requested_.load(); ++step) {
       const double u = static_cast<double>(step) / static_cast<double>(step_count);
-      const double smooth = u * u * (3.0 - 2.0 * u);  // smoothstep
+      const double smooth = u * u * (3.0 - 2.0 * u);
       std::array<double, kNumJoints> target{};
       for (std::size_t i = 0; i < kNumJoints; ++i) {
         target[i] = start[i] + smooth * (goal[i] - start[i]);
@@ -817,20 +888,18 @@ class ServoDriverNode final : public rclcpp::Node {
     }
 
     const bool aborted = pose_stop_requested_.load();
-
     if (!aborted) {
       command_buffer_.store(goal);
       RCLCPP_WARN(
           get_logger(),
-          "Policy-default stance reached. Pose override hold=%s.",
-          default_pose_hold_after_move_ ? "true" : "false");
+          "%s reached. Pose override hold=%s.",
+          label.c_str(), default_pose_hold_after_move_ ? "true" : "false");
     } else {
-      // The abort service will latch measured feedback after joining this thread.
-      // Keep override active here so external commands remain blocked.
       pose_override_active_.store(true);
       RCLCPP_ERROR(
           get_logger(),
-          "Policy-default stance ramp stopped before completion; waiting for abort hold latch.");
+          "%s ramp stopped before completion; waiting for abort hold latch.",
+          label.c_str());
     }
 
     pose_move_running_.store(false);
@@ -1085,6 +1154,8 @@ class ServoDriverNode final : public rclcpp::Node {
     addKey(status, "configured_speed_steps_s", joinConfiguredSpeed(joint_map_));
     addKey(status, "configured_acceleration_units", joinConfiguredAcceleration(joint_map_));
     addKey(status, "pose_override_active", pose_override_active_.load() ? "true" : "false");
+    addKey(status, "policy_handoff_pose_enabled",
+        get_parameter("policy_handoff_pose_enabled").as_bool() ? "true" : "false");
     addKey(status, "pose_move_running", pose_move_running_.load() ? "true" : "false");
     addKey(status, "pose_abort_count", asString(pose_abort_count_.load()));
     addKey(status, "hold_pose_latch_count", asString(hold_pose_latch_count_.load()));
@@ -1194,6 +1265,7 @@ class ServoDriverNode final : public rclcpp::Node {
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr legacy_debug_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr target_debug_pub_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr move_default_pose_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr move_policy_handoff_pose_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr release_pose_override_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr abort_pose_move_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr hold_current_pose_service_;
