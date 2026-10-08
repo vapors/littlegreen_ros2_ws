@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.9.2
+
+- Added first-class Track-1 v10.2 locomotion deployment support without changing the packaged default Stand policy.
+- Added `neutral_static` phase mode, reproducing the trained v10.2 observation tail exactly as `[sin, cos] = [0, 1]` on every tick.
+- Added `task_role: locomotion` validation to the C++ runtime and policy bundle auditor.
+- Added exported command-envelope validation and runtime clamping for v10.2 (`vx [-0.45,0.65]`, `vy [-0.30,0.30]`, `yaw [-0.50,0.50]`).
+- Added an audited atomic policy-bundle installer for Track-1 exports.
+- Extended golden-vector tooling and tests for neutral-static locomotion.
+- Preserved action-contract v4, canonical joint order, servo calibration, IMU transform, driver timing, and all live/shadow safety gates.
+
 ## 2.9.1
 
 - Fixed ONNX Runtime tensor metadata lifetime handling in both the policy node and offline shape probe.

@@ -840,8 +840,12 @@ private:
       if (gait_phase_encoding_ != "sin_cos_2pi") {
         throw std::runtime_error("phase_encoding must be sin_cos_2pi");
       }
-      if (policy_config_["shared_47d_stand_walk_contract"].as<bool>(false) != true) {
-        throw std::runtime_error("shared_47d_stand_walk_contract must be true");
+      const bool shared_foundation_contract =
+        policy_config_["shared_47d_foundation_contract"].as<bool>(false) ||
+        policy_config_["shared_47d_stand_walk_contract"].as<bool>(false);
+      if (!shared_foundation_contract) {
+        throw std::runtime_error(
+                "shared 47-D foundation contract must be declared true");
       }
       if (!policy_config_["deployment_requires_shared_47d_observation_builder"].as<bool>(false)) {
         throw std::runtime_error(
@@ -931,8 +935,33 @@ private:
             "Walk bundle has no explicit deployment stage. Shadow-only inspection is allowed; live output remains blocked.");
         }
         phase_mode_ = PolicyPhaseMode::command_synchronized_continuous_nonblocking;
+      } else if (task_role_ == "locomotion") {
+        if (phase_mode_name_ != "neutral_static") {
+          throw std::runtime_error(
+                  "Locomotion task requires phase_mode: neutral_static");
+        }
+        if (!policy_config_["deployment_requires_neutral_static_phase_for_locomotion"].as<bool>(false)) {
+          throw std::runtime_error(
+                  "Locomotion bundle must require neutral-static phase deployment");
+        }
+        const auto phase_constant = load_float_vector(
+          policy_config_["phase_constant_sin_cos"], 2U, "phase_constant_sin_cos");
+        if (std::fabs(phase_constant[0]) > 1.0e-9 ||
+          std::fabs(phase_constant[1] - 1.0f) > 1.0e-9)
+        {
+          throw std::runtime_error(
+                  "neutral_static locomotion requires phase_constant_sin_cos: [0.0,1.0]");
+        }
+        if (phase_reset_semantics_ !=
+          "constant_neutral_phase_sin0_cos1_for_all_environments_and_ticks")
+        {
+          throw std::runtime_error(
+                  "Locomotion neutral-static phase_reset_semantics does not match training");
+        }
+        phase_mode_ = PolicyPhaseMode::neutral_static;
       } else {
-        throw std::runtime_error("v2.3.1 47-D bundle task_role must be stand or walk");
+        throw std::runtime_error(
+                "shared 47-D bundle task_role must be stand, walk, or locomotion");
       }
 
       phase_config.mode = phase_mode_;
@@ -1012,6 +1041,32 @@ private:
     }
 
     load_observation_contract();
+
+    command_clamp_enabled_ = policy_config_["deployment_requires_command_clamp"].as<bool>(false);
+    if (command_clamp_enabled_) {
+      const auto vx = load_float_vector(
+        policy_config_["command_limit_lin_vel_x"], 2U, "command_limit_lin_vel_x");
+      const auto vy = load_float_vector(
+        policy_config_["command_limit_lin_vel_y"], 2U, "command_limit_lin_vel_y");
+      const auto yaw = load_float_vector(
+        policy_config_["command_limit_ang_vel_z"], 2U, "command_limit_ang_vel_z");
+      if (vx[0] > vx[1] || vy[0] > vy[1] || yaw[0] > yaw[1]) {
+        throw std::runtime_error("command training envelope lower bound exceeds upper bound");
+      }
+      command_lower_ = {vx[0], vy[0], yaw[0]};
+      command_upper_ = {vx[1], vy[1], yaw[1]};
+      if (policy_config_["command_limit_behavior"].as<std::string>("") !=
+        "clamp_each_axis_to_training_range")
+      {
+        throw std::runtime_error(
+                "unsupported command_limit_behavior for clamped deployment bundle");
+      }
+      RCLCPP_INFO(
+        this->get_logger(),
+        "Runtime command clamp enabled from training envelope: vx=[%.3f,%.3f], vy=[%.3f,%.3f], yaw=[%.3f,%.3f].",
+        command_lower_[0], command_upper_[0], command_lower_[1], command_upper_[1],
+        command_lower_[2], command_upper_[2]);
+    }
 
     action_limit_lower_ = load_float_vector(
       policy_config_["action_limit_lower"], num_actions_, "action_limit_lower");
@@ -1846,9 +1901,21 @@ private:
       return;
     }
 
-    cmd_vel_[0] = command[0];
-    cmd_vel_[1] = command[1];
-    cmd_vel_[2] = command[2];
+    std::array<float, 3> accepted = command;
+    if (command_clamp_enabled_) {
+      for (size_t i = 0; i < accepted.size(); ++i) {
+        accepted[i] = clamp_float(accepted[i], command_lower_[i], command_upper_[i]);
+      }
+      if (accepted != command) {
+        RCLCPP_WARN_THROTTLE(
+          this->get_logger(), *this->get_clock(), 2000,
+          "Clamped /command_velocity to exported training envelope: input=[%.3f, %.3f, %.3f], accepted=[%.3f, %.3f, %.3f].",
+          command[0], command[1], command[2], accepted[0], accepted[1], accepted[2]);
+      }
+    }
+    cmd_vel_[0] = accepted[0];
+    cmd_vel_[1] = accepted[1];
+    cmd_vel_[2] = accepted[2];
     have_valid_command_ = true;
     last_command_update_time_ = SteadyClock::now();
   }
@@ -2485,6 +2552,15 @@ private:
   std::vector<float> joint_velocities_;
   std::vector<float> base_ang_vel_;
   std::vector<float> cmd_vel_;
+  bool command_clamp_enabled_ = false;
+  std::array<float, 3> command_lower_{
+    -std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+  std::array<float, 3> command_upper_{
+    std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::infinity()};
   std::array<float, 4> imu_orientation_wxyz_{1.0f, 0.0f, 0.0f, 0.0f};
 
   std::vector<bool> joint_position_seen_;

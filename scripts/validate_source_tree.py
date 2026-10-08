@@ -18,7 +18,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 TOOLS = ROOT / "tools"
-EXPECTED_WORKSPACE_VERSION = "2.9.1"
+EXPECTED_WORKSPACE_VERSION = "2.9.2"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -99,8 +99,8 @@ biped_package_xml = SRC / "littlegreen_biped_pkg/package.xml"
 if biped_package_xml.is_file():
     try:
         biped_tree = ET.parse(biped_package_xml)
-        if biped_tree.findtext("version") != "0.7.1":
-            fail("littlegreen_biped_pkg package version must be 0.7.1 for workspace v2.9.1")
+        if biped_tree.findtext("version") != "0.7.2":
+            fail("littlegreen_biped_pkg package version must be 0.7.2 for workspace v2.9.2")
     except Exception as exc:
         fail(f"unable to validate littlegreen_biped_pkg version: {exc}")
 
@@ -168,6 +168,7 @@ required_files = [
     SRC / "littlegreen_biped_pkg/scripts/policy_runtime_metrics.py",
     SRC / "littlegreen_biped_pkg/scripts/annotate_phase_guided_policy.py",
     SRC / "littlegreen_biped_pkg/scripts/policy_golden_vector_compare.py",
+    SRC / "littlegreen_biped_pkg/scripts/install_exported_policy_bundle.py",
     SRC / "littlegreen_biped_pkg/test/test_policy_observation_contract.cpp",
     SRC / "littlegreen_biped_pkg/test/test_policy_bundle_audit.py",
     SRC / "littlegreen_biped_pkg/test/test_annotate_phase_guided_policy.py",
@@ -201,6 +202,7 @@ required_files = [
     ROOT / "docs/MIGRATION_V2_8_0_TO_V2_9_0.md",
     ROOT / "docs/V2_9_0_RELEASE.md",
     ROOT / "docs/V2_9_0_VALIDATION.md",
+    ROOT / "docs/V2_9_2_SIM2REAL_BRIDGE.md",
     ROOT / "tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py",
     ROOT / "tools/lgh_hardware_limit_tool/README.md",
 ]
@@ -222,6 +224,9 @@ if policy_node.is_file():
         "littlegreen_velocity_47d_phase_v1",
         "randomized_static_per_episode",
         "command_synchronized_continuous_nonblocking",
+        "neutral_static",
+        "deployment_requires_command_clamp",
+        "command_limit_lin_vel_x",
         "phase_indices",
         "observation_layout_ranges",
         "live Walk is blocked",
@@ -230,7 +235,7 @@ if policy_node.is_file():
     ]
     for token in required_contract_tokens:
         if token not in policy_text:
-            fail(f"policy node is missing v2.9.1 policy-contract token: {token}")
+            fail(f"policy node is missing v2.9.2 policy-contract token: {token}")
     if "GetInputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
         fail("policy node must retain owning ONNX input TypeInfo during shape inspection")
     if "GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
@@ -276,6 +281,7 @@ if phase_header.is_file():
         "PolicyPhaseState",
         "randomized_static_per_episode",
         "command_synchronized_continuous_nonblocking",
+        "neutral_static",
         "begin_episode",
         "on_successful_policy_tick",
         "initial_first_swing_left",

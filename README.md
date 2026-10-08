@@ -10,7 +10,7 @@ ROS 2 Humble source workspace for the LittleGreen biped hardware stack. The acti
 | `lgh_st3215_tools` | Guarded calibration, characterization, preflight, hardware auditing, and datasets |
 | `lgh_st3215_maintenance` | Offline read-only direct-bus inspection; the runtime driver must be stopped |
 | `lgh_imu_tools` | Source-independent validation of the canonical `/imu/data` interface |
-| `littlegreen_biped_pkg` | Shared 47-D Stand/Walk observation construction, task-specific phase state, action-contract v3/v4 validation, ONNX inference, policy auditing, golden-vector hooks, runtime metrics, and live/shadow/disabled output |
+| `littlegreen_biped_pkg` | Shared 47-D Stand/Walk/Locomotion observation construction, task-specific phase state including v10.2 neutral-static mode, action-contract v3/v4 validation, exported command-envelope clamping, ONNX inference, policy auditing, golden-vector hooks, runtime metrics, and live/shadow/disabled output |
 | `pd_controller_pkg` | Safety filtering and optional outer-loop command shaping |
 | `littlegreen_description` | Robot description and visualization resources |
 
@@ -31,6 +31,12 @@ ONNX SHA-256:          66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e846
 The Stand policy receives the exact shared actor observation exported by Track 1. Its phase is sampled uniformly once at the beginning of an intentional policy episode and the sine/cosine pair remains unchanged for the episode. It does not advance with time, command, contact, inference count, or transient readiness loss.
 
 The former 45-D v2.8.0 policy is retained as a paired rollback artifact under `configs/legacy_v280_45d/`; it is not the active default. Future Walk construction is present for contract testing and shadow inspection, but live Walk remains blocked until the exported checkpoint explicitly pins its deployment stage or period. See [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md).
+
+### v10.2 sim-to-real bridge support (workspace v2.9.2)
+
+The runtime now also accepts Track-1 `Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102` bundles that declare `task_role: locomotion` and `phase_mode: neutral_static`. For that policy, observation indices 45-46 are reconstructed exactly as `[0.0, 1.0]` on every inference tick; no deployment gait clock is introduced. The v10.2 exported command envelope is enforced at the `/command_velocity` boundary before commands enter the policy observation.
+
+The packaged default policy remains the proven v2.3.1 Stand bundle until a v10.2 checkpoint is explicitly exported, audited, and installed. Use `install_exported_policy_bundle` in dry-run mode first, then begin with shadow output.
 
 ## Install
 

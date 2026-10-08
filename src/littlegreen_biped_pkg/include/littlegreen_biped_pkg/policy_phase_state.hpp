@@ -19,6 +19,7 @@ enum class PolicyPhaseMode : std::uint8_t
   randomized_static_per_episode = 1U,
   command_synchronized_continuous_nonblocking = 2U,
   legacy_successful_tick_clock = 3U,
+  neutral_static = 4U,
 };
 
 inline std::string phase_mode_name(PolicyPhaseMode mode)
@@ -32,6 +33,8 @@ inline std::string phase_mode_name(PolicyPhaseMode mode)
       return "command_synchronized_continuous_nonblocking";
     case PolicyPhaseMode::legacy_successful_tick_clock:
       return "legacy_successful_tick_clock";
+    case PolicyPhaseMode::neutral_static:
+      return "neutral_static";
   }
   return "unknown";
 }
@@ -177,6 +180,7 @@ public:
     switch (config_.mode) {
       case PolicyPhaseMode::disabled:
       case PolicyPhaseMode::randomized_static_per_episode:
+      case PolicyPhaseMode::neutral_static:
         return;
       case PolicyPhaseMode::legacy_successful_tick_clock:
         phase_ = std::fmod(phase_ + config_.policy_dt_s / config_.period_s, 1.0);

@@ -210,4 +210,27 @@ TEST(WalkPhase, WrapsAndNewEpisodeDoesNotResumeMidGait)
   EXPECT_EQ(rearmed.successful_tick, 0U);
 }
 
+TEST(LocomotionPhase, NeutralStaticIsAlwaysSinZeroCosOne)
+{
+  PolicyPhaseState state;
+  PolicyPhaseConfig config;
+  config.mode = PolicyPhaseMode::neutral_static;
+  config.policy_dt_s = 0.02;
+  state.configure(config);
+  state.begin_episode();
+
+  for (int i = 0; i < 10000; ++i) {
+    const CommandVelocity command{0.65, -0.30, 0.50};
+    const auto before = state.sample(command);
+    EXPECT_NEAR(before.pair.phase, 0.0, 1.0e-12);
+    EXPECT_NEAR(before.pair.sine, 0.0, 1.0e-7);
+    EXPECT_NEAR(before.pair.cosine, 1.0, 1.0e-7);
+    state.on_successful_policy_tick(command);
+  }
+  const auto after = state.sample(CommandVelocity{-0.45, 0.30, -0.50});
+  EXPECT_NEAR(after.pair.phase, 0.0, 1.0e-12);
+  EXPECT_NEAR(after.pair.sine, 0.0, 1.0e-7);
+  EXPECT_NEAR(after.pair.cosine, 1.0, 1.0e-7);
+}
+
 }  // namespace

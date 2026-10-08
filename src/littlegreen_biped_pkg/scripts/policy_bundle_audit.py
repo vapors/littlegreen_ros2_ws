@@ -130,8 +130,11 @@ def validate_v231_observation_contract(
         errors.append('phase_indices must be [45, 46]')
     if policy.get('phase_encoding') != 'sin_cos_2pi':
         errors.append('phase_encoding must be sin_cos_2pi')
-    if policy.get('shared_47d_stand_walk_contract') is not True:
-        errors.append('shared_47d_stand_walk_contract must be true')
+    if not (
+        policy.get('shared_47d_foundation_contract') is True or
+        policy.get('shared_47d_stand_walk_contract') is True
+    ):
+        errors.append('shared 47-D foundation contract must be true')
     if policy.get('legacy_45d_checkpoint_support') is not False:
         errors.append('legacy_45d_checkpoint_support must be false for the v2.3.1 contract')
     if int(policy.get('observation_count', -1)) != PHASE_OBSERVATIONS:
@@ -193,8 +196,37 @@ def validate_v231_observation_contract(
             )
         if policy.get('deployment_requires_command_synchronized_phase_for_walk') is not True:
             errors.append('Walk bundle must require command-synchronized phase deployment')
+    elif role == 'locomotion':
+        if mode != 'neutral_static':
+            errors.append('Locomotion bundle requires phase_mode: neutral_static')
+        if policy.get('deployment_requires_neutral_static_phase_for_locomotion') is not True:
+            errors.append('Locomotion bundle must require neutral-static phase deployment')
+        if policy.get('phase_constant_sin_cos') != [0.0, 1.0]:
+            errors.append('neutral_static locomotion requires phase_constant_sin_cos: [0.0, 1.0]')
+        if policy.get('phase_period_active') is not False:
+            errors.append('neutral_static locomotion requires phase_period_active: false')
+        if policy.get('phase_reset_semantics') != (
+            'constant_neutral_phase_sin0_cos1_for_all_environments_and_ticks'
+        ):
+            errors.append('Locomotion neutral-static phase_reset_semantics mismatch')
+        if policy.get('deployment_requires_command_clamp') is not True:
+            errors.append('v10.2 locomotion deployment requires runtime command clamping')
+        if policy.get('command_limit_behavior') != 'clamp_each_axis_to_training_range':
+            errors.append('unsupported v10.2 command_limit_behavior')
+        expected_ranges = {
+            'command_limit_lin_vel_x': [-0.45, 0.65],
+            'command_limit_lin_vel_y': [-0.30, 0.30],
+            'command_limit_ang_vel_z': [-0.50, 0.50],
+        }
+        for key, expected in expected_ranges.items():
+            actual = policy.get(key)
+            if not isinstance(actual, list) or len(actual) != 2:
+                errors.append(f'{key} must contain exactly two values')
+                continue
+            if any(abs(float(a) - float(b)) > 1.0e-9 for a, b in zip(actual, expected)):
+                errors.append(f'{key} is {actual!r}, expected {expected!r}')
     else:
-        errors.append('v2.3.1 task_role must be stand or walk')
+        errors.append('shared 47-D task_role must be stand, walk, or locomotion')
 
     if int(policy.get('action_contract_version', 0)) != 4:
         errors.append('v2.3.1 shared 47-D bundle requires action_contract_version: 4')
@@ -451,6 +483,7 @@ def validate_companion_bundle(
             artifact = contract.get('artifact', {})
             observation = contract.get('observation_contract', {})
             action = contract.get('action_contract', {})
+            command = contract.get('command_contract', {})
             timing = contract.get('timing', {})
             if contract.get('task') != task_name(policy):
                 errors.append('deployment contract task mismatch')
@@ -468,6 +501,27 @@ def validate_companion_bundle(
                 errors.append('deployment contract actor count mismatch')
             if observation.get('phase_mode') != policy.get('phase_mode'):
                 errors.append('deployment contract phase_mode mismatch')
+            if observation.get('phase_period_active', True) != policy.get('phase_period_active', True):
+                errors.append('deployment contract phase_period_active mismatch')
+            if observation.get('phase_constant_sin_cos') != policy.get('phase_constant_sin_cos'):
+                errors.append('deployment contract phase_constant_sin_cos mismatch')
+            if 'command_contract_version' in policy:
+                if int(command.get('version', -1)) != int(policy.get('command_contract_version', -2)):
+                    errors.append('deployment contract command version mismatch')
+                if command.get('source') != policy.get('command_velocity_source'):
+                    errors.append('deployment contract command source mismatch')
+                command_pairs = (
+                    ('lin_vel_x', 'command_limit_lin_vel_x'),
+                    ('lin_vel_y', 'command_limit_lin_vel_y'),
+                    ('ang_vel_z', 'command_limit_ang_vel_z'),
+                )
+                for contract_key, policy_key in command_pairs:
+                    if command.get(contract_key) != policy.get(policy_key):
+                        errors.append(f'deployment contract {contract_key} command range mismatch')
+                if command.get('runtime_clamp_required') != policy.get('deployment_requires_command_clamp'):
+                    errors.append('deployment contract command clamp requirement mismatch')
+                if command.get('clamp_behavior') != policy.get('command_limit_behavior'):
+                    errors.append('deployment contract command clamp behavior mismatch')
             if int(action.get('version', -1)) != int(policy.get('action_contract_version', -2)):
                 errors.append('deployment contract action version mismatch')
             if action.get('joint_names') != policy.get('action_joint_names'):

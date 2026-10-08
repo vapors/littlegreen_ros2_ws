@@ -183,3 +183,50 @@ def test_non_float32_onnx_tensor_is_rejected(tmp_path: Path) -> None:
     probe = make_probe(tmp_path / 'probe', 47, input_element_type=11)
     errors, _, _ = AUDIT.audit(policy_path, JOINT_MAP, onnx_path, probe)
     assert any('input tensor must be float32' in error for error in errors)
+
+
+def test_v102_neutral_static_locomotion_contract_is_accepted() -> None:
+    policy = yaml.safe_load((CONFIG_DIR / 'policy.yaml').read_text(encoding='utf-8'))
+    policy['metadata']['task'] = 'Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102'
+    policy['metadata']['task_role'] = 'locomotion'
+    policy['shared_47d_foundation_contract'] = True
+    policy['phase_mode'] = 'neutral_static'
+    policy['phase_period_active'] = False
+    policy['phase_constant_sin_cos'] = [0.0, 1.0]
+    policy['phase_reset_semantics'] = (
+        'constant_neutral_phase_sin0_cos1_for_all_environments_and_ticks'
+    )
+    policy['deployment_requires_random_static_phase_for_stand'] = False
+    policy['deployment_requires_command_synchronized_phase_for_walk'] = False
+    policy['deployment_requires_neutral_static_phase_for_locomotion'] = True
+    policy['deployment_requires_command_clamp'] = True
+    policy['command_limit_behavior'] = 'clamp_each_axis_to_training_range'
+    policy['command_limit_lin_vel_x'] = [-0.45, 0.65]
+    policy['command_limit_lin_vel_y'] = [-0.30, 0.30]
+    policy['command_limit_ang_vel_z'] = [-0.50, 0.50]
+    errors: list[str] = []
+    warnings: list[str] = []
+    AUDIT.validate_v231_observation_contract(policy, errors, warnings)
+    assert errors == []
+
+
+def test_v102_wrong_neutral_static_tail_is_rejected() -> None:
+    policy = yaml.safe_load((CONFIG_DIR / 'policy.yaml').read_text(encoding='utf-8'))
+    policy['metadata']['task_role'] = 'locomotion'
+    policy['shared_47d_foundation_contract'] = True
+    policy['phase_mode'] = 'neutral_static'
+    policy['phase_period_active'] = False
+    policy['phase_constant_sin_cos'] = [1.0, 0.0]
+    policy['phase_reset_semantics'] = (
+        'constant_neutral_phase_sin0_cos1_for_all_environments_and_ticks'
+    )
+    policy['deployment_requires_neutral_static_phase_for_locomotion'] = True
+    policy['deployment_requires_command_clamp'] = True
+    policy['command_limit_behavior'] = 'clamp_each_axis_to_training_range'
+    policy['command_limit_lin_vel_x'] = [-0.45, 0.65]
+    policy['command_limit_lin_vel_y'] = [-0.30, 0.30]
+    policy['command_limit_ang_vel_z'] = [-0.50, 0.50]
+    errors: list[str] = []
+    warnings: list[str] = []
+    AUDIT.validate_v231_observation_contract(policy, errors, warnings)
+    assert any('phase_constant_sin_cos' in error for error in errors)

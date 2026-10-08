@@ -136,7 +136,7 @@ ament_target_dependencies(littlegreen_biped_node
   yaml-cpp
 )
 
-# Compile the runtime and tensor-contract probe with the v2.9.1 contract helpers.
+# Compile the runtime and tensor-contract probe with the v2.9.2 contract helpers.
 target_compile_features(littlegreen_biped_node PUBLIC cxx_std_17)
 target_compile_features(policy_onnx_contract_probe PUBLIC cxx_std_17)
 
@@ -160,6 +160,9 @@ install(PROGRAMS scripts/annotate_phase_guided_policy.py
 install(PROGRAMS scripts/policy_golden_vector_compare.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME policy_golden_vector_compare)
+install(PROGRAMS scripts/install_exported_policy_bundle.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME install_exported_policy_bundle)
 
 # Install resources
 install(DIRECTORY src/checkpoints

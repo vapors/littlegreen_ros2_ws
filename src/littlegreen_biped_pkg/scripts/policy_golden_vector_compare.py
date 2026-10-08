@@ -31,11 +31,15 @@ def sequence(mapping: dict[str, Any], key: str, count: int) -> list[float]:
     return result
 
 
-def build_observation(vector: dict[str, Any]) -> list[float]:
-    phase = float(vector['phase_fraction'])
-    if not 0.0 <= phase < 1.0:
-        raise ValueError('phase_fraction must be in [0,1)')
-    angle = 2.0 * math.pi * phase
+def build_observation(vector: dict[str, Any], policy: dict[str, Any]) -> list[float]:
+    if str(policy.get('phase_mode', '')) == 'neutral_static':
+        phase_sin, phase_cos = 0.0, 1.0
+    else:
+        phase = float(vector['phase_fraction'])
+        if not 0.0 <= phase < 1.0:
+            raise ValueError('phase_fraction must be in [0,1)')
+        angle = 2.0 * math.pi * phase
+        phase_sin, phase_cos = math.sin(angle), math.cos(angle)
     observation = (
         sequence(vector, 'command_velocity', 3)
         + sequence(vector, 'base_angular_velocity', 3)
@@ -43,7 +47,7 @@ def build_observation(vector: dict[str, Any]) -> list[float]:
         + sequence(vector, 'joint_position_relative_default', 12)
         + sequence(vector, 'joint_velocity', 12)
         + sequence(vector, 'previous_bounded_action', 12)
-        + [math.sin(angle), math.cos(angle)]
+        + [phase_sin, phase_cos]
     )
     if len(observation) != 47:
         raise AssertionError('internal observation length error')
@@ -114,7 +118,7 @@ def main() -> int:
             if not isinstance(vector, dict):
                 raise ValueError(f'vector[{index}] must be a mapping')
             name = str(vector.get('name', f'vector_{index}'))
-            observation = build_observation(vector)
+            observation = build_observation(vector, policy)
             expected_observation = vector.get('track1_observation')
             if expected_observation is not None:
                 expected = [float(value) for value in expected_observation]
