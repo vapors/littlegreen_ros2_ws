@@ -1,0 +1,151 @@
+schema_version: 2
+generated_at_utc: '2026-10-08T15:32:02.774271+00:00'
+source_task: Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102
+num_observations: 47
+observation_contract_version: 1
+observation_contract_name: littlegreen_velocity_47d_phase_v1
+policy_phase_enabled: true
+policy_phase_mode: neutral_static
+policy_phase_period_s: 0.9
+action_contract_version: 4
+deployment_contract_profile: v1_4_5_stabilized_vector_residual
+action_residual_scale_rad:
+- 0.24
+- 0.16
+- 0.42
+- 0.58
+- 0.48
+- 0.26
+- 0.24
+- 0.16
+- 0.42
+- 0.58
+- 0.48
+- 0.26
+action_default_rad:
+- 0.0
+- 0.0
+- -0.24
+- 0.62
+- -0.22
+- 0.0
+- 0.0
+- 0.0
+- -0.24
+- 0.62
+- -0.22
+- 0.0
+training_actuator_model_name: littlegreen_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_athletic_stabilized+track1_loaded_actuator_extension_v2:stage_b_loaded_athletic_stabilized
+training_actuator_model_stage: stage_b_loaded_v145_stabilized_vector_residual
+training_actuator_response_delay_scale: 0.72
+training_actuator_velocity_scale_range:
+- 1.0
+- 1.1
+training_loaded_velocity_scale_range:
+- 1.0
+- 1.1
+duration_sec: 10.005208276999838
+sample_count: 490
+sample_rate_hz: 48.974492727594814
+standing_command_sample_count: 490
+global_mean:
+  raw_action_mean_abs: 1.4014030550866305
+  raw_action_std: 1.6863231642873013
+  raw_action_min: -2.739720413879472
+  raw_action_max: 2.73217118102677
+  raw_action_excess_fraction: 0.5833333333333334
+  bounded_saturation_fraction: 0.5833333333333334
+  raw_action_clip_fraction: 0.5833333333333334
+  target_limit_fraction: 0.166156462585034
+  target_clip_abs_mean_rad: 0.009044889649566339
+  target_clip_abs_max_rad: 0.10324270650744438
+  target_residual_abs_mean_rad: 0.268775635284595
+  target_residual_abs_max_rad: 0.5800000476837158
+  joint_tracking_error_abs_mean_rad: 0.2684174020809735
+  joint_tracking_error_abs_max_rad: 0.5756698670142598
+  joint_velocity_limit_fraction: 0.0
+  projected_gravity_x: 0.17431399048595897
+  projected_gravity_z: -0.9834422661333668
+  base_angular_velocity_norm_rad_s: 0.0029923256903426104
+  joint_posture_rms_rad: 0.005141600214058448
+  joint_posture_max_rad: 0.008368894457817078
+  standing_upright_observable: 1.0
+  standing_quiet_yaw_observable: 1.0
+  standing_near_default_observable: 1.0
+  policy_phase_sine: 0.0
+  policy_phase_cosine: 1.0
+  policy_phase_fraction: 0.0
+  policy_phase_episode: 1.0
+  policy_phase_successful_tick: 344.17551020408166
+  policy_phase_mode_code: 4.0
+  policy_phase_moving: 0.0
+  policy_phase_first_swing_left: 0.0
+  policy_phase_debug_fraction: 0.0
+  policy_phase_observation_debug_abs_error: 0.0
+  policy_phase_fraction_debug_abs_error: 0.0
+  policy_phase_unit_circle_error: 0.0
+standing_command_mean:
+  raw_action_mean_abs: 1.4014030550866305
+  raw_action_std: 1.6863231642873013
+  raw_action_min: -2.739720413879472
+  raw_action_max: 2.73217118102677
+  raw_action_excess_fraction: 0.5833333333333334
+  bounded_saturation_fraction: 0.5833333333333334
+  raw_action_clip_fraction: 0.5833333333333334
+  target_limit_fraction: 0.166156462585034
+  target_clip_abs_mean_rad: 0.009044889649566339
+  target_clip_abs_max_rad: 0.10324270650744438
+  target_residual_abs_mean_rad: 0.268775635284595
+  target_residual_abs_max_rad: 0.5800000476837158
+  joint_tracking_error_abs_mean_rad: 0.2684174020809735
+  joint_tracking_error_abs_max_rad: 0.5756698670142598
+  joint_velocity_limit_fraction: 0.0
+  projected_gravity_x: 0.17431399048595897
+  projected_gravity_z: -0.9834422661333668
+  base_angular_velocity_norm_rad_s: 0.0029923256903426104
+  joint_posture_rms_rad: 0.005141600214058448
+  joint_posture_max_rad: 0.008368894457817078
+  standing_upright_observable: 1.0
+  standing_quiet_yaw_observable: 1.0
+  standing_near_default_observable: 1.0
+  policy_phase_sine: 0.0
+  policy_phase_cosine: 1.0
+  policy_phase_fraction: 0.0
+  policy_phase_episode: 1.0
+  policy_phase_successful_tick: 344.17551020408166
+  policy_phase_mode_code: 4.0
+  policy_phase_moving: 0.0
+  policy_phase_first_swing_left: 0.0
+  policy_phase_debug_fraction: 0.0
+  policy_phase_observation_debug_abs_error: 0.0
+  policy_phase_fraction_debug_abs_error: 0.0
+  policy_phase_unit_circle_error: 0.0
+standing_projected_gravity_x:
+  p05: 0.07568755745887756
+  median: 0.18554598093032837
+  p95: 0.18733254075050354
+not_observable_from_current_runtime_topics:
+- base COM height
+- COM forward offset relative to the feet
+- foot contact / single support / double support
+- swing clearance and foot lift counts
+- foot slip
+- physical joint torque
+- root linear velocity and zero-command XY drift
+- stable-standing all-conditions result because foot contact and root linear velocity
+  are unavailable
+- actual foot contact timing; gait phase is an expected policy clock, not a contact
+  sensor
+observable_standing_condition_notes:
+  upright: projected_gravity_z < -0.97
+  quiet_yaw: abs(base angular velocity z) < 0.20 rad/s
+  near_default: max abs(q - q_default) < 0.20 rad
+  not_available:
+  - quiet_xy
+  - both_feet
+  - foot_slip
+gait_phase_notes:
+  available: true
+  meaning: expected phase supplied to the policy; not measured foot contact
+  half_cycle_0: 'phase [0.0,0.5): expected left stance / right swing'
+  half_cycle_1: 'phase [0.5,1.0): expected right stance / left swing'

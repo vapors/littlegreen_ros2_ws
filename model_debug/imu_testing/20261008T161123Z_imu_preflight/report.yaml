@@ -1,0 +1,57 @@
+schema_version: 1
+tool: imu_preflight
+status: PASS
+exit_code: 0
+contract:
+  schema_version: 1
+  topic: /imu/data
+  expected_frame_id: imu_link
+  minimum_rate_hz: 80.0
+  maximum_transport_age_ms: 50.0
+  require_orientation: true
+  require_angular_velocity: true
+  require_linear_acceleration: true
+  quaternion_norm_tolerance: 0.02
+  imu_to_base_matrix:
+  - 0.0
+  - 1.0
+  - 0.0
+  - -1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+  _path: /home/scott/littlegreen_ros2_ws/src/lgh_imu_tools/config/imu_contract.yaml
+checks:
+- name: message_count
+  status: PASS
+  message: 602 messages
+- name: rate
+  status: PASS
+  message: 199.768 Hz; minimum 80.0
+- name: frame_id
+  status: PASS
+  message: expected imu_link; unexpected=[]
+- name: finite_quaternion
+  status: PASS
+  message: all quaternion fields finite
+- name: quaternion_norm
+  status: PASS
+  message: range 1.000000..1.000000
+- name: orientation_available
+  status: PASS
+  message: orientation covariance does not mark orientation unavailable
+- name: finite_angular_velocity
+  status: PASS
+  message: all gyro fields finite
+- name: finite_linear_acceleration
+  status: PASS
+  message: all acceleration fields finite
+- name: timestamp_progression
+  status: PASS
+  message: nonpositive deltas=0
+- name: transport_age
+  status: PASS
+  message: min=1.202 ms, max=12.754 ms, p99=6.355 ms
+sample_count: 602

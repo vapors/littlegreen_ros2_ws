@@ -1,0 +1,10 @@
+[PASS] message_count: 602 messages
+[PASS] rate: 199.768 Hz; minimum 80.0
+[PASS] frame_id: expected imu_link; unexpected=[]
+[PASS] finite_quaternion: all quaternion fields finite
+[PASS] quaternion_norm: range 1.000000..1.000000
+[PASS] orientation_available: orientation covariance does not mark orientation unavailable
+[PASS] finite_angular_velocity: all gyro fields finite
+[PASS] finite_linear_acceleration: all acceleration fields finite
+[PASS] timestamp_progression: nonpositive deltas=0
+[PASS] transport_age: min=1.202 ms, max=12.754 ms, p99=6.355 ms

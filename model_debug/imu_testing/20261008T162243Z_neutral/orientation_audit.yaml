@@ -1,0 +1,38 @@
+schema_version: 1
+pose: neutral
+samples: 601
+median_rpy_deg:
+- -11.905103523224813
+- 1.7823457492098422
+- -0.24214895173734785
+median_projected_gravity_base:
+- 0.2061867173547915
+- -0.031102784829647893
+- -0.9779978515261271
+expectation:
+  axis: z
+  sign: negative
+  minimum_magnitude: 0.8
+  result: PASS
+  message: z=-0.9780, expected negative magnitude >= 0.8
+contract:
+  schema_version: 1
+  topic: /imu/data
+  expected_frame_id: imu_link
+  minimum_rate_hz: 80.0
+  maximum_transport_age_ms: 50.0
+  require_orientation: true
+  require_angular_velocity: true
+  require_linear_acceleration: true
+  quaternion_norm_tolerance: 0.02
+  imu_to_base_matrix:
+  - 0.0
+  - 1.0
+  - 0.0
+  - -1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+  _path: /home/scott/littlegreen_ros2_ws/src/lgh_imu_tools/config/imu_contract.yaml
