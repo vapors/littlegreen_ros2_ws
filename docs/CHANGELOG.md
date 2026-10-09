@@ -130,3 +130,16 @@ Documentation-only refresh:
 - updated package inventory versions and removed generated Python cache files.
 
 No servo calibration, limits, timing, ROS interfaces, policy model, or runtime behavior changed.
+
+## v2.9.3 Hotfix 1
+- Replace `rclpy.parameter_client.AsyncParameterClient` in `policy_handoff_control`
+  with the Humble-compatible standard `rcl_interfaces/srv/SetParameters` client.
+- No locomotion policy, handoff data, or safety semantics changed.
+
+## v2.9.3 Hotfix 2
+- Rename the handoff helper's internal service-client dictionary from `self.clients`
+  to `self._service_clients` to avoid the read-only `rclpy.node.Node.clients`
+  property on ROS 2 Humble.
+- Preserve the Hotfix 1 standard `SetParameters` service path.
+- No policy bundle, learned handoff data, safety limits, driver behavior, or live
+  authority semantics changed.

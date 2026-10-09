@@ -23,7 +23,7 @@ import rclpy
 from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from rclpy.parameter_client import AsyncParameterClient
+from rcl_interfaces.srv import SetParameters
 from std_srvs.srv import Trigger
 import yaml
 
@@ -50,8 +50,12 @@ def load_profile(path: Path) -> dict:
 class HandoffController(Node):
     def __init__(self) -> None:
         super().__init__('policy_handoff_control')
-        self.driver_params = AsyncParameterClient(self, 'lgh_st3215_driver')
-        self.clients = {
+        # Humble-compatible parameter client: call the node's standard
+        # rcl_interfaces/srv/SetParameters service directly rather than relying
+        # on an optional rclpy helper module.
+        self.driver_params = self.create_client(
+            SetParameters, '/lgh_st3215_driver/set_parameters')
+        self._service_clients = {
             'move': self.create_client(Trigger, '/st3215_driver/move_to_policy_handoff_pose'),
             'release': self.create_client(Trigger, '/st3215_driver/release_pose_override'),
             'hold': self.create_client(Trigger, '/st3215_driver/hold_current_pose'),
@@ -76,15 +80,17 @@ class HandoffController(Node):
             Parameter('policy_handoff_pose_rad', value=[float(x) for x in pose]),
             Parameter('policy_handoff_pose_enabled', value=True),
         ]
-        result = self.wait_future(self.driver_params.set_parameters(params), timeout)
-        if result is None or len(result) != len(params):
+        request = SetParameters.Request()
+        request.parameters = [param.to_parameter_msg() for param in params]
+        response = self.wait_future(self.driver_params.call_async(request), timeout)
+        if response is None or len(response.results) != len(params):
             raise RuntimeError('driver parameter update returned no complete result')
-        failures = [item.reason for item in result if not item.successful]
+        failures = [item.reason for item in response.results if not item.successful]
         if failures:
             raise RuntimeError('driver rejected handoff parameters: ' + '; '.join(failures))
 
     def call_trigger(self, key: str, timeout: float = 5.0):
-        client = self.clients[key]
+        client = self._service_clients[key]
         if not client.wait_for_service(timeout_sec=timeout):
             raise RuntimeError(f'service unavailable: {client.srv_name}')
         response = self.wait_future(client.call_async(Trigger.Request()), timeout)
@@ -94,7 +100,7 @@ class HandoffController(Node):
 
     def require_trigger(self, key: str, timeout: float = 5.0):
         response = self.call_trigger(key, timeout)
-        print(f'{self.clients[key].srv_name}: success={response.success} message={response.message}')
+        print(f'{self._service_clients[key].srv_name}: success={response.success} message={response.message}')
         if not response.success:
             raise RuntimeError(response.message)
         return response
@@ -106,7 +112,7 @@ class HandoffController(Node):
             response = self.call_trigger('arm', timeout=min(3.0, max(0.5, deadline - time.monotonic())))
             last = response.message
             if response.success:
-                print(f'{self.clients["arm"].srv_name}: success=True message={response.message}')
+                print(f'{self._service_clients["arm"].srv_name}: success=True message={response.message}')
                 return
             time.sleep(0.25)
         raise RuntimeError(f'policy handoff never became armable: {last}')
@@ -118,7 +124,7 @@ class HandoffController(Node):
             response = self.call_trigger('release', timeout=min(3.0, max(0.5, deadline - time.monotonic())))
             last = response.message
             if response.success:
-                print(f'{self.clients["release"].srv_name}: success=True message={response.message}')
+                print(f'{self._service_clients["release"].srv_name}: success=True message={response.message}')
                 return
             time.sleep(0.20)
         raise RuntimeError(f'driver pose override could not be released: {last}')

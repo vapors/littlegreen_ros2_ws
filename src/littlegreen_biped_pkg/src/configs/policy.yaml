@@ -1,26 +1,25 @@
 schema_version: 2
 metadata:
   project_name: Littlegreen-Humanoid-Lite
-  project_version: 2.5.0
+  project_version: 2.3.1
   training_package: littlegreen_humanoid_lite
   asset_package: littlegreen_humanoid_lite_assets
   source_lineage: Berkeley-Humanoid-Lite v1.4.8 renamed and evolved
-  exported_at_utc: '2026-10-08T00:40:45Z'
-  task: Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102
-  task_role: locomotion
-  training_release: 10.2.0
-  experiment_name: littlegreen_v10_2_st3215_tracking_wide_command_exploration
-  load_run: 2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113
-  checkpoint: model_10000.pt
-  checkpoint_path: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v10_2_st3215_tracking_wide_command_exploration/2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113/model_10000.pt
-  export_dir: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v10_2_st3215_tracking_wide_command_exploration/2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113/exported
+  exported_at_utc: '2026-07-26T19:56:01Z'
+  task: Velocity-Lilgreen-Stand-ST3215-Loaded-v23
+  task_role: stand
+  experiment_name: littlegreen_v2_3_1_st3215_stand
+  load_run: 2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42
+  checkpoint: model_2000.pt
+  checkpoint_path: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v2_3_1_st3215_stand/2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42/model_2000.pt
+  export_dir: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v2_3_1_st3215_stand/2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42/exported
   policy_filename: policy.onnx
   policy_format: onnx
-  policy_sha256: da7adcaf996809bfb7a413bfec712dd2f3bd2ed984f8f661af2f9cc9c4d7872e
-policy_checkpoint_path: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v10_2_st3215_tracking_wide_command_exploration/2026-09-14_23-43-55_locomotion_v102_tracking_wide_command_explore_seed113/exported/policy.onnx
+  policy_sha256: 66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
+policy_checkpoint_path: /home/scott/Littlegreen-Humanoid-Lite/logs/rsl_rl/littlegreen_v2_3_1_st3215_stand/2026-07-26_11-02-00_stand_v23_balanced47_fresh_seed42/exported/policy.onnx
 policy_checkpoint_relative_path: policy.onnx
 policy_checkpoint_filename: policy.onnx
-policy_sha256: da7adcaf996809bfb7a413bfec712dd2f3bd2ed984f8f661af2f9cc9c4d7872e
+policy_sha256: 66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
 onnx_input_name: obs
 onnx_input_shape:
 - 1
@@ -184,60 +183,24 @@ phase_indices:
 - 45
 - 46
 phase_encoding: sin_cos_2pi
-phase_mode: neutral_static
-phase_source_function: littlegreen_phase_sin_cos_v24
-phase_period_s: 0.9
-phase_period_active: false
-phase_constant_sin_cos:
-- 0.0
-- 1.0
-deployment_curriculum_stage: null
-phase_period_source: inactive_neutral_static_metadata_only
-phase_transition_fraction: 0.1
-phase_linear_command_threshold: 0.08
+phase_mode: randomized_static_per_episode
+phase_source_function: littlegreen_phase_sin_cos_v23
+phase_period_s: 0.84
+phase_transition_fraction: 0.05
+phase_linear_command_threshold: 0.2
 phase_yaw_command_threshold: 0.08
-phase_reset_semantics: constant_neutral_phase_sin0_cos1_for_all_environments_and_ticks
+phase_reset_semantics: sample_uniform_once_for_each_reset_environment_and_hold
+stand_walk_observation_difference: phase_evolution_only
 shared_47d_stand_walk_contract: true
-shared_47d_foundation_contract: true
-stand_transfer_walk_observation_difference: phase_evolution_only
 legacy_45d_checkpoint_support: false
 deployment_requires_shared_47d_observation_builder: true
-deployment_requires_random_static_phase_for_stand: false
-deployment_requires_continuous_transfer_phase: false
+deployment_requires_random_static_phase_for_stand: true
 deployment_requires_command_synchronized_phase_for_walk: false
-deployment_requires_neutral_static_phase_for_locomotion: true
 command_velocity:
 - 0.0
 - 0.0
 - 0.0
-command_contract_version: 1
 command_velocity_source: runtime_command_input
-command_limit_lin_vel_x:
-- -0.45
-- 0.65
-command_limit_lin_vel_y:
-- -0.3
-- 0.3
-command_limit_ang_vel_z:
-- -0.5
-- 0.5
-deployment_requires_command_clamp: true
-command_limit_behavior: clamp_each_axis_to_training_range
-command_training_profile: v10.2_wide_xy_turn_biased
-command_resampling_time_range_s:
-- 6.0
-- 10.0
-command_rel_standing_envs: 0.03
-command_rel_turn_focus_envs: 0.125
-command_turn_lin_vel_x:
-- 0.1
-- 0.3
-command_turn_lin_vel_y:
-- -0.08
-- 0.08
-command_turn_ang_vel_abs:
-- 0.3
-- 0.5
 action_contract_version: 4
 action_contract_name: bounded_default_centered_vector_residual_athletic
 action_transform: bounded_default_centered_vector_residual
@@ -327,7 +290,7 @@ previous_action_observation: bounded_normalized_action
 deployment_requires_action_contract_transform: true
 deployment_requires_action_contract_v4_transform: true
 deployment_contract_profile: v1_4_5_stabilized_vector_residual
-training_release_profile: v10_2_wide_command_bilateral_world_rate
+training_release_profile: v2_3_1_shared47_balanced_stand_walk
 training_actuator_model_name: littlegreen_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_athletic_stabilized+track1_loaded_actuator_extension_v2:stage_b_loaded_athletic_stabilized
 training_actuator_model_source_name: berkeley_humanoid_lite_st3215_track1_actuator_identification_v2:stage_a_athletic_stabilized+track1_loaded_actuator_extension_v2:stage_b_loaded_athletic_stabilized
 training_actuator_model_stage: stage_b_loaded_v145_stabilized_vector_residual
