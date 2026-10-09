@@ -19,7 +19,8 @@ Use the page matching the task being performed.
 - [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md) — exact shared 47-D layout, static Stand phase, future Walk phase, metadata, and legacy rules.
 - [`TRACK1_V2_3_1_INTEGRATION_AUDIT.md`](TRACK1_V2_3_1_INTEGRATION_AUDIT.md) — bundle/runtime mismatch audit and v2.9.0 integration boundary.
 - [`LIVE_POLICY_DEPLOYMENT.md`](LIVE_POLICY_DEPLOYMENT.md) — paired bundle audit, observation/action validation, shadow gates, and guarded live launch.
-- [`V2_9_3_POLICY_HANDOFF.md`](V2_9_3_POLICY_HANDOFF.md) — SHA-bound Track-1 zero-command pose, previous-action seeding, IMU reset gate, and first live handoff workflow.
+- [`V2_9_4_HANDOFF_CALIBRATION.md`](V2_9_4_HANDOFF_CALIBRATION.md) — active v10.2 handoff contract, hardware trim provenance, and zero-command closed-loop workflow.
+- [`V2_9_3_POLICY_HANDOFF.md`](V2_9_3_POLICY_HANDOFF.md) — original learned zero-command handoff design record.
 - [`TRACK1_TRACK2_POLICY_METRICS.md`](TRACK1_TRACK2_POLICY_METRICS.md) — mapping between Track 1 analysis metrics and real-hardware observability.
 
 ## Calibrate and characterize
@@ -32,7 +33,9 @@ Use the page matching the task being performed.
 ## Safety and release status
 
 - [`SAFETY_AND_LIMITATIONS.md`](SAFETY_AND_LIMITATIONS.md) — active safety boundary and deferred work.
-- [`V2_9_0_RELEASE.md`](V2_9_0_RELEASE.md) — current v2.3.1 Stand bundle integration release.
+- [`V2_9_4_HANDOFF_CALIBRATION.md`](V2_9_4_HANDOFF_CALIBRATION.md) — current active deployment calibration release.
+- [`V2_9_4_VALIDATION.md`](V2_9_4_VALIDATION.md) — v2.9.4 static validation and remaining Orange Pi acceptance steps.
+- [`V2_9_0_RELEASE.md`](V2_9_0_RELEASE.md) — historical v2.3.1 Stand bundle integration release.
 - [`V2_9_0_VALIDATION.md`](V2_9_0_VALIDATION.md) — validation scope and remaining Orange Pi acceptance steps.
 - [`MIGRATION_V2_8_0_TO_V2_9_0.md`](MIGRATION_V2_8_0_TO_V2_9_0.md) — upgrade, calibration-preservation, shadow, and rollback steps.
 - [`V2_7_3_RELEASE.md`](V2_7_3_RELEASE.md) — prior documentation/discoverability release.

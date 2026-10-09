@@ -547,7 +547,7 @@ def validate_policy_handoff(
     if not handoff_path.is_file():
         if task_role(policy) == 'locomotion':
             warnings.append(
-                'no policy_handoff.yaml found; shadow is allowed but v2.9.3 live locomotion authority will remain gated'
+                'no policy_handoff.yaml found; shadow is allowed but v2.9.4 live locomotion authority will remain gated'
             )
         return None
     handoff = yaml.safe_load(handoff_path.read_text(encoding='utf-8'))
@@ -572,20 +572,78 @@ def validate_policy_handoff(
     if handoff.get('joint_order') != names:
         errors.append('policy_handoff joint_order does not match canonical joint order')
     pose = handoff.get('joint_position_rad')
+    source_pose = handoff.get('source_median_joint_position_rad')
+    hardware_trim = handoff.get('hardware_trim_rad')
     previous = handoff.get('previous_action_bounded')
     if not isinstance(pose, list) or len(pose) != NUM_ACTIONS:
         errors.append('policy_handoff joint_position_rad must contain 12 values')
-    else:
-        for i, (value, entry) in enumerate(zip(pose, entries)):
+    if not isinstance(source_pose, list) or len(source_pose) != NUM_ACTIONS:
+        errors.append('policy_handoff source_median_joint_position_rad must contain 12 values')
+    if not isinstance(hardware_trim, list) or len(hardware_trim) != NUM_ACTIONS:
+        errors.append('policy_handoff hardware_trim_rad must contain 12 values')
+
+    clamp_by_index: dict[int, dict[str, Any]] = {}
+    clamps = handoff.get('physical_limit_clamps', [])
+    if not isinstance(clamps, list):
+        errors.append('policy_handoff physical_limit_clamps must be a list')
+        clamps = []
+    for item in clamps:
+        if not isinstance(item, dict):
+            errors.append('policy_handoff physical_limit_clamps entries must be mappings')
+            continue
+        try:
+            index = int(item['index'])
+        except (KeyError, TypeError, ValueError):
+            errors.append('policy_handoff physical_limit_clamps entry has invalid index')
+            continue
+        if index < 0 or index >= NUM_ACTIONS or index in clamp_by_index:
+            errors.append(f'policy_handoff physical_limit_clamps invalid/duplicate action[{index}]')
+            continue
+        clamp_by_index[index] = item
+
+    if (isinstance(pose, list) and len(pose) == NUM_ACTIONS and
+        isinstance(source_pose, list) and len(source_pose) == NUM_ACTIONS and
+        isinstance(hardware_trim, list) and len(hardware_trim) == NUM_ACTIONS):
+        for i, (value, source_value, trim_value, entry) in enumerate(
+            zip(pose, source_pose, hardware_trim, entries)
+        ):
             try:
                 q = float(value)
+                source_q = float(source_value)
+                trim_q = float(trim_value)
                 lo = float(entry['limit_lower_rad'])
                 hi = float(entry['limit_upper_rad'])
             except (TypeError, ValueError, KeyError):
-                errors.append(f'policy_handoff invalid joint value at action[{i}]')
+                errors.append(f'policy_handoff invalid joint decomposition at action[{i}]')
                 continue
-            if not math.isfinite(q) or q < lo or q > hi:
+            if not all(math.isfinite(x) for x in (q, source_q, trim_q, lo, hi)):
+                errors.append(f'policy_handoff non-finite joint decomposition at action[{i}]')
+                continue
+            pre_clamp = source_q + trim_q
+            expected = pre_clamp
+            clamp = clamp_by_index.get(i)
+            if clamp is not None:
+                if str(clamp.get('joint', '')) != names[i]:
+                    errors.append(f'policy_handoff clamp joint mismatch at action[{i}]')
+                try:
+                    declared_pre = float(clamp['pre_clamp_rad'])
+                    declared_effective = float(clamp['effective_rad'])
+                    declared_delta = float(clamp['delta_rad'])
+                except (KeyError, TypeError, ValueError):
+                    errors.append(f'policy_handoff invalid clamp values at action[{i}]')
+                    continue
+                if abs(declared_pre - pre_clamp) > 1.0e-6:
+                    errors.append(f'policy_handoff clamp pre_clamp_rad mismatch at action[{i}]')
+                if abs((declared_effective - declared_pre) - declared_delta) > 1.0e-6:
+                    errors.append(f'policy_handoff clamp delta mismatch at action[{i}]')
+                expected = declared_effective
+            if abs(q - expected) > 1.0e-6:
+                errors.append(
+                    f'policy_handoff effective pose is not source+trim(+clamp) at action[{i}]'
+                )
+            if q < lo or q > hi:
                 errors.append(f'policy_handoff joint target outside physical limits at action[{i}]')
+
     if not isinstance(previous, list) or len(previous) != NUM_ACTIONS:
         errors.append('policy_handoff previous_action_bounded must contain 12 values')
     else:
@@ -863,9 +921,12 @@ def main() -> int:
     )
     if handoff_path.is_file():
         handoff = yaml.safe_load(handoff_path.read_text(encoding='utf-8'))
+        trim = handoff.get('hardware_trim_rad', [])
+        max_trim = max((abs(float(x)) for x in trim), default=0.0)
         print(
-            f"handoff: {handoff.get('mode')} pose[12] + previous_action[12] "
-            f"sha={handoff.get('policy_sha256')}"
+            f"handoff: {handoff.get('mode')} source_pose[12] + hw_trim[12] "
+            f"-> effective_pose[12] + previous_action[12] "
+            f"max_hw_trim={max_trim:.4f}rad sha={handoff.get('policy_sha256')}"
         )
     if shape_info is not None:
         print(f"onnx_input: {shape_info.get('input_name')} {shape_info.get('input_shape')}")

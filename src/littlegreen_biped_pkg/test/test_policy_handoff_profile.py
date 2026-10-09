@@ -54,3 +54,34 @@ def test_auditor_accepts_profile_when_policy_identity_matches(tmp_path: Path):
     result = audit.validate_policy_handoff(policy, joint_map, handoff_path, errors, warnings)
     assert result is not None
     assert errors == []
+
+
+def test_packaged_handoff_separates_track1_source_from_hardware_trim():
+    handoff = yaml.safe_load((CONFIGS / 'policy_handoff.yaml').read_text())
+    source = [float(x) for x in handoff['source_median_joint_position_rad']]
+    trim = [float(x) for x in handoff['hardware_trim_rad']]
+    effective = [float(x) for x in handoff['joint_position_rad']]
+    assert len(source) == len(trim) == len(effective) == 12
+    assert trim == [
+        0.0, 0.0, -0.035, 0.0, -0.100, 0.0,
+        0.0, 0.0, -0.035, 0.0, -0.100, 0.0,
+    ]
+    clamps = {int(item['index']): item for item in handoff['physical_limit_clamps']}
+    for i, (src, delta, actual) in enumerate(zip(source, trim, effective)):
+        expected = src + delta
+        if i in clamps:
+            clamp = clamps[i]
+            assert abs(float(clamp['pre_clamp_rad']) - expected) <= 1.0e-9
+            expected = float(clamp['effective_rad'])
+        assert abs(actual - expected) <= 1.0e-9
+
+
+def test_packaged_handoff_records_physical_orientation_calibration():
+    handoff = yaml.safe_load((CONFIGS / 'policy_handoff.yaml').read_text())
+    provenance = handoff['hardware_trim_provenance']
+    assert provenance['calibration_scope'] == 'policy_handoff_only'
+    assert provenance['calibrated_on_robot'] is True
+    assert provenance['orientation_expectation_result'] == 'PASS'
+    gravity = [float(x) for x in provenance['median_projected_gravity_base']]
+    assert len(gravity) == 3
+    assert gravity[2] < -0.99

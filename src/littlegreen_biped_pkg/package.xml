@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>littlegreen_biped_pkg</name>
-  <version>0.7.3</version>
+  <version>0.7.4</version>
   <description>LittleGreen shared 47-D Stand/Walk/Locomotion inference with SHA-bound Track-1 zero-command live handoff, previous-action seeding, IMU reset gating, neutral-static phase support, action-contract-v4 validation, command-envelope clamping, shadow/live launch, bundle auditing, golden vectors, and runtime metrics</description>
 
   <maintainer email="scott.milich@me.com">scott</maintainer>

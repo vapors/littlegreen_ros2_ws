@@ -128,16 +128,16 @@ def test_v231_layout_ranges_mismatch_is_rejected(tmp_path: Path) -> None:
     assert any('observation_layout_ranges' in error for error in errors)
 
 
-def test_stand_phase_mode_mismatch_is_rejected(tmp_path: Path) -> None:
-    policy_path, onnx_path = copy_v231_bundle(tmp_path)
-    rewrite_policy(
-        policy_path,
-        lambda policy: policy.__setitem__(
-            'phase_mode', 'command_synchronized_continuous_nonblocking'
-        ),
-    )
-    probe = make_probe(tmp_path / 'probe', 47)
-    errors, _, _ = AUDIT.audit(policy_path, JOINT_MAP, onnx_path, probe)
+def test_stand_phase_mode_mismatch_is_rejected() -> None:
+    policy = yaml.safe_load((CONFIG_DIR / 'policy.yaml').read_text(encoding='utf-8'))
+    policy['metadata']['task_role'] = 'stand'
+    policy['phase_mode'] = 'command_synchronized_continuous_nonblocking'
+    policy['phase_reset_semantics'] = 'sample_uniform_once_for_each_reset_environment_and_hold'
+    policy['deployment_requires_random_static_phase_for_stand'] = True
+    policy['deployment_requires_command_synchronized_phase_for_walk'] = False
+    errors: list[str] = []
+    warnings: list[str] = []
+    AUDIT.validate_v231_observation_contract(policy, errors, warnings)
     assert any('Stand bundle requires phase_mode' in error for error in errors)
 
 

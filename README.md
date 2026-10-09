@@ -16,31 +16,37 @@ ROS 2 Humble source workspace for the LittleGreen biped hardware stack. The acti
 
 ## Current Track 1 deployment status
 
-v2.9.0 packages the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand bundle:
+Workspace v2.9.4 packages the audited LittleGreen Humanoid Lite v10.2 `model_10000` locomotion bundle as the active source policy:
 
 ```text
-Task:                 Velocity-Lilgreen-Stand-ST3215-Loaded-v23
+Task:                 Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102
 Interface:            observation[47] -> action[12]
 Rate:                 50 Hz
 Observation contract: littlegreen_velocity_47d_phase_v1
-Phase mode:           randomized_static_per_episode
+Phase mode:           neutral_static -> [0.0, 1.0]
 Action contract:      v4 bounded default-centered vector residual
-ONNX SHA-256:          66936666934ff02e75681b8ae5c2c6727021df598419016ce0479e8466282608
+ONNX SHA-256:          da7adcaf996809bfb7a413bfec712dd2f3bd2ed984f8f661af2f9cc9c4d7872e
 ```
 
-The Stand policy receives the exact shared actor observation exported by Track 1. Its phase is sampled uniformly once at the beginning of an intentional policy episode and the sine/cosine pair remains unchanged for the episode. It does not advance with time, command, contact, inference count, or transient readiness loss.
+The source tree, checkpoint mirror, deployment contract, manifest, and checksum files are synchronized to that same policy identity. Rebuilding the package therefore no longer risks silently reverting the installed runtime to the older Stand bundle.
 
-The former 45-D v2.8.0 policy is retained as a paired rollback artifact under `configs/legacy_v280_45d/`; it is not the active default. Future Walk construction is present for contract testing and shadow inspection, but live Walk remains blocked until the exported checkpoint explicitly pins its deployment stage or period. See [`docs/OBSERVATION_CONTRACT.md`](docs/OBSERVATION_CONTRACT.md).
+### Learned zero-command live handoff
 
-### v10.2 sim-to-real bridge support (workspace v2.9.2)
+`q_default` remains the protected Track-1 observation/action reference. Live locomotion instead enters policy control from the Track-1 learned zero-command standing state plus an explicit robot-specific hardware trim. The handoff profile records three separate layers:
 
-The runtime now also accepts Track-1 `Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102` bundles that declare `task_role: locomotion` and `phase_mode: neutral_static`. For that policy, observation indices 45-46 are reconstructed exactly as `[0.0, 1.0]` on every inference tick; no deployment gait clock is introduced. The v10.2 exported command envelope is enforced at the `/command_velocity` boundary before commands enter the policy observation.
+```text
+Track-1 source median pose
+        +
+robot-specific hardware_trim_rad
+        +
+documented physical-limit clamp(s)
+        =
+audited effective Track-2 handoff pose
+```
 
-The packaged default policy remains the proven v2.3.1 Stand bundle until a v10.2 checkpoint is explicitly exported, audited, and installed. Use `install_exported_policy_bundle` in dry-run mode first, then begin with shadow output.
+For the current robot, only bilateral hip-pitch (`-0.035 rad`) and ankle-pitch (`-0.100 rad`) hardware trims are applied. The resulting supported pose passed the orientation audit at approximately 1.7 degrees total tilt. `obs[33:45]` is seeded with the matched Track-1 bounded previous action before the first live policy inference. Power-on behavior remains hold-current-position; there is no automatic startup motion. See [`docs/V2_9_4_HANDOFF_CALIBRATION.md`](docs/V2_9_4_HANDOFF_CALIBRATION.md).
 
-### Learned zero-command live handoff (workspace v2.9.3)
-
-v2.9.3 keeps `q_default` protected but makes the Track-1 learned zero-command standing state the default **policy-entry pose** for live locomotion. Live v10.2 authority starts gated; the robot is explicitly ramped to the SHA-bound handoff pose, obs[33:45] is seeded with the matching bounded previous action, IMU stability is verified, and policy authority is then enabled. Power-on behavior remains hold-current-position; there is no automatic startup motion. See [`docs/V2_9_3_POLICY_HANDOFF.md`](docs/V2_9_3_POLICY_HANDOFF.md).
+The former v2.3.1 Stand and legacy 45-D artifacts remain historical/rollback references; they are not the active v2.9.4 source policy.
 
 ## Install
 
@@ -139,7 +145,7 @@ Profiles select the ROS publication surface. They do **not** enable writes or al
 - Software pose holds and torque services are not electrical emergency stops.
 - Commissioning and first live runs require mechanical support and immediate access to servo power disconnect.
 - Initial live deployment uses `controller_mode:=safety_only`; aggressive outer-PD tuning remains outside this release.
-- Do not edit ROS-side defaults to compensate for a Track 1 posture issue. Update and re-export the paired policy contract instead.
+- Do not edit `q_default`, action defaults, residual scales, or joint limits to tune physical handoff posture. Robot-specific policy-entry calibration belongs only in the audited `hardware_trim_rad` layer; Track-1 policy semantics remain unchanged.
 
 ## Documentation
 
@@ -161,7 +167,9 @@ Start with [`docs/README.md`](docs/README.md). Common pages:
 - [`docs/SAFETY_AND_LIMITATIONS.md`](docs/SAFETY_AND_LIMITATIONS.md)
 - [`docs/V2_9_0_RELEASE.md`](docs/V2_9_0_RELEASE.md)
 - [`docs/V2_9_0_VALIDATION.md`](docs/V2_9_0_VALIDATION.md)
-- [`docs/V2_9_3_POLICY_HANDOFF.md`](docs/V2_9_3_POLICY_HANDOFF.md)
+- [`docs/V2_9_4_HANDOFF_CALIBRATION.md`](docs/V2_9_4_HANDOFF_CALIBRATION.md)
+- [`docs/V2_9_4_VALIDATION.md`](docs/V2_9_4_VALIDATION.md)
+- [`docs/V2_9_3_POLICY_HANDOFF.md`](docs/V2_9_3_POLICY_HANDOFF.md) — original handoff design record
 - [`docs/VALIDATION.md`](docs/VALIDATION.md)
 
 Historical records are retained under `docs/archive/` and `docs/history/` and are not active operating instructions.

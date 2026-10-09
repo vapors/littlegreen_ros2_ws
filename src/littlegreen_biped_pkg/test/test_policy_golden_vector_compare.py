@@ -7,7 +7,7 @@ from pathlib import Path
 
 PACKAGE = Path(__file__).parents[1]
 SCRIPT = PACKAGE / 'scripts' / 'policy_golden_vector_compare.py'
-FIXTURE = PACKAGE / 'test' / 'golden' / 'v231_stand_observation_vectors.yaml'
+FIXTURE = PACKAGE / 'test' / 'golden' / 'v102_locomotion_observation_vectors.yaml'
 POLICY = PACKAGE / 'src' / 'configs' / 'policy.yaml'
 
 

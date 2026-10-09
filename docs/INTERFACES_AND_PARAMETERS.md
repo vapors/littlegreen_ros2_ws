@@ -117,7 +117,7 @@ Software position holds are not hardware E-stops.
 | `worker_cpu` | `-1` |
 | `realtime_priority` | `0` |
 
-### v2.9.3 policy handoff / IMU-reset parameters
+### v2.9.4 policy handoff / IMU-reset parameters
 
 | Parameter | Default | Meaning |
 |---|---:|---|
@@ -293,11 +293,11 @@ Use the dedicated shadow and live launch files for first hardware deployment. Se
 
 ### Observation contracts
 
-v2.9.0 consumes the Track 1 v2.3.1 export schema directly. The active contract is:
+v2.9.4 consumes the Track 1 v10.2 export schema directly. The active contract is:
 
 | Observation count | Contract | Phase mode |
 |---:|---|---|
-| `47` | `littlegreen_velocity_47d_phase_v1` | task-specific; packaged Stand uses `randomized_static_per_episode` |
+| `47` | `littlegreen_velocity_47d_phase_v1` | task-specific; active v10.2 locomotion uses `neutral_static` |
 | `45` | isolated legacy compatibility | no phase |
 | any other value | unsupported | startup and offline audit fail |
 
@@ -308,9 +308,7 @@ obs[45] = sin(2*pi*phase)
 obs[46] = cos(2*pi*phase)
 ```
 
-For the packaged Stand policy, phase is sampled uniformly once at intentional episode start and remains static. It does not advance with time, command, contact, inference count, or transient readiness loss. The exported compact layout and all explicit index ranges are validated.
-
-Future Walk uses the exported command thresholds and period in a command-synchronized non-blocking phase state. Live Walk is rejected unless checkpoint stage/period provenance is explicit. See [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md).
+For the active v10.2 locomotion policy, the phase tail is fixed exactly at `[0.0, 1.0]` for every policy tick. It does not advance with time, command, contact, inference count, or transient readiness loss. The exported compact layout and all explicit index ranges are validated. Historical Stand remains compatible with `randomized_static_per_episode`; future Walk uses command-synchronized phase semantics. See [`OBSERVATION_CONTRACT.md`](OBSERVATION_CONTRACT.md).
 
 ### Action contracts v3 and v4
 
@@ -347,7 +345,7 @@ deployment_contract_profile
 deployment_requires_action_contract_v4_transform: true
 ```
 
-The packaged v2.3.1 Stand policy uses contract v4 and a non-uniform 12-joint residual vector. Legacy YAML without `action_contract_version` remains readable through `action_scale`, but it is not the current deployment path.
+The active v10.2 locomotion policy uses contract v4 and a non-uniform 12-joint residual vector. Legacy YAML without `action_contract_version` remains readable through `action_scale`, but it is not the current deployment path.
 
 ### Policy bundle audit
 
@@ -356,7 +354,7 @@ ros2 run littlegreen_biped_pkg policy_bundle_audit --help
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-The audit checks all five bundle files, YAML/manifest/deployment-contract checksums, actual ONNX input/output tensor dimensions and float32 element types, the v2.3.1 observation schema, and the same v3/v4 hardware-map boundary used by the live policy node. The installed audit locates `policy_onnx_contract_probe` automatically. `--skip-onnx-shape-check` is reserved for source-development checks before the helper has been built; it is not acceptable for deployment approval. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
+The audit checks all five bundle files, YAML/manifest/deployment-contract checksums, actual ONNX input/output tensor dimensions and float32 element types, the shared 47-D observation schema, the v10.2 neutral-static semantics, the handoff source/trim/effective-pose decomposition, and the same v3/v4 hardware-map boundary used by the live policy node. The installed audit locates `policy_onnx_contract_probe` automatically. `--skip-onnx-shape-check` is reserved for source-development checks before the helper has been built; it is not acceptable for deployment approval. Exit `0` is pass, `2` is a contract/test failure, `5` is malformed configuration, and `70` is an internal error.
 
 ### Policy runtime metrics
 

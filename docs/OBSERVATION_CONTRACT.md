@@ -1,6 +1,6 @@
 # Policy Observation Contract
 
-LittleGreen ROS 2 v2.9.0 validates observation and action contracts independently. The active packaged policy is the LittleGreen Humanoid Lite v2.3.1 canonical Stand export using the shared 47-D Stand/Walk actor observation and action contract v4.
+LittleGreen ROS 2 v2.9.4 validates observation and action contracts independently. The active packaged policy is the LittleGreen Humanoid Lite v10.2 `model_10000` locomotion export using the shared 47-D Stand/Walk/Locomotion actor observation and action contract v4.
 
 ## Shared 47-D actor observation
 
@@ -15,7 +15,7 @@ obs[45]     sin(2*pi*phase)
 obs[46]     cos(2*pi*phase)
 ```
 
-The actor input is always 47 values for the v2.3.1 Stand and Walk tasks. The critic's 50-value training input is not a deployment interface.
+The actor input is 47 values for the shared v2.3.1+ Stand/Walk/Locomotion contract. The critic's 50-value training input is not a deployment interface.
 
 Required exported metadata includes:
 
@@ -28,16 +28,37 @@ observation_contract_name: littlegreen_velocity_47d_phase_v1
 observation_layout: command3,base_ang_vel3,projected_gravity3,joint_pos_rel12,joint_vel12,previous_bounded_action12,phase_sin1,phase_cos1
 phase_indices: [45, 46]
 phase_encoding: sin_cos_2pi
-shared_47d_stand_walk_contract: true
+shared_47d_foundation_contract: true
 legacy_45d_checkpoint_support: false
 policy_dt: 0.02
 ```
 
 The runtime verifies the compact layout and every explicit range in `observation_layout_ranges`. It does not rewrite or annotate the exported YAML.
 
+
+## Active locomotion phase: neutral static
+
+The v10.2 locomotion bundle declares:
+
+```yaml
+phase_mode: neutral_static
+phase_constant_sin_cos: [0.0, 1.0]
+phase_period_active: false
+phase_reset_semantics: constant_neutral_phase_sin0_cos1_for_all_environments_and_ticks
+```
+
+Therefore the deployment tail is always:
+
+```text
+obs[45] = 0.0
+obs[46] = 1.0
+```
+
+No gait clock is synthesized in Track 2. The phase does not change with time, command, contact, inference count, or readiness loss. This is the active v10.2 behavior.
+
 ## Stand phase: randomized static per episode
 
-The packaged Stand bundle declares:
+Historical/compatible Stand bundles declare:
 
 ```yaml
 phase_mode: randomized_static_per_episode
@@ -68,7 +89,7 @@ The pair is then immutable for the episode.
 
 ## Deterministic test injection
 
-Production Stand deployment samples uniformly. Tests and replay may inject a fixed phase or deterministic seed:
+Historical Stand deployment samples uniformly. Tests and replay may inject a fixed phase or deterministic seed:
 
 ```bash
 ros2 launch littlegreen_biped_pkg policy_shadow.launch.py \
@@ -157,12 +178,12 @@ ros2 topic echo /policy_debug/gait_phase
 [2] successful inference tick count
 [3] sin(2*pi*phase)
 [4] cos(2*pi*phase)
-[5] phase mode code: 1=Stand, 2=Walk, 3=v2.8 legacy compatibility
+[5] phase mode code: 1=Stand, 2=Walk, 3=v2.8 legacy compatibility, 4=neutral_static
 [6] moving flag
 [7] first-swing-left flag
 ```
 
-For Stand, fields 0, 3, and 4 remain constant for the episode while the successful tick count may increase.
+For the active v10.2 locomotion policy, fields 3 and 4 remain exactly `[0,1]`; the phase fraction is neutral/static. Historical Stand uses its episode-static sampled phase.
 
 An intentional shadow reset is:
 

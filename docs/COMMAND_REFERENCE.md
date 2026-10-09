@@ -255,7 +255,7 @@ All services use `std_srvs/srv/Trigger`.
 | `/st3215_driver/disable_torque_all` | writes enabled | torque disabled; override remains active |
 
 
-### v2.9.3 live locomotion handoff
+### v2.9.4 live locomotion handoff
 
 The preferred orchestration command is:
 
@@ -686,11 +686,11 @@ Start the micro-ROS agent before using these tools when the XIAO firmware is the
 --skip-onnx-shape-check         source-development escape hatch; never deployment acceptance
 ```
 
-The installed command verifies all five exported bundle files, actual float32 `[1,47] -> [1,12]` ONNX tensors, the exact v2.3.1 observation layout/phase mode, and action contract v4 against the hardware map.
+The installed command verifies all five exported bundle files, actual float32 `[1,47] -> [1,12]` ONNX tensors, the shared 47-D observation layout, the active task-specific phase mode, action contract v4, and the calibrated learned-zero-command handoff decomposition against the hardware map.
 
 ### `annotate_phase_guided_policy` — legacy v2.8 helper
 
-This old v1.4.7 migration helper is retained only for historical rollback workflows. Do not run it on a v2.3.1 bundle; v2.9.0 consumes the exported schema unchanged.
+This old v1.4.7 migration helper is retained only for historical rollback workflows. Do not run it on the current v10.2 bundle; v2.9.4 consumes the exported schema unchanged.
 
 ### `policy_onnx_contract_probe`
 

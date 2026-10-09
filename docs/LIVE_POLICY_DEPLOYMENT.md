@@ -1,10 +1,10 @@
 # Live Policy Deployment
 
-> **v2.9.3 locomotion note:** live locomotion no longer enters policy control from training `q_default`. Power-on remains a measured-current hold. When live locomotion is intentionally started, Track 2 ramps to the SHA-bound Track-1 `learned_zero_command` handoff state, seeds the exported previous-action observation, verifies IMU/joint readiness, and only then enables policy authority. See [V2_9_3_POLICY_HANDOFF.md](V2_9_3_POLICY_HANDOFF.md).
+> **v2.9.4 locomotion note:** live locomotion no longer enters policy control from training `q_default`. Power-on remains a measured-current hold. When live locomotion is intentionally started, Track 2 ramps to the SHA-bound Track-1 `learned_zero_command` handoff state, seeds the exported previous-action observation, verifies IMU/joint readiness, and only then enables policy authority. See [V2_9_4_HANDOFF_CALIBRATION.md](V2_9_4_HANDOFF_CALIBRATION.md).
 
 This page covers the guarded transition from a paired Track 1 export to a live LittleGreen hardware policy. Servo, IMU, and shadow commissioning must already pass.
 
-Live deployment is a staged sequence. Stop between stages and review the result before continuing. v2.9.0 packages the complete LittleGreen Humanoid Lite v2.3.1 canonical Stand bundle and must consume its exported YAML unchanged.
+Live deployment is a staged sequence. Stop between stages and review the result before continuing. v2.9.4 packages the audited LittleGreen Humanoid Lite v10.2 `model_10000` locomotion bundle as the active source policy and consumes its exported YAML unchanged.
 
 ## 1. Runtime data path
 
@@ -32,7 +32,7 @@ The policy node owns observation construction, ONNX inference, action-contract t
 
 ## 2. Active Track 1 policy contract
 
-The repository retains a conservative Stand bundle as its clean-source fallback. A deployed robot may instead contain a complete Track-1 export installed by `install_exported_policy_bundle`. For the current v10.2 locomotion deployment, the active bundle is:
+The repository source tree is synchronized to the current v10.2 locomotion deployment. Historical Stand artifacts remain rollback/reference material but are not the active clean-source fallback. The active bundle is:
 
 ```text
 Task:                 Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102
@@ -46,7 +46,7 @@ Action contract:      v4 / v1_4_5_stabilized_vector_residual
 Command envelope:     vx [-0.45,+0.65], vy [-0.30,+0.30], yaw [-0.50,+0.50]
 ```
 
-`q_default` remains the protected observation/action reference. For live locomotion, it is **not** the policy-entry pose. v2.9.3 loads `policy_handoff.yaml`, which is bound to the active task and ONNX SHA. Live authority remains disabled until the robot is within the learned zero-command handoff pose tolerance and the previous-action observation has been seeded.
+`q_default` remains the protected observation/action reference. For live locomotion, it is **not** the policy-entry pose. v2.9.4 loads `policy_handoff.yaml`, which is bound to the active task and ONNX SHA. Live authority remains disabled until the robot is within the learned zero-command handoff pose tolerance and the previous-action observation has been seeded.
 
 Action contract v4 remains:
 
@@ -76,7 +76,7 @@ src/littlegreen_biped_pkg/src/configs/bundle_manifest.yaml
 
 - export schema 2 and observation-contract version 1;
 - exact compact 47-D layout and explicit index ranges;
-- `randomized_static_per_episode` Stand semantics;
+- `neutral_static` locomotion semantics with `obs[45:47] = [0,1]`;
 - all bundle hashes and actual float32 ONNX `[1,47] -> [1,12]` tensors;
 - canonical action indices and joint names;
 - exported defaults and physical bounds against `joint_map.yaml`;
@@ -136,7 +136,7 @@ After installation:
 ros2 run littlegreen_biped_pkg policy_bundle_audit
 ```
 
-A successful audit exits `0`. A contract/tensor mismatch exits `2`; malformed configuration exits `5`. The old metadata annotation helper is a v2.8 legacy migration tool and must not be used on a v2.3.1 bundle.
+A successful audit exits `0`. A contract/tensor mismatch exits `2`; malformed configuration exits `5`. The old metadata annotation helper is a v2.8 legacy migration tool and must not be used on the current v10.2 bundle.
 
 ## 5. Rebuild and restart
 
@@ -238,22 +238,14 @@ ros2 topic echo /policy_debug/target_clipped --once
 ros2 topic echo /policy_debug/saturation_mask --once
 ```
 
-For the v2.3.1 shared 47-D Stand bundle verify:
+For the current v10.2 shared 47-D locomotion bundle verify:
 
 ```bash
 ros2 topic echo /policy_debug/observation --once
 ros2 topic echo /policy_debug/gait_phase --once
 ```
 
-The sampled Stand phase/sine/cosine must remain constant for the entire episode. A readiness outage must not resample it. The successful-tick counter may increase, but it does not evolve Stand phase.
-
-In shadow mode, an explicit intentional new-episode reset is available:
-
-```bash
-ros2 service call \
-  /policy/reset_gait_phase \
-  std_srvs/srv/Trigger '{}'
-```
+The observation tail must remain exactly `obs[45:47] = [0.0, 1.0]`. `neutral_static` does not advance with time, command, contact, or inference count. The live runtime intentionally refuses gait-phase resets for this contract.
 
 Capture Track 1-aligned real-hardware metrics:
 
@@ -327,7 +319,7 @@ ros2 topic echo /policy_status --once
 ros2 topic echo /safe_joint_targets --once
 ```
 
-For a v2.9.3 **locomotion** bundle, do **not** manually release the driver override. Live authority starts disabled and the zero-command handoff must coordinate the release:
+For a v2.9.4 **locomotion** bundle, do **not** manually release the driver override. Live authority starts disabled and the zero-command handoff must coordinate the release:
 
 ```bash
 ros2 run littlegreen_biped_pkg policy_handoff_control live
@@ -335,7 +327,7 @@ ros2 run littlegreen_biped_pkg policy_handoff_control live
 
 This ramps to the SHA-bound Track-1 learned zero-command pose, waits for readiness, seeds `obs[33:45]`, releases the driver override, and then enables policy authority. If the final enable fails, the helper requests `hold_current_pose`.
 
-The manual `/st3215_driver/release_pose_override` service remains available for commissioning and non-handoff workflows, but bypassing the v2.9.3 locomotion handoff is not the deployment path.
+The manual `/st3215_driver/release_pose_override` service remains available for commissioning and non-handoff workflows, but bypassing the v2.9.4 locomotion handoff is not the deployment path.
 
 For 47-D live locomotion, `/policy/reset_gait_phase` remains intentionally refused. The current v10.2 contract uses `neutral_static`, so its phase tail is fixed at `[0,1]`.
 
@@ -350,7 +342,7 @@ mechanical fall arrest
 physical power disconnect immediately accessible
 ```
 
-Do not use `outer_pd` or `outer_pid` during the initial v1.4.5s3 campaign.
+Do not use `outer_pd` or `outer_pid` during the initial v10.2 sim-to-real campaign.
 
 
 ## Recommended terminal layout

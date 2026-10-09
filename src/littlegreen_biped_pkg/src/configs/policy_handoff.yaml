@@ -29,19 +29,8 @@ joint_order:
 - leg_right_knee_pitch_joint
 - leg_right_ankle_pitch_joint
 - leg_right_ankle_roll_joint
-joint_position_rad:
-- -0.0022942114155739546
-- 0.014345815405249596
-- -0.34772855043411255
-- 0.8788803219795227
-- -0.44490545988082886
-- 0.0664796531200409
-- -0.03032059408724308
-- -0.056757289151768725
-- -0.2813382148742676
-- 0.8014949560165405
-- -0.4355151951313019
-- 0.05092838034033775
+
+# Immutable Track-1 analyzer result. Never edit this vector for hardware tuning.
 source_median_joint_position_rad:
 - -0.0022942114155739546
 - 0.014345815405249596
@@ -55,12 +44,65 @@ source_median_joint_position_rad:
 - 0.8014949560165405
 - -0.4355151951313019
 - 0.05092838034033775
+
+# Robot-specific sim->real calibration. Additive radians in canonical joint order.
+# This is intentionally separate from q_default and the Track-1 source median.
+hardware_trim_rad:
+- 0.0
+- 0.0
+- -0.035
+- 0.0
+- -0.100
+- 0.0
+- 0.0
+- 0.0
+- -0.035
+- 0.0
+- -0.100
+- 0.0
+
+# Effective driver target = source median + hardware trim, then documented physical clamps.
+joint_position_rad:
+- -0.0022942114155739546
+- 0.014345815405249596
+- -0.38272855043411255
+- 0.8788803219795227
+- -0.5449054598808289
+- 0.0664796531200409
+- -0.03032059408724308
+- -0.056757289151768725
+- -0.3163382148742676
+- 0.8014949560165405
+- -0.5355151951313019
+- 0.05092838034033775
+
 physical_limit_clamps:
 - index: 7
   joint: leg_right_hip_yaw_joint
-  source_rad: -0.05677672475576401
+  pre_clamp_rad: -0.05677672475576401
   effective_rad: -0.056757289151768725
   delta_rad: 1.9435603995282547e-05
+
+hardware_trim_provenance:
+  calibration_scope: policy_handoff_only
+  calibrated_on_robot: true
+  orientation_audit_utc: '2026-10-09T01:03:28Z'
+  orientation_audit_pose_label: neutral
+  median_projected_gravity_base:
+  - 0.01789996401865052
+  - -0.023028293233633375
+  - -0.9995786694243669
+  median_rpy_deg:
+  - -1.0258803951809425
+  - 1.319540655109982
+  - -0.20401013558348133
+  orientation_expectation_result: PASS
+  notes:
+  - Knee values are inherited unchanged from the Track-1 learned zero-command median.
+  - Both hip-pitch joints use a -0.035 rad hardware trim.
+  - Both ankle-pitch joints use a -0.100 rad hardware trim, established experimentally on the physical robot.
+  - The resulting supported handoff posture is mechanically balanced and approximately 1.7 degrees from upright.
+
 previous_action_bounded:
 - -0.18711842596530914
 - 0.9505239725112915
@@ -88,13 +130,11 @@ source_median_projected_gravity_b:
 previous_action_observation_indices:
 - 33
 - 44
-previous_action_observation_semantics: 'bounded_last_action(joint_pos): 12-D bounded
-  normalized action from the immediately preceding policy step'
+previous_action_observation_semantics: 'bounded_last_action(joint_pos): 12-D bounded normalized action from the immediately preceding policy step'
 max_abs_previous_action_obs_vs_action_term: 0.0
 notes:
-- q_default remains the protected observation/action reference and is not replaced
-  by this pose.
-- This profile is the default pre-position/start state for live locomotion policy
-  handoff, not an automatic power-on motion.
-- The driver must hold pose override during the ramp; policy authority remains disabled
-  until explicitly armed and enabled.
+- q_default remains the protected observation/action reference and is not replaced by this pose.
+- source_median_joint_position_rad is immutable Track-1 evidence; hardware_trim_rad is the robot-specific calibration layer.
+- joint_position_rad is the audited effective pre-position target used by Track 2.
+- This profile is the default pre-position/start state for live locomotion policy handoff, not an automatic power-on motion.
+- The driver must hold pose override during the ramp; policy authority remains disabled until explicitly armed and enabled.

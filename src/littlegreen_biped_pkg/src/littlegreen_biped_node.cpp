@@ -532,6 +532,8 @@ private:
     std::string task;
     std::string policy_sha256;
     std::vector<std::string> joint_order;
+    std::vector<float> source_median_joint_position_rad;
+    std::vector<float> hardware_trim_rad;
     std::vector<float> joint_position_rad;
     std::vector<float> previous_action_bounded;
     std::array<float, 3> command{0.0F, 0.0F, 0.0F};
@@ -1170,6 +1172,11 @@ private:
 
     policy_handoff_.joint_order = load_string_vector(
       root["joint_order"], num_actions_, "handoff joint_order");
+    policy_handoff_.source_median_joint_position_rad = load_float_vector(
+      root["source_median_joint_position_rad"], num_actions_,
+      "handoff source_median_joint_position_rad");
+    policy_handoff_.hardware_trim_rad = load_float_vector(
+      root["hardware_trim_rad"], num_actions_, "handoff hardware_trim_rad");
     policy_handoff_.joint_position_rad = load_float_vector(
       root["joint_position_rad"], num_actions_, "handoff joint_position_rad");
     policy_handoff_.previous_action_bounded = load_float_vector(
@@ -1182,14 +1189,31 @@ private:
     if (policy_handoff_.joint_order != joint_names_) {
       throw std::runtime_error("policy handoff joint_order does not match canonical policy order");
     }
+    float max_abs_hardware_trim = 0.0F;
     for (size_t i = 0; i < num_actions_; ++i) {
+      const float source_q = policy_handoff_.source_median_joint_position_rad[i];
+      const float trim_q = policy_handoff_.hardware_trim_rad[i];
       const float q = policy_handoff_.joint_position_rad[i];
       const float a = policy_handoff_.previous_action_bounded[i];
-      if (!is_finite(q) || q < joint_lower_limits_[i] || q > joint_upper_limits_[i]) {
+      if (!is_finite(source_q) || !is_finite(trim_q)) {
+        throw std::runtime_error(
+                "policy handoff source/trim contains non-finite value at action[" +
+                std::to_string(i) + "]");
+      }
+      const float pre_clamp = source_q + trim_q;
+      const float expected_q = std::min(
+        std::max(pre_clamp, joint_lower_limits_[i]), joint_upper_limits_[i]);
+      if (!is_finite(q) || std::fabs(q - expected_q) > 1.0e-6F) {
+        throw std::runtime_error(
+                "policy handoff effective pose is not source median + hardware trim + physical clamp at action[" +
+                std::to_string(i) + "]");
+      }
+      if (q < joint_lower_limits_[i] || q > joint_upper_limits_[i]) {
         throw std::runtime_error(
                 "policy handoff joint position outside physical limits at action[" +
                 std::to_string(i) + "]");
       }
+      max_abs_hardware_trim = std::max(max_abs_hardware_trim, std::fabs(trim_q));
       if (!is_finite(a) || a < -1.0F || a > 1.0F) {
         throw std::runtime_error(
                 "policy handoff previous action outside [-1,1] at action[" +
@@ -1215,8 +1239,9 @@ private:
     policy_handoff_.loaded = true;
     RCLCPP_INFO(
       this->get_logger(),
-      "Loaded SHA-bound Track-1 zero-command handoff profile: task=%s sha=%s.",
-      policy_handoff_.task.c_str(), policy_handoff_.policy_sha256.c_str());
+      "Loaded SHA-bound Track-1 zero-command handoff profile: task=%s sha=%s max_abs_hw_trim=%.4frad.",
+      policy_handoff_.task.c_str(), policy_handoff_.policy_sha256.c_str(),
+      max_abs_hardware_trim);
   }
 
   void load_policy_config(const std::string & config_path)

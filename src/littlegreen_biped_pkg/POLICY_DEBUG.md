@@ -31,7 +31,7 @@ Type: `std_msgs/msg/Float64MultiArray`
 [2] successful policy tick count
 [3] sin(2*pi*phase)
 [4] cos(2*pi*phase)
-[5] mode code: 1=Stand, 2=Walk, 3=v2.8 legacy
+[5] mode code: 1=Stand, 2=Walk, 3=v2.8 legacy, 4=neutral_static
 [6] moving flag
 [7] first-swing-left flag
 ```

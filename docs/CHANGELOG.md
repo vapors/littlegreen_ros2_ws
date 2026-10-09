@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.9.4
+
+- Synchronized the active source-tree policy artifacts to Track-1 v10.2 `model_10000` (`da7adcaf...`) so a normal rebuild cannot silently restore the older Stand bundle.
+- Preserved the Track-1 zero-command source median as immutable evidence and moved physical tuning into an explicit 12-D `hardware_trim_rad` layer.
+- Recorded the current robot calibration as bilateral hip-pitch `-0.035 rad` and ankle-pitch `-0.100 rad` trims; knees and all other joints remain inherited from Track 1.
+- Recorded the supported physical orientation audit at the effective handoff pose: projected gravity `[+0.01790, -0.02303, -0.99958]`, approximately 1.7 degrees total tilt, PASS.
+- Added decomposition validation in the offline bundle audit, handoff helper, and C++ runtime: effective pose must equal Track-1 source + hardware trim + documented physical clamp.
+- Updated bundle installation so re-installing the exact same policy/source preserves a calibrated hardware trim, while a new policy identity resets trim to zero and requires re-validation.
+- Added the previously manual ROS 2 Humble handoff compatibility test and installer trim-preservation tests to the package test suite.
+- Preserved `q_default`, observation/action contracts, previous-action seed, IMU reset gate, servo calibration, physical limits, and 50 Hz control timing.
+
 ## 2.9.3
 
 - Added a SHA-bound Track-1 learned zero-command policy handoff profile for v10.2 model_10000.

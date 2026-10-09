@@ -18,7 +18,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 TOOLS = ROOT / "tools"
-EXPECTED_WORKSPACE_VERSION = "2.9.3"
+EXPECTED_WORKSPACE_VERSION = "2.9.4"
 EXPECTED = {
     "lgh_st3215_driver",
     "lgh_st3215_tools",
@@ -99,8 +99,8 @@ biped_package_xml = SRC / "littlegreen_biped_pkg/package.xml"
 if biped_package_xml.is_file():
     try:
         biped_tree = ET.parse(biped_package_xml)
-        if biped_tree.findtext("version") != "0.7.3":
-            fail("littlegreen_biped_pkg package version must be 0.7.3 for workspace v2.9.3")
+        if biped_tree.findtext("version") != "0.7.4":
+            fail("littlegreen_biped_pkg package version must be 0.7.4 for workspace v2.9.4")
     except Exception as exc:
         fail(f"unable to validate littlegreen_biped_pkg version: {exc}")
 
@@ -175,6 +175,7 @@ required_files = [
     SRC / "littlegreen_biped_pkg/test/test_annotate_phase_guided_policy.py",
     SRC / "littlegreen_biped_pkg/test/test_policy_golden_vector_compare.py",
     SRC / "littlegreen_biped_pkg/test/golden/v231_stand_observation_vectors.yaml",
+    SRC / "littlegreen_biped_pkg/test/golden/v102_locomotion_observation_vectors.yaml",
     SRC / "littlegreen_biped_pkg/launch/littlegreen_biped_launch.py",
     SRC / "littlegreen_biped_pkg/launch/policy_shadow.launch.py",
     SRC / "littlegreen_biped_pkg/launch/policy_live.launch.py",
@@ -206,6 +207,8 @@ required_files = [
     ROOT / "docs/V2_9_0_VALIDATION.md",
     ROOT / "docs/V2_9_2_SIM2REAL_BRIDGE.md",
     ROOT / "docs/V2_9_3_POLICY_HANDOFF.md",
+    ROOT / "docs/V2_9_4_HANDOFF_CALIBRATION.md",
+    ROOT / "docs/V2_9_4_VALIDATION.md",
     ROOT / "tools/lgh_hardware_limit_tool/lgh_hardware_limit_tool.py",
     ROOT / "tools/lgh_hardware_limit_tool/README.md",
 ]
@@ -238,11 +241,13 @@ if policy_node.is_file():
         "/policy/arm_handoff",
         "/policy/enable_authority",
         "policy_handoff_config_path",
+        "source_median_joint_position_rad",
+        "hardware_trim_rad",
         "imu_orientation_jump_threshold_rad",
     ]
     for token in required_contract_tokens:
         if token not in policy_text:
-            fail(f"policy node is missing v2.9.3 policy-contract token: {token}")
+            fail(f"policy node is missing v2.9.4 policy-contract token: {token}")
     if "GetInputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
         fail("policy node must retain owning ONNX input TypeInfo during shape inspection")
     if "GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo()" in policy_text:
@@ -318,28 +323,30 @@ if yaml is not None:
         if policy.get("previous_action_observation") != "bounded_normalized_action":
             fail("packaged policy has unexpected previous_action_observation")
         if int(policy.get("schema_version", 0)) != 2:
-            fail("packaged v2.3.1 policy must use export schema 2")
+            fail("packaged v10.2 policy must use export schema 2")
         if int(policy.get("num_observations", 0)) != 47 or int(policy.get("num_actions", 0)) != 12:
             fail("packaged policy must expose obs[47] -> actions[12]")
-        if policy.get("metadata", {}).get("task") != "Velocity-Lilgreen-Stand-ST3215-Loaded-v23":
-            fail("packaged policy task must be the v2.3.1 canonical Stand policy")
-        if policy.get("metadata", {}).get("task_role") != "stand":
-            fail("packaged policy task_role must be stand")
+        if policy.get("metadata", {}).get("task") != "Velocity-Lilgreen-Locomotion-ST3215-Loaded-v102":
+            fail("packaged policy task must be the v10.2 locomotion policy")
+        if policy.get("metadata", {}).get("task_role") != "locomotion":
+            fail("packaged policy task_role must be locomotion")
         if int(policy.get("observation_contract_version", 0)) != 1:
-            fail("packaged v2.3.1 observation contract version must be 1")
+            fail("packaged v10.2 observation contract version must be 1")
         if policy.get("observation_contract_name") != "littlegreen_velocity_47d_phase_v1":
             fail("packaged policy has unexpected observation_contract_name")
-        if policy.get("phase_mode") != "randomized_static_per_episode":
-            fail("packaged Stand phase_mode must be randomized_static_per_episode")
+        if policy.get("phase_mode") != "neutral_static":
+            fail("packaged v10.2 phase_mode must be neutral_static")
         if policy.get("phase_indices") != [45, 46] or policy.get("phase_encoding") != "sin_cos_2pi":
             fail("packaged policy has unexpected phase indices or encoding")
+        if policy.get("phase_constant_sin_cos") != [0.0, 1.0]:
+            fail("packaged v10.2 policy must declare phase_constant_sin_cos [0,1]")
         if policy.get("observation_layout") != (
             "command3,base_ang_vel3,projected_gravity3,joint_pos_rel12,joint_vel12,"
             "previous_bounded_action12,phase_sin1,phase_cos1"
         ):
             fail("packaged policy has unexpected compact observation layout")
         if policy.get("legacy_45d_checkpoint_support") is not False:
-            fail("packaged v2.3.1 policy must disable legacy 45-D checkpoint support")
+            fail("packaged v10.2 policy must disable legacy 45-D checkpoint support")
 
         scale = [float(v) for v in policy["action_residual_scale_rad"]]
         defaults = [float(v) for v in policy["action_default_rad"]]
@@ -441,6 +448,51 @@ if yaml is not None:
         ).hexdigest()
         if checkpoint_sha != actual_sha:
             fail("configs/policy.onnx and checkpoints/policy.onnx differ")
+
+        handoff = yaml.safe_load(
+            (SRC / "littlegreen_biped_pkg/src/configs/policy_handoff.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        if handoff.get("task") != policy.get("metadata", {}).get("task"):
+            fail("policy handoff task does not match packaged policy")
+        if handoff.get("policy_sha256") != actual_sha:
+            fail("policy handoff SHA does not match packaged ONNX")
+        handoff_source = handoff.get("source_median_joint_position_rad")
+        handoff_trim = handoff.get("hardware_trim_rad")
+        handoff_effective = handoff.get("joint_position_rad")
+        expected_trim = [
+            0.0, 0.0, -0.035, 0.0, -0.100, 0.0,
+            0.0, 0.0, -0.035, 0.0, -0.100, 0.0,
+        ]
+        if not all(
+            isinstance(v, list) and len(v) == 12
+            for v in (handoff_source, handoff_trim, handoff_effective)
+        ):
+            fail("policy handoff source/trim/effective vectors must each contain 12 values")
+        else:
+            for index, (trim_value, expected_value) in enumerate(zip(handoff_trim, expected_trim)):
+                require_close(
+                    float(trim_value), float(expected_value),
+                    f"v2.9.4 hardware trim[{index}]", tolerance=1.0e-9
+                )
+            for index, (source_value, trim_value, effective_value, joint) in enumerate(
+                zip(handoff_source, handoff_trim, handoff_effective, joints)
+            ):
+                pre_clamp = float(source_value) + float(trim_value)
+                expected_effective = min(
+                    max(pre_clamp, float(joint["limit_lower_rad"])),
+                    float(joint["limit_upper_rad"]),
+                )
+                require_close(
+                    float(effective_value), expected_effective,
+                    f"handoff effective pose[{index}]", tolerance=1.0e-6
+                )
+        provenance = handoff.get("hardware_trim_provenance", {})
+        if provenance.get("calibrated_on_robot") is not True:
+            fail("v2.9.4 handoff hardware trim must be marked calibrated_on_robot")
+        if provenance.get("orientation_expectation_result") != "PASS":
+            fail("v2.9.4 handoff orientation calibration must record PASS")
     except Exception as exc:
         fail(f"policy bundle validation raised: {exc}")
 else:

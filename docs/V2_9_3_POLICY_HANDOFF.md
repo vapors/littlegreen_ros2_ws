@@ -1,5 +1,7 @@
 # LittleGreen ROS 2 v2.9.3 — Track-1 learned zero-command policy handoff
 
+> **Historical design record.** Superseded operationally by [`V2_9_4_HANDOFF_CALIBRATION.md`](V2_9_4_HANDOFF_CALIBRATION.md), which separates the immutable Track-1 source pose from robot-specific hardware trim and contains the current effective handoff values.
+
 ## Why this revision exists
 
 Track-1 v10.2 model_10000 has a stable learned zero-command standing region that differs from the protected training `q_default`. The physical robot also leans backward when placed at `q_default`. v2.9.3 therefore separates three concepts that were previously easy to conflate:

@@ -39,11 +39,46 @@ def load_profile(path: Path) -> dict:
     if data.get('mode') != 'learned_zero_command':
         raise ValueError('handoff profile mode must be learned_zero_command')
     pose = data.get('joint_position_rad')
+    source_pose = data.get('source_median_joint_position_rad')
+    hardware_trim = data.get('hardware_trim_rad')
     prev = data.get('previous_action_bounded')
     if not isinstance(pose, list) or len(pose) != NUM_ACTIONS:
         raise ValueError('joint_position_rad must contain 12 values')
+    if not isinstance(source_pose, list) or len(source_pose) != NUM_ACTIONS:
+        raise ValueError('source_median_joint_position_rad must contain 12 values')
+    if not isinstance(hardware_trim, list) or len(hardware_trim) != NUM_ACTIONS:
+        raise ValueError('hardware_trim_rad must contain 12 values')
     if not isinstance(prev, list) or len(prev) != NUM_ACTIONS:
         raise ValueError('previous_action_bounded must contain 12 values')
+
+    clamps = data.get('physical_limit_clamps', [])
+    if not isinstance(clamps, list):
+        raise ValueError('physical_limit_clamps must be a list')
+    clamp_by_index = {}
+    for item in clamps:
+        if not isinstance(item, dict):
+            raise ValueError('physical_limit_clamps entries must be mappings')
+        index = int(item.get('index', -1))
+        if index < 0 or index >= NUM_ACTIONS or index in clamp_by_index:
+            raise ValueError(f'invalid or duplicate physical clamp index: {index}')
+        clamp_by_index[index] = item
+
+    for i, (effective, source, trim) in enumerate(zip(pose, source_pose, hardware_trim)):
+        expected = float(source) + float(trim)
+        clamp = clamp_by_index.get(i)
+        if clamp is not None:
+            declared_pre = float(clamp.get('pre_clamp_rad'))
+            if abs(declared_pre - expected) > 1.0e-6:
+                raise ValueError(f'physical clamp pre_clamp_rad mismatch at action[{i}]')
+            declared_effective = float(clamp.get('effective_rad'))
+            declared_delta = float(clamp.get('delta_rad'))
+            if abs((declared_effective - declared_pre) - declared_delta) > 1.0e-6:
+                raise ValueError(f'physical clamp delta mismatch at action[{i}]')
+            expected = declared_effective
+        if abs(float(effective) - expected) > 1.0e-6:
+            raise ValueError(
+                f'joint_position_rad[{i}] must equal source median + hardware trim + declared clamp'
+            )
     return data
 
 
@@ -157,7 +192,7 @@ def main() -> int:
         if args.stage in {'pose', 'live'}:
             node.configure_driver_pose(profile['joint_position_rad'])
             print(
-                'Configured driver handoff pose from SHA-bound profile: '
+                'Configured audited effective handoff pose (Track-1 source + hardware trim): '
                 f"task={profile.get('task')} sha={profile.get('policy_sha256')}"
             )
             node.require_trigger('move')

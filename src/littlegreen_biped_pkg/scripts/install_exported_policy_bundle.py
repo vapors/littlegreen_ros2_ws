@@ -68,7 +68,12 @@ def _task_role(policy: dict) -> str:
     return str(policy.get('task_role', ''))
 
 
-def normalize_handoff_profile(handoff_json: Path, policy_yaml: Path, joint_map_yaml: Path) -> dict:
+def normalize_handoff_profile(
+    handoff_json: Path,
+    policy_yaml: Path,
+    joint_map_yaml: Path,
+    existing_handoff_path: Path | None = None,
+) -> dict:
     source = json.loads(handoff_json.read_text(encoding='utf-8'))
     policy = yaml.safe_load(policy_yaml.read_text(encoding='utf-8'))
     joint_map = yaml.safe_load(joint_map_yaml.read_text(encoding='utf-8'))
@@ -102,25 +107,60 @@ def normalize_handoff_profile(handoff_json: Path, policy_yaml: Path, joint_map_y
     for i, (a, b) in enumerate(zip(q_default, policy_default)):
         if not math.isfinite(float(a)) or abs(float(a) - float(b)) > 1.0e-5:
             raise ValueError(f'handoff q_default mismatch at action[{i}]')
+    # Hardware trim is robot-specific calibration and must never be inferred from Track 1.
+    # Re-installing the exact same policy/handoff preserves an already calibrated trim;
+    # a new policy identity starts with a zero trim and must be physically re-validated.
+    hardware_trim = [0.0] * 12
+    hardware_trim_provenance = {
+        'calibration_scope': 'policy_handoff_only',
+        'calibrated_on_robot': False,
+        'notes': [
+            'No robot-specific hardware trim has been calibrated for this newly installed handoff.',
+            'Perform pose-only orientation validation before first live policy authority.',
+        ],
+    }
+    if existing_handoff_path is not None and existing_handoff_path.is_file():
+        existing = yaml.safe_load(existing_handoff_path.read_text(encoding='utf-8'))
+        if isinstance(existing, dict):
+            same_identity = (
+                existing.get('task') == task and
+                existing.get('policy_sha256') == str(policy.get('policy_sha256', ''))
+            )
+            existing_source = existing.get('source_median_joint_position_rad')
+            existing_trim = existing.get('hardware_trim_rad')
+            same_source = (
+                isinstance(existing_source, list) and len(existing_source) == 12 and
+                all(abs(float(a) - float(b)) <= 1.0e-6 for a, b in zip(existing_source, pose))
+            )
+            if same_identity and same_source and isinstance(existing_trim, list) and len(existing_trim) == 12:
+                candidate_trim = [float(x) for x in existing_trim]
+                if all(math.isfinite(x) for x in candidate_trim):
+                    hardware_trim = candidate_trim
+                    provenance = existing.get('hardware_trim_provenance')
+                    if isinstance(provenance, dict):
+                        hardware_trim_provenance = provenance
+
     effective_pose = []
     clamps = []
-    for i, (value, entry) in enumerate(zip(pose, entries)):
-        q = float(value)
+    for i, (source_value, trim_value, entry) in enumerate(zip(pose, hardware_trim, entries)):
+        source_q = float(source_value)
+        trim_q = float(trim_value)
+        q = source_q + trim_q
         lo = float(entry['limit_lower_rad'])
         hi = float(entry['limit_upper_rad'])
         if not math.isfinite(q):
-            raise ValueError(f'non-finite handoff pose at action[{i}]')
+            raise ValueError(f'non-finite handoff source/trim at action[{i}]')
         qc = min(max(q, lo), hi)
         if abs(qc - q) > 0.002:
             raise ValueError(
-                f'handoff pose exceeds physical limit by more than 0.002 rad at action[{i}]'
+                f'handoff source+hardware trim exceeds physical limit by more than 0.002 rad at action[{i}]'
             )
         effective_pose.append(qc)
         if qc != q:
             clamps.append({
                 'index': i,
                 'joint': names[i],
-                'source_rad': q,
+                'pre_clamp_rad': q,
                 'effective_rad': qc,
                 'delta_rad': qc - q,
             })
@@ -145,9 +185,11 @@ def normalize_handoff_profile(handoff_json: Path, policy_yaml: Path, joint_map_y
             'selection': source.get('selection', {}),
         },
         'joint_order': names,
-        'joint_position_rad': effective_pose,
         'source_median_joint_position_rad': [float(x) for x in pose],
+        'hardware_trim_rad': hardware_trim,
+        'joint_position_rad': effective_pose,
         'physical_limit_clamps': clamps,
+        'hardware_trim_provenance': hardware_trim_provenance,
         'previous_action_bounded': previous_values,
         'command': command,
         'phase': phase,
@@ -159,6 +201,8 @@ def normalize_handoff_profile(handoff_json: Path, policy_yaml: Path, joint_map_y
         ),
         'notes': [
             'q_default remains the protected observation/action reference and is not replaced by this pose.',
+            'source_median_joint_position_rad is immutable Track-1 evidence; hardware_trim_rad is the robot-specific calibration layer.',
+            'joint_position_rad is the audited effective target after hardware trim and documented physical clamps.',
             'This profile is the default pre-position/start state for live locomotion policy handoff, not an automatic power-on motion.',
             'The driver must hold pose override during the ramp; policy authority remains disabled until explicitly armed and enabled.',
         ],
@@ -215,7 +259,7 @@ def main() -> int:
             if not handoff_source.is_file():
                 raise ValueError(f'handoff JSON is missing: {handoff_source}')
             handoff_profile = normalize_handoff_profile(
-                handoff_source, required['policy.yaml'], joint_map
+                handoff_source, required['policy.yaml'], joint_map, configs / 'policy_handoff.yaml'
             )
 
         audit = load_audit_module(script_path.resolve().parent)
@@ -254,12 +298,18 @@ def main() -> int:
             print(f'{source.name} -> {destination}')
         existing_handoff = configs / 'policy_handoff.yaml'
         if handoff_profile is not None:
+            trim = [float(x) for x in handoff_profile.get('hardware_trim_rad', [])]
+            max_trim = max((abs(x) for x in trim), default=0.0)
+            calibrated = bool(
+                handoff_profile.get('hardware_trim_provenance', {}).get('calibrated_on_robot', False)
+            )
             print(
                 'zero_command_handoff_pose.json -> '
-                f'{existing_handoff} (SHA-bound learned zero-command profile)'
+                f'{existing_handoff} (SHA-bound learned zero-command profile; '
+                f'hardware_trim_calibrated={calibrated} max_abs_trim={max_trim:.4f}rad)'
             )
         elif _task_role(yaml.safe_load(required['policy.yaml'].read_text(encoding='utf-8'))) == 'locomotion':
-            print('WARN  no zero-command handoff JSON supplied; live v2.9.3 locomotion authority will require a matching existing profile')
+            print('WARN  no zero-command handoff JSON supplied; live v2.9.4 locomotion authority will require a matching existing profile')
         if args.dry_run:
             print('DRY RUN: no files changed')
             return PASS

@@ -218,6 +218,14 @@ if(BUILD_TESTING)
     test_policy_handoff_profile
     test/test_policy_handoff_profile.py
   )
+  ament_add_pytest_test(
+    test_policy_handoff_control_compat
+    test/test_policy_handoff_control_compat.py
+  )
+  ament_add_pytest_test(
+    test_policy_bundle_installer_handoff_trim
+    test/test_policy_bundle_installer_handoff_trim.py
+  )
 endif()
 
 ament_package()
